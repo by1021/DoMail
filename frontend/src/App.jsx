@@ -315,6 +315,8 @@ export default function App() {
     );
   }, [messages, searchText]);
 
+  const selectedMailbox = mailboxes.find((item) => item.id === selectedMailboxId) || null;
+
   async function loadMessages(mailboxId, keepSection = false) {
     if (!mailboxId) {
       setMessages([]);
@@ -586,8 +588,6 @@ export default function App() {
       ),
     },
   ];
-
-  const selectedMailbox = mailboxes.find((item) => item.id === selectedMailboxId) || null;
 
   return (
     <Layout className="app-shell">

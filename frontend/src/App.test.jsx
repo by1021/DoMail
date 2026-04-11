@@ -112,6 +112,7 @@ describe('App', () => {
     expect(screen.getByText('快速查看当前收件状态与最近内容。')).toBeInTheDocument();
     expect(screen.getByText('已配置域名')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('搜索域名、邮箱、主题')).toBeInTheDocument();
+    expect(screen.getAllByText('hello@example.com').length).toBeGreaterThan(0);
   });
 
   it('renders mailbox table after switching section', async () => {
@@ -177,7 +178,7 @@ describe('App', () => {
 
     const retentionInput = screen.getByDisplayValue('24');
     fireEvent.change(retentionInput, { target: { value: '12' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    fireEvent.click(screen.getByRole('button', { name: /保\s*存/ }));
 
     await waitFor(() => {
       expect(updateMailboxRetention).toHaveBeenCalledWith('mailbox-1', {
