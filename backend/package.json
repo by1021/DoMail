@@ -1,0 +1,22 @@
+{
+  "name": "domain-mail-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Domain mailbox receiver backend with SMTP, HTTP API and SQLite storage",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test:db": "node --test test/db.test.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mailparser": "^3.7.2",
+    "nanoid": "^5.1.5",
+    "smtp-server": "^3.13.6",
+    "zod": "^3.24.2"
+  }
+}
