@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const axiosCreate = vi.fn();
+const axiosGet = vi.fn();
+const axiosPost = vi.fn();
+const axiosPatch = vi.fn();
+const axiosDelete = vi.fn();
+const axiosCreate = vi.fn(() => ({
+  get: axiosGet,
+  post: axiosPost,
+  patch: axiosPatch,
+  delete: axiosDelete,
+}));
 
 vi.mock('axios', () => ({
   default: {
@@ -13,6 +22,10 @@ describe('api client configuration', () => {
     vi.resetModules();
     vi.clearAllMocks();
     delete import.meta.env.VITE_API_BASE_URL;
+    axiosGet.mockResolvedValue({ data: { ok: true } });
+    axiosPost.mockResolvedValue({ data: { ok: true } });
+    axiosPatch.mockResolvedValue({ data: { ok: true } });
+    axiosDelete.mockResolvedValue({ data: { ok: true } });
   });
 
   it('uses relative api base path by default for remote dev access', async () => {
@@ -37,5 +50,13 @@ describe('api client configuration', () => {
         timeout: 10000,
       }),
     );
+  });
+
+  it('requests domain list without duplicating the api prefix', async () => {
+    const { getDomains } = await import('./api.js');
+
+    await getDomains();
+
+    expect(axiosGet).toHaveBeenCalledWith('/domains');
   });
 });

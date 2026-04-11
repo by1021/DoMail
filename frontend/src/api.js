@@ -6,67 +6,67 @@ const api = axios.create({
 });
 
 export async function getHealth() {
-  const { data } = await api.get('/api/health');
+  const { data } = await api.get('/health');
   return data;
 }
 
 export async function getDomains() {
-  const { data } = await api.get('/api/domains');
+  const { data } = await api.get('/domains');
   return data;
 }
 
 export async function createDomain(payload) {
-  const { data } = await api.post('/api/domains', payload);
+  const { data } = await api.post('/domains', payload);
   return data;
 }
 
 export async function getDomainDetail(domainId) {
-  const { data } = await api.get(`/api/domains/${domainId}`);
+  const { data } = await api.get(`/domains/${domainId}`);
   return data;
 }
 
 export async function deleteDomain(id) {
-  const { data } = await api.delete(`/api/domains/${id}`);
+  const { data } = await api.delete(`/domains/${id}`);
   return data;
 }
 
 export async function getMailboxes() {
-  const { data } = await api.get('/api/mailboxes');
+  const { data } = await api.get('/mailboxes');
   return data;
 }
 
 export async function createMailbox(payload) {
-  const { data } = await api.post('/api/mailboxes', payload);
+  const { data } = await api.post('/mailboxes', payload);
   return data;
 }
 
 export async function deleteMailbox(id) {
-  const { data } = await api.delete(`/api/mailboxes/${id}`);
+  const { data } = await api.delete(`/mailboxes/${id}`);
   return data;
 }
 
 export async function getMailboxMessages(mailboxId) {
-  const { data } = await api.get(`/api/mailboxes/${mailboxId}/messages`);
+  const { data } = await api.get(`/mailboxes/${mailboxId}/messages`);
   return data;
 }
 
 export async function getMessageDetail(messageId) {
-  const { data } = await api.get(`/api/messages/${messageId}`);
+  const { data } = await api.get(`/messages/${messageId}`);
   return data;
 }
 
 export async function markMessageRead(messageId) {
-  const { data } = await api.patch(`/api/messages/${messageId}/read`);
+  const { data } = await api.patch(`/messages/${messageId}/read`);
   return data;
 }
 
 export async function deleteMessage(messageId) {
-  const { data } = await api.delete(`/api/messages/${messageId}`);
+  const { data } = await api.delete(`/messages/${messageId}`);
   return data;
 }
 
 export async function updateMailboxRetention(mailboxId, payload) {
-  const { data } = await api.patch(`/api/mailboxes/${mailboxId}/retention`, payload);
+  const { data } = await api.patch(`/mailboxes/${mailboxId}/retention`, payload);
   return data;
 }
 
