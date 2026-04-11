@@ -275,45 +275,44 @@ export default function App() {
   const latestMailbox = mailboxes[0] || null;
   const latestMessage = messages[0] || null;
 
+  const normalizedSearchText = useMemo(() => searchText.trim().toLowerCase(), [searchText]);
+
   const filteredDomains = useMemo(() => {
-    const keyword = searchText.trim().toLowerCase();
-    if (!keyword) {
+    if (!normalizedSearchText) {
       return domains;
     }
 
     return domains.filter(
       (item) =>
-        item.domain.toLowerCase().includes(keyword) ||
-        (item.note || '').toLowerCase().includes(keyword),
+        item.domain.toLowerCase().includes(normalizedSearchText) ||
+        (item.note || '').toLowerCase().includes(normalizedSearchText),
     );
-  }, [domains, searchText]);
+  }, [domains, normalizedSearchText]);
 
   const filteredMailboxes = useMemo(() => {
-    const keyword = searchText.trim().toLowerCase();
-    if (!keyword) {
+    if (!normalizedSearchText) {
       return mailboxes;
     }
 
     return mailboxes.filter(
       (item) =>
-        item.address.toLowerCase().includes(keyword) ||
-        item.domain.toLowerCase().includes(keyword),
+        item.address.toLowerCase().includes(normalizedSearchText) ||
+        item.domain.toLowerCase().includes(normalizedSearchText),
     );
-  }, [mailboxes, searchText]);
+  }, [mailboxes, normalizedSearchText]);
 
   const filteredMessages = useMemo(() => {
-    const keyword = searchText.trim().toLowerCase();
-    if (!keyword) {
+    if (!normalizedSearchText) {
       return messages;
     }
 
     return messages.filter(
       (item) =>
-        (item.subject || '').toLowerCase().includes(keyword) ||
-        (item.fromAddress || '').toLowerCase().includes(keyword) ||
-        (item.envelopeTo || '').toLowerCase().includes(keyword),
+        (item.subject || '').toLowerCase().includes(normalizedSearchText) ||
+        (item.fromAddress || '').toLowerCase().includes(normalizedSearchText) ||
+        (item.envelopeTo || '').toLowerCase().includes(normalizedSearchText),
     );
-  }, [messages, searchText]);
+  }, [messages, normalizedSearchText]);
 
   const selectedMailbox = mailboxes.find((item) => item.id === selectedMailboxId) || null;
 
@@ -369,9 +368,11 @@ export default function App() {
         setMessages([]);
       }
 
+      const selectedMailboxRecord = nextMailboxes.find((item) => item.id === nextMailboxId);
+
       retentionForm.setFieldsValue({
-        retentionValue: nextMailboxes.find((item) => item.id === nextMailboxId)?.retentionValue ?? null,
-        retentionUnit: nextMailboxes.find((item) => item.id === nextMailboxId)?.retentionUnit ?? 'hour',
+        retentionValue: selectedMailboxRecord?.retentionValue ?? null,
+        retentionUnit: selectedMailboxRecord?.retentionUnit ?? 'hour',
       });
     } catch (error) {
       message.error(extractErrorMessage(error, '加载数据失败，请确认后端 API 可用'));
@@ -659,6 +660,7 @@ export default function App() {
             <Col>
               <Space wrap size={12}>
                 <Input
+                  aria-label="全局搜索"
                   placeholder="搜索域名、邮箱、主题"
                   prefix={<SearchOutlined />}
                   className="global-search"
@@ -723,7 +725,7 @@ export default function App() {
 
                 <Row gutter={[16, 16]}>
                   <Col span={24}>
-                    <Card className="workspace-pulse-card" bordered={false}>
+                    <Card className="workspace-pulse-card" variant="borderless">
                       <Row gutter={[12, 12]}>
                         <Col xs={24} md={8}>
                           <div className="workspace-pulse-item">
@@ -984,10 +986,17 @@ export default function App() {
                               initialValues={{ retentionValue: null, retentionUnit: 'hour' }}
                             >
                               <Form.Item name="retentionValue">
-                                <Input type="number" min={1} placeholder="关闭时留空" style={{ width: 140 }} />
+                                <Input
+                                  aria-label="自动清理时长"
+                                  type="number"
+                                  min={1}
+                                  placeholder="关闭时留空"
+                                  style={{ width: 140 }}
+                                />
                               </Form.Item>
                               <Form.Item name="retentionUnit">
                                 <Select
+                                  aria-label="自动清理单位"
                                   style={{ width: 100 }}
                                   options={[
                                     { label: '小时', value: 'hour' },
@@ -1095,6 +1104,7 @@ export default function App() {
       <Modal
         title="创建邮箱"
         open={mailboxModalOpen}
+        forceRender
         confirmLoading={submitting}
         onCancel={() => setMailboxModalOpen(false)}
         onOk={() => mailboxForm.submit()}

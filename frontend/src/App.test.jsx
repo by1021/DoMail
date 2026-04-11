@@ -111,7 +111,7 @@ describe('App', () => {
     expect(screen.getAllByText('概览').length).toBeGreaterThan(0);
     expect(screen.getByText('快速查看当前收件状态与最近内容。')).toBeInTheDocument();
     expect(screen.getByText('已配置域名')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('搜索域名、邮箱、主题')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '全局搜索' })).toBeInTheDocument();
     expect(screen.getAllByText('hello@example.com').length).toBeGreaterThan(0);
   });
 
@@ -148,8 +148,8 @@ describe('App', () => {
     });
 
     expect(screen.getByText('自动清理设置')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('24')).toBeInTheDocument();
-    expect(screen.getByText('小时')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '自动清理时长' })).toHaveValue(24);
+    expect(screen.getByRole('combobox', { name: '自动清理单位' })).toBeInTheDocument();
   });
 
   it('submits mailbox retention setting and shows delete action in messages section', async () => {

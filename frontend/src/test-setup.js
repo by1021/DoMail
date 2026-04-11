@@ -13,3 +13,15 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 });
+
+const originalGetComputedStyle = window.getComputedStyle.bind(window);
+
+window.getComputedStyle = (element, pseudoElt) => {
+  if (pseudoElt) {
+    return {
+      getPropertyValue: () => '',
+    };
+  }
+
+  return originalGetComputedStyle(element);
+};

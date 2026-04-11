@@ -14,6 +14,7 @@ export default function DomainCreateModal({
     <Modal
       title="添加域名"
       open={open}
+      forceRender
       confirmLoading={submitting}
       onCancel={onCancel}
       onOk={() => form.submit()}
