@@ -69,53 +69,45 @@ import {
 const { Header, Content, Sider } = Layout;
 const { Title, Paragraph, Text } = Typography;
 
-const SECTION_OPTIONS = [
+const SECTION_DEFINITIONS = [
   {
-    label: (
-      <div className="nav-option">
-        <AppstoreOutlined className="nav-option-icon" />
-        <span className="nav-option-text">概览</span>
-      </div>
-    ),
+    icon: AppstoreOutlined,
+    text: '概览',
     value: 'overview',
   },
   {
-    label: (
-      <div className="nav-option">
-        <GlobalOutlined className="nav-option-icon" />
-        <span className="nav-option-text">域名</span>
-      </div>
-    ),
+    icon: GlobalOutlined,
+    text: '域名',
     value: 'domains',
   },
   {
-    label: (
-      <div className="nav-option">
-        <MailOutlined className="nav-option-icon" />
-        <span className="nav-option-text">邮箱</span>
-      </div>
-    ),
+    icon: MailOutlined,
+    text: '邮箱',
     value: 'mailboxes',
   },
   {
-    label: (
-      <div className="nav-option">
-        <InboxOutlined className="nav-option-icon" />
-        <span className="nav-option-text">邮件</span>
-      </div>
-    ),
+    icon: InboxOutlined,
+    text: '邮件',
     value: 'messages',
   },
   {
-    label: (
-      <div className="nav-option">
-        <ApiOutlined className="nav-option-icon" />
-        <span className="nav-option-text">API</span>
-      </div>
-    ),
+    icon: ApiOutlined,
+    text: 'API',
     value: 'api',
   },
 ];
+
+function buildSectionOptions(activeSection) {
+  return SECTION_DEFINITIONS.map(({ icon: Icon, text, value }) => ({
+    label: (
+      <div className={`nav-option${value === activeSection ? ' nav-option-active' : ''}`}>
+        <Icon className="nav-option-icon" />
+        <span className="nav-option-text">{text}</span>
+      </div>
+    ),
+    value,
+  }));
+}
 
 const SECTION_META = {
   overview: {
@@ -236,6 +228,7 @@ export default function App() {
   const latestMessage = messages[0] || null;
   const hasDomains = domains.length > 0;
   const hasMailboxes = mailboxes.length > 0;
+  const sectionOptions = useMemo(() => buildSectionOptions(section), [section]);
   const currentSectionMeta = SECTION_META[section] ?? SECTION_META.overview;
 
   const normalizedSearchText = useMemo(() => searchText.trim().toLowerCase(), [searchText]);
@@ -594,7 +587,7 @@ export default function App() {
             className="section-segmented"
             value={section}
             onChange={setSection}
-            options={SECTION_OPTIONS}
+            options={sectionOptions}
           />
         </div>
 

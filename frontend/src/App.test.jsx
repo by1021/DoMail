@@ -279,6 +279,70 @@ describe('App', () => {
     });
   });
 
+  it('keeps a single selected navigation item after switching sidebar items', async () => {
+    const { container } = renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    expect(container.querySelectorAll('.section-segmented .ant-segmented-item-selected')).toHaveLength(1);
+    expect(container.querySelectorAll('.section-segmented .nav-option-active')).toHaveLength(1);
+    expect(screen.getByRole('radio', { name: /概览/ })).toBeChecked();
+
+    fireEvent.click(screen.getByRole('radio', { name: /域名/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '域名' })).toBeInTheDocument();
+    });
+
+    expect(container.querySelectorAll('.section-segmented .ant-segmented-item-selected')).toHaveLength(1);
+    expect(container.querySelectorAll('.section-segmented .nav-option-active')).toHaveLength(1);
+    expect(screen.getByRole('radio', { name: /域名/ })).toBeChecked();
+
+    fireEvent.click(screen.getByRole('radio', { name: /邮箱/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '邮箱' })).toBeInTheDocument();
+    });
+
+    expect(container.querySelectorAll('.section-segmented .ant-segmented-item-selected')).toHaveLength(1);
+    expect(container.querySelectorAll('.section-segmented .nav-option-active')).toHaveLength(1);
+    expect(screen.getByRole('radio', { name: /邮箱/ })).toBeChecked();
+  });
+
+  it('restores the overview navigation highlight after switching away and back again', async () => {
+    const { container } = renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    const getNavOption = (name) =>
+      screen.getByRole('radio', { name }).closest('.ant-segmented-item')?.querySelector('.nav-option');
+
+    expect(getNavOption(/概览/)).toHaveClass('nav-option-active');
+
+    fireEvent.click(screen.getByRole('radio', { name: /域名/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '域名' })).toBeInTheDocument();
+    });
+
+    expect(getNavOption(/域名/)).toHaveClass('nav-option-active');
+    expect(getNavOption(/概览/)).not.toHaveClass('nav-option-active');
+
+    fireEvent.click(screen.getByRole('radio', { name: /概览/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    expect(container.querySelectorAll('.section-segmented .nav-option-active')).toHaveLength(1);
+    expect(getNavOption(/概览/)).toHaveClass('nav-option-active');
+    expect(getNavOption(/域名/)).not.toHaveClass('nav-option-active');
+  });
+
   it('submits mailbox retention setting and shows delete action in messages section', async () => {
     updateMailboxRetention.mockResolvedValue({
       ok: true,

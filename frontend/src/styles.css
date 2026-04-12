@@ -123,6 +123,11 @@ body {
 }
 
 .section-segmented.ant-segmented .ant-segmented-thumb {
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  border-radius: 12px;
+  box-shadow:
+    0 4px 10px rgba(37, 99, 235, 0.1),
+    inset 0 0 0 1px rgba(37, 99, 235, 0.08);
   transition:
     inset-inline-start 0.12s ease,
     inset-block-start 0.12s ease,
@@ -164,6 +169,14 @@ body {
   box-shadow:
     0 4px 10px rgba(37, 99, 235, 0.1),
     inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+.ant-segmented-vertical .ant-segmented-item-selected .nav-option {
+  color: #1677ff;
+}
+
+.nav-option-active {
+  color: #1677ff;
 }
 
 .nav-option {
@@ -208,10 +221,15 @@ body {
   transform: scale(1.02);
 }
 
-.ant-segmented-vertical .ant-segmented-item-selected .nav-option-icon {
+.ant-segmented-vertical .ant-segmented-item-selected .nav-option-icon,
+.nav-option-active .nav-option-icon {
   color: #ffffff;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.18);
+}
+
+.nav-option-active .nav-option-text {
+  color: #1677ff;
 }
 
 .app-header.ant-layout-header {
