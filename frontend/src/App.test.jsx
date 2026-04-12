@@ -103,15 +103,18 @@ describe('App', () => {
     });
   });
 
-  it('renders simplified main console content without crashing', async () => {
+  it('renders current section information instead of a shared console heading', async () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('邮件控制台')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
     });
 
     expect(screen.getByText('域名邮箱')).toBeInTheDocument();
     expect(screen.getAllByText('概览').length).toBeGreaterThan(0);
+    expect(screen.getByText('查看整体收件状态与推荐操作')).toBeInTheDocument();
+    expect(screen.queryByText('邮件控制台')).not.toBeInTheDocument();
+    expect(screen.queryByText('集中查看域名、邮箱和邮件状态。')).not.toBeInTheDocument();
     expect(screen.getByText('先添加域名，再创建邮箱，最后进入邮件列表查看收件状态。')).toBeInTheDocument();
     expect(screen.getByText('已配置域名')).toBeInTheDocument();
     expect(screen.getByText('推荐流程')).toBeInTheDocument();
@@ -124,26 +127,104 @@ describe('App', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('邮件控制台')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
     });
 
     const mailboxNav = screen.getByText('邮箱');
     fireEvent.click(mailboxNav);
 
     await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '邮箱' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('创建收件地址并查看邮箱容量')).toBeInTheDocument();
+    expect(screen.getByText('邮箱管理')).toBeInTheDocument();
+    expect(screen.getAllByText('hello@example.com').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('查看邮件').length).toBeGreaterThan(0);
+    expect(screen.getByText('随机生成邮箱')).toBeInTheDocument();
+  });
+
+  it('renders simplified sidebar with brand and beautified navigation only', async () => {
+    renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('域名邮箱')).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: /segmented control/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /概览/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /域名/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /邮箱/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /邮件/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /API/ })).toBeInTheDocument();
+    expect(screen.queryByText('快捷操作')).not.toBeInTheDocument();
+    expect(screen.queryByText('当前栏目')).not.toBeInTheDocument();
+    expect(screen.queryByText('概况')).not.toBeInTheDocument();
+    expect(screen.queryByText('在线服务')).not.toBeInTheDocument();
+  });
+
+  it('supports switching sections from beautified sidebar navigation', async () => {
+    renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('邮箱'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '邮箱' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('邮件'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '邮件' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('集中处理邮件列表与详情')).toBeInTheDocument();
+    expect(screen.getByText('邮件列表')).toBeInTheDocument();
+  });
+
+  it('keeps the selected sidebar navigation item accessible after section switching', async () => {
+    renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    const overviewNav = screen.getByRole('radio', { name: /概览/ });
+    const mailboxNav = screen.getByRole('radio', { name: /邮箱/ });
+    const messageNav = screen.getByRole('radio', { name: /邮件/ });
+
+    expect(overviewNav).toBeChecked();
+    expect(mailboxNav).not.toBeChecked();
+
+    fireEvent.click(mailboxNav);
+
+    expect(mailboxNav).toBeChecked();
+    expect(overviewNav).not.toBeChecked();
+
+    await waitFor(() => {
       expect(screen.getByText('邮箱管理')).toBeInTheDocument();
     });
 
-    expect(screen.getAllByText('hello@example.com').length).toBeGreaterThan(0);
-    expect(screen.getByText('查看邮件')).toBeInTheDocument();
-    expect(screen.getByText('随机生成邮箱')).toBeInTheDocument();
+    fireEvent.click(messageNav);
+
+    expect(messageNav).toBeChecked();
+    expect(mailboxNav).not.toBeChecked();
+
+    await waitFor(() => {
+      expect(screen.getByText('邮件列表')).toBeInTheDocument();
+    });
   });
 
   it('renders mailbox creation modal with preview flow', async () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('邮件控制台')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: '创建邮箱' }));
@@ -160,7 +241,7 @@ describe('App', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('邮件控制台')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
     });
 
     const messageNav = screen.getByText('邮件');
@@ -173,6 +254,29 @@ describe('App', () => {
     expect(screen.getByText('自动清理设置')).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '自动清理时长' })).toHaveValue(24);
     expect(screen.getByRole('combobox', { name: '自动清理单位' })).toBeInTheDocument();
+  });
+
+  it('switches sidebar navigation state immediately after clicking another item', async () => {
+    renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    const overviewNav = screen.getByRole('radio', { name: /概览/ });
+    const domainNav = screen.getByRole('radio', { name: /域名/ });
+
+    expect(overviewNav).toBeChecked();
+    expect(domainNav).not.toBeChecked();
+
+    fireEvent.click(domainNav);
+
+    expect(domainNav).toBeChecked();
+    expect(overviewNav).not.toBeChecked();
+
+    await waitFor(() => {
+      expect(screen.getByText('建议流程：添加域名 → 查看 DNS 指引 → 完成记录配置 → 创建邮箱')).toBeInTheDocument();
+    });
   });
 
   it('submits mailbox retention setting and shows delete action in messages section', async () => {
@@ -190,7 +294,7 @@ describe('App', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('邮件控制台')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('邮件'));
@@ -241,10 +345,10 @@ describe('App', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('邮件控制台')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /添加域名/ }));
+    fireEvent.click(screen.getAllByRole('button', { name: /添加域名/ })[0]);
 
     await waitFor(() => {
       expect(screen.getByText('添加后再配置 DNS')).toBeInTheDocument();
@@ -256,7 +360,7 @@ describe('App', () => {
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    fireEvent.click(screen.getByRole('radio', { name: '域名' }));
+    fireEvent.click(screen.getByRole('radio', { name: /域名/ }));
 
     await waitFor(() => {
       expect(screen.getByText('建议流程：添加域名 → 查看 DNS 指引 → 完成记录配置 → 创建邮箱')).toBeInTheDocument();
@@ -321,7 +425,7 @@ describe('App', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('邮件控制台')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('邮件'));

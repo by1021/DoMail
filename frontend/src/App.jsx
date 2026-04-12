@@ -24,8 +24,10 @@ import {
   Typography,
 } from 'antd';
 import {
-  ClockCircleOutlined,
+  ApiOutlined,
+  AppstoreOutlined,
   DeleteOutlined,
+  GlobalOutlined,
   EyeOutlined,
   InboxOutlined,
   MailOutlined,
@@ -68,12 +70,75 @@ const { Header, Content, Sider } = Layout;
 const { Title, Paragraph, Text } = Typography;
 
 const SECTION_OPTIONS = [
-  { label: '概览', value: 'overview' },
-  { label: '域名', value: 'domains' },
-  { label: '邮箱', value: 'mailboxes' },
-  { label: '邮件', value: 'messages' },
-  { label: 'API', value: 'api' },
+  {
+    label: (
+      <div className="nav-option">
+        <AppstoreOutlined className="nav-option-icon" />
+        <span className="nav-option-text">概览</span>
+      </div>
+    ),
+    value: 'overview',
+  },
+  {
+    label: (
+      <div className="nav-option">
+        <GlobalOutlined className="nav-option-icon" />
+        <span className="nav-option-text">域名</span>
+      </div>
+    ),
+    value: 'domains',
+  },
+  {
+    label: (
+      <div className="nav-option">
+        <MailOutlined className="nav-option-icon" />
+        <span className="nav-option-text">邮箱</span>
+      </div>
+    ),
+    value: 'mailboxes',
+  },
+  {
+    label: (
+      <div className="nav-option">
+        <InboxOutlined className="nav-option-icon" />
+        <span className="nav-option-text">邮件</span>
+      </div>
+    ),
+    value: 'messages',
+  },
+  {
+    label: (
+      <div className="nav-option">
+        <ApiOutlined className="nav-option-icon" />
+        <span className="nav-option-text">API</span>
+      </div>
+    ),
+    value: 'api',
+  },
 ];
+
+const SECTION_META = {
+  overview: {
+    title: '概览',
+    description: '查看整体收件状态与推荐操作',
+  },
+  domains: {
+    title: '域名',
+    description: '管理域名接入与 DNS 配置进度',
+  },
+  mailboxes: {
+    title: '邮箱',
+    description: '创建收件地址并查看邮箱容量',
+  },
+  messages: {
+    title: '邮件',
+    description: '集中处理邮件列表与详情',
+  },
+  api: {
+    title: 'API',
+    description: '查看接口规划与联调参考',
+  },
+};
 
 function MessagePreview({ item, onOpen, onDelete }) {
   return (
@@ -171,6 +236,7 @@ export default function App() {
   const latestMessage = messages[0] || null;
   const hasDomains = domains.length > 0;
   const hasMailboxes = mailboxes.length > 0;
+  const currentSectionMeta = SECTION_META[section] ?? SECTION_META.overview;
 
   const normalizedSearchText = useMemo(() => searchText.trim().toLowerCase(), [searchText]);
 
@@ -502,56 +568,36 @@ export default function App() {
 
   return (
     <Layout className="app-shell">
-      <Sider width={248} theme="light" className="app-sider">
+      <Sider width={320} theme="light" className="app-sider">
         <div className="brand-block">
           <div className="brand-surface">
-            <Space direction="vertical" size={10} style={{ width: '100%' }}>
-              <Space align="center" size={10}>
-                <Avatar
-                  size={36}
-                  icon={<ThunderboltOutlined />}
-                  style={{ background: '#1677ff' }}
-                />
+            <Space direction="vertical" size={12} style={{ width: '100%' }} align="center">
+              <Avatar
+                size={48}
+                icon={<ThunderboltOutlined />}
+                style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
+              />
+              <div className="brand-copy">
                 <Title level={4} style={{ margin: 0 }}>
                   域名邮箱
                 </Title>
-              </Space>
-              <Text type="secondary">域名、邮箱与邮件的统一视图</Text>
-              <Tag color={health?.ok ? 'success' : 'default'} style={{ width: 'fit-content', marginTop: 2 }}>
-                {health?.ok ? '服务在线' : '等待连接'}
-              </Tag>
+                <Text type="secondary">统一管理收件工作台</Text>
+              </div>
             </Space>
           </div>
         </div>
 
-        <div className="side-panel">
-          <Text className="panel-label">导航</Text>
+        <div className="side-panel side-panel-navigation">
           <Segmented
             block
             vertical
+            className="section-segmented"
             value={section}
             onChange={setSection}
             options={SECTION_OPTIONS}
           />
         </div>
 
-        <div className="side-panel">
-          <Text className="panel-label">概况</Text>
-          <Space direction="vertical" size={10} style={{ width: '100%' }}>
-            <div className="status-chip">
-              <ClockCircleOutlined />
-              <span>{formatRelativeTime(health?.timestamp)}</span>
-            </div>
-            <div className="status-chip">
-              <InboxOutlined />
-              <span>未读 {unreadCount}</span>
-            </div>
-            <div className="status-chip">
-              <MailOutlined />
-              <span>{selectedMailbox?.address || '未选择邮箱'}</span>
-            </div>
-          </Space>
-        </div>
       </Sider>
 
       <Layout>
@@ -561,9 +607,9 @@ export default function App() {
               <div className="header-title-wrap">
                 <Space direction="vertical" size={4}>
                   <Title level={3} style={{ margin: 0 }}>
-                    邮件控制台
+                    {currentSectionMeta.title}
                   </Title>
-                  <Text type="secondary">集中查看域名、邮箱和邮件状态。</Text>
+                  <Text type="secondary">{currentSectionMeta.description}</Text>
                 </Space>
               </div>
             </Col>
