@@ -241,11 +241,12 @@ body {
   border-bottom: 1px solid rgba(15, 23, 42, 0.05);
 }
 
-.admin-session-tag.ant-tag {
-  margin-inline-end: 0;
-  padding-inline: 12px;
-  border-radius: 999px;
-  font-weight: 600;
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .header-title-wrap {
@@ -255,9 +256,76 @@ body {
 
 .global-search.ant-input-affix-wrapper {
   width: 320px;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 163, 184, 0.08),
+    0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.header-refresh-button.ant-btn,
+.header-logout-button.ant-btn {
+  height: 42px;
+  padding-inline: 16px;
+  border-radius: 14px;
+  font-weight: 600;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+}
+
+.header-refresh-button.ant-btn {
+  color: #1d4ed8;
+  border-color: rgba(96, 165, 250, 0.32);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.header-refresh-button.ant-btn:hover,
+.header-refresh-button.ant-btn:focus {
+  color: #1e40af;
+  border-color: rgba(37, 99, 235, 0.42);
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+}
+
+.header-logout-button.ant-btn {
+  color: #0f172a;
+  border-color: rgba(248, 113, 113, 0.22);
+  background: linear-gradient(180deg, #ffffff 0%, #fff6f6 100%);
+}
+
+.header-logout-button.ant-btn:hover,
+.header-logout-button.ant-btn:focus {
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.38);
+  background: linear-gradient(180deg, #fffafa 0%, #fee2e2 100%);
+}
+
+.admin-session-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  min-width: 0;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.05);
+}
+
+.admin-session-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.admin-session-value {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: #0f172a;
+  white-space: nowrap;
 }
 
 .app-content.ant-layout-content {
@@ -675,6 +743,10 @@ body {
     width: 260px;
   }
 
+  .header-actions {
+    gap: 10px;
+  }
+
   .mailbox-selector {
     width: 220px;
   }
@@ -713,9 +785,20 @@ body {
     font-size: 11px;
   }
 
+  .header-actions {
+    justify-content: stretch;
+  }
+
   .global-search.ant-input-affix-wrapper,
-  .mailbox-selector {
+  .mailbox-selector,
+  .admin-session-card,
+  .header-refresh-button.ant-btn,
+  .header-logout-button.ant-btn {
     width: 100%;
+  }
+
+  .admin-session-card {
+    min-width: 0;
   }
 
   .auth-shell {

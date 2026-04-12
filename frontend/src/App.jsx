@@ -607,7 +607,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
               </div>
             </Col>
             <Col>
-              <Space wrap size={12}>
+              <div className="header-actions">
                 <Input
                   aria-label="全局搜索"
                   placeholder="搜索域名、邮箱、主题"
@@ -616,20 +616,21 @@ export default function App({ adminProfile = null, onLogout = null }) {
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                 />
-                <Button icon={<ReloadOutlined />} onClick={loadData}>
+                <Button icon={<ReloadOutlined />} onClick={loadData} className="header-refresh-button">
                   刷新
                 </Button>
                 {adminProfile?.username ? (
-                  <Tag color="blue" className="admin-session-tag">
-                    管理员：{adminProfile.username}
-                  </Tag>
+                  <div className="admin-session-card" aria-label={`当前管理员 ${adminProfile.username}`}>
+                    <div className="admin-session-label">管理员</div>
+                    <div className="admin-session-value">{adminProfile.username}</div>
+                  </div>
                 ) : null}
                 {onLogout ? (
-                  <Button onClick={onLogout}>
+                  <Button onClick={onLogout} className="header-logout-button">
                     退出登录
                   </Button>
                 ) : null}
-              </Space>
+              </div>
             </Col>
           </Row>
         </Header>

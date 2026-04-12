@@ -33,11 +33,11 @@ import {
   updateMailboxRetention,
 } from './api.js';
 
-function renderApp() {
+function renderApp(props = {}) {
   return render(
     <ConfigProvider>
       <AntdApp>
-        <App />
+        <App {...props} />
       </AntdApp>
     </ConfigProvider>,
   );
@@ -121,6 +121,33 @@ describe('App', () => {
     expect(screen.getByText('下一步建议')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '全局搜索' })).toBeInTheDocument();
     expect(screen.getAllByText('hello@example.com').length).toBeGreaterThan(0);
+  });
+
+  it('renders beautified header actions for admin session controls', async () => {
+    const handleLogout = vi.fn();
+
+    const { container } = renderApp({
+      adminProfile: {
+        username: 'admin',
+      },
+      onLogout: handleLogout,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('textbox', { name: '全局搜索' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /刷新/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '退出登录' })).toBeInTheDocument();
+    expect(screen.getByText('管理员')).toBeInTheDocument();
+    expect(screen.getByText('admin')).toBeInTheDocument();
+
+    const actionBar = container.querySelector('.header-actions');
+    expect(actionBar).not.toBeNull();
+    expect(actionBar?.querySelector('.admin-session-card')).not.toBeNull();
+    expect(actionBar?.querySelector('.header-refresh-button')).not.toBeNull();
+    expect(actionBar?.querySelector('.header-logout-button')).not.toBeNull();
   });
 
   it('renders mailbox table after switching section', async () => {
