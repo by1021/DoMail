@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test:db": "node --test test/db.test.js"
+    "test:db": "node --test test/db.test.js test/smtp-utils.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

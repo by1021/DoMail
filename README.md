@@ -15,7 +15,7 @@
 - SQLite 数据存储：`backend/src/db.js`
 - 前端 API 封装：`frontend/src/api.js`
 - 默认环境变量示例：`backend/.env.example`
-- VPS 一键部署脚本：`deploy.sh`
+- SMTP 收件辅助逻辑：`backend/src/smtp-utils.js`
 
 ---
 
@@ -73,8 +73,6 @@
 │  │  ├─ App.jsx
 │  │  └─ components/
 │  └─ package.json
-├─ deploy.sh
-├─ DEPLOY.md
 ├─ 收件测试操作说明.md
 └─ README.md
 ```
@@ -392,9 +390,9 @@ curl http://127.0.0.1:3001/api/messages/456
 
 ---
 
-## 12. Ubuntu VPS 快速部署
+## 12. Ubuntu VPS 部署要点
 
-详细说明见 `DEPLOY.md`，这里保留最常用路径。
+当前仓库未包含单独的 `DEPLOY.md` 或 `deploy.sh`，因此这里直接给出部署与排障所需的最小要点。
 
 ### 12.1 推荐部署目录
 
@@ -402,43 +400,31 @@ curl http://127.0.0.1:3001/api/messages/456
 /opt/domain-mail
 ```
 
-### 12.2 一键部署
-
-项目根目录执行：
+### 12.2 最小部署步骤
 
 ```bash
-chmod +x ./deploy.sh
-DOMAIN=mail.example.com APP_DIR=/opt/domain-mail ./deploy.sh
+cd /opt/domain-mail/backend && npm ci
+cd /opt/domain-mail/frontend && npm ci
+cp /opt/domain-mail/backend/.env.example /opt/domain-mail/backend/.env
+cd /opt/domain-mail/frontend && npm run build
+cd /opt/domain-mail/backend && npm start
 ```
 
-### 12.3 可选参数
+部署完成后，至少要看到以下启动日志：
 
-```bash
-DOMAIN=mail.example.com
-API_DOMAIN=mail.example.com
-APP_DIR=/opt/domain-mail
-HTTP_PORT=3001
-SMTP_PORT=2525
-SMTP_HOST=0.0.0.0
-SITE_NAME=domain-mail
-NODE_MAJOR=22
+```text
+HTTP API listening on port 3001
+SMTP receiver listening on 0.0.0.0:2525
 ```
 
-### 12.4 脚本自动完成内容
+### 12.3 部署后第一轮自检
 
-`deploy.sh` 会自动：
-
-1. 安装 Node.js、Nginx、git、ufw
-2. 同步项目到目标目录
-3. 安装前后端依赖
-4. 生成 `backend/.env`
-5. 生成 `frontend/.env.production`
-6. 构建前端
-7. 生成 systemd 服务
-8. 生成 Nginx 站点配置
-9. 启动后端服务
-10. 重载 Nginx
-11. 放行 HTTP/HTTPS/SMTP 端口
+1. 调用 `GET /api/health`
+2. 在系统中创建目标域名
+3. 在该域名下创建目标邮箱
+4. 先从服务器本机向 `127.0.0.1:2525` 投递
+5. 再检查 `/api/mailboxes/:id/messages` 是否能查到邮件
+6. 本机收件正常后，再做公网 MX 投递验证
 
 ---
 
@@ -506,7 +492,7 @@ npm run build
 
 ---
 
-## 15. DNS / MX 说明
+## 15. DNS / MX 与公网真实收件排障
 
 ### 程序级验证
 
@@ -517,13 +503,18 @@ npm run build
 
 ### 公网真实收件
 
-如果希望外部邮箱真实投递，通常需要：
+如果部署到服务器后，“从其他邮箱发件但没有收到”，优先按下面顺序排查：
 
-1. MX 已生效
-2. `SMTP_PORT=25`
-3. 系统防火墙放行 `25/tcp`
-4. 云平台安全组放行 `25/tcp`
-5. 云厂商未封禁 25 端口
+1. 后端日志中是否出现 `SMTP receiver listening on 0.0.0.0:25`
+2. `backend/.env` 中是否已将 `SMTP_PORT` 改为 `25`
+3. 域名 DNS 的 A 记录是否指向 VPS 公网 IP
+4. 根域名或目标域名的 MX 记录是否已指向该 SMTP 主机
+5. 系统防火墙是否放行 `25/tcp`
+6. 云平台安全组是否放行 `25/tcp`
+7. 云厂商是否封禁了 `25` 出入方向端口
+8. 是否已在系统中创建目标域名且状态为启用
+9. 是否已在系统中创建完整收件地址对应的邮箱
+10. 是否先用服务器本机对 `127.0.0.1:25` 做过 SMTP 自检
 
 最小 DNS 参考：
 
@@ -532,6 +523,12 @@ mail.example.com -> VPS 公网 IP
 example.com MX -> mail.example.com
 priority 10
 ```
+
+推荐验证顺序：
+
+1. 本机投递到 `127.0.0.1:25`，确认程序可收
+2. 局域网或外网使用 `telnet VPS_IP 25` / `nc -vz VPS_IP 25`，确认端口可达
+3. 最后再用 QQ、Gmail、Outlook 等外部邮箱做真实投递
 
 ---
 
@@ -634,9 +631,8 @@ test@example.com
 ## 19. 补充文档
 
 - `收件测试操作说明.md`：本地 SMTP 收件验证详细步骤
-- `DEPLOY.md`：Ubuntu VPS 部署、Nginx、systemd、DNS/MX 说明
-- `deploy.sh`：一键部署脚本
 - `backend/.env.example`：后端环境变量示例
+- `backend/src/smtp-utils.js`：SMTP 收件校验与日志辅助逻辑
 
 ---
 

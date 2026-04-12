@@ -6,6 +6,11 @@ import cors from 'cors';
 import { SMTPServer } from 'smtp-server';
 import { z } from 'zod';
 import {
+  buildSmtpSessionMeta,
+  createRecipientValidationError,
+  resolveRecipientDomainStatus,
+} from './smtp-utils.js';
+import {
   createDomain,
   createMailbox,
   db,
@@ -129,6 +134,14 @@ function readRawStream(stream) {
 
     stream.once('error', reject);
   });
+}
+
+function logSmtpEvent(level, message, details = {}) {
+  const payload = Object.fromEntries(
+    Object.entries(details).filter(([, value]) => value !== undefined),
+  );
+
+  console[level](`[smtp] ${message}`, payload);
 }
 
 async function persistIncomingMail({ raw, session }) {
@@ -450,22 +463,53 @@ const smtpServer = new SMTPServer({
   authOptional: true,
   allowInsecureAuth: true,
   logger: false,
-  onRcptTo(address, _session, callback) {
-    const domain = getDomainByName(address.address.split('@')[1] || '');
+  onRcptTo(address, session, callback) {
+    const recipientAddress = String(address?.address ?? '').trim().toLowerCase();
+    const domainName = recipientAddress.split('@')[1] || '';
+    const domain = getDomainByName(domainName);
+    const domainStatus = resolveRecipientDomainStatus({
+      recipientAddress,
+      domain,
+    });
 
-    if (!domain || !domain.isActive) {
-      callback(new Error('Domain not configured'));
+    if (!domainStatus.ok) {
+      logSmtpEvent('warn', 'Recipient rejected during RCPT TO validation', {
+        ...buildSmtpSessionMeta({ session }),
+        recipient: domainStatus.recipient,
+        recipientDomain: domainStatus.domain,
+        reason: domainStatus.code,
+      });
+      callback(createRecipientValidationError({ recipientAddress }));
       return;
     }
 
+    logSmtpEvent('info', 'Recipient accepted during RCPT TO validation', {
+      ...buildSmtpSessionMeta({ session }),
+      recipient: domainStatus.recipient,
+      recipientDomain: domainStatus.domain,
+    });
     callback();
   },
   async onData(stream, session, callback) {
+    const sessionMeta = buildSmtpSessionMeta({ session });
+
     try {
       const raw = await readRawStream(stream);
-      await persistIncomingMail({ raw, session });
+      const savedMessage = await persistIncomingMail({ raw, session });
+
+      logSmtpEvent('info', 'Incoming message stored', {
+        ...sessionMeta,
+        messageId: savedMessage.id,
+        mailboxId: savedMessage.mailboxId,
+        rawSize: raw.length,
+      });
+
       callback();
     } catch (error) {
+      logSmtpEvent('error', 'Failed to store incoming message', {
+        ...sessionMeta,
+        errorMessage: error?.message ?? 'UNKNOWN_ERROR',
+      });
       callback(error);
     }
   },
