@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { simpleParser } from 'mailparser';
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
 import { SMTPServer } from 'smtp-server';
 import { z } from 'zod';
 import {
@@ -30,18 +31,6 @@ import {
   saveIncomingMessage,
   updateMailboxRetention,
 } from './db.js';
-
-const app = express();
-
-const corsOrigin = process.env.CORS_ORIGIN?.split(',').map((item) => item.trim()).filter(Boolean);
-
-app.use(
-  cors({
-    origin: corsOrigin?.length ? corsOrigin : true,
-    credentials: true,
-  }),
-);
-app.use(express.json({ limit: '2mb' }));
 
 const dnsRecordSchema = z.object({
   type: z.string().min(1).max(16),
@@ -72,6 +61,20 @@ const mailboxRetentionSchema = z.object({
   retentionValue: z.number().int().min(1).max(365).nullable().optional(),
   retentionUnit: z.enum(['hour', 'day']).nullable().optional(),
 });
+
+const loginSchema = z.object({
+  username: z.string().min(1).max(128),
+  password: z.string().min(1).max(256),
+});
+
+const smtpPort = Number(process.env.SMTP_PORT || 2525);
+const httpPort = Number(process.env.HTTP_PORT || 3001);
+const smtpHost = process.env.SMTP_HOST || '0.0.0.0';
+const cleanupIntervalMs = Number(process.env.MESSAGE_CLEANUP_INTERVAL_MS || 5 * 60 * 1000);
+
+let runningHttpServer = null;
+let runningSmtpServer = null;
+let cleanupTimer = null;
 
 function buildError(status, code, message) {
   return { status, code, message };
@@ -112,6 +115,16 @@ function sendError(response, error) {
   });
 }
 
+function sendAuthError(response, code = 'AUTH_REQUIRED', message = '请先登录管理账号') {
+  response.status(401).json({
+    ok: false,
+    error: {
+      code,
+      message,
+    },
+  });
+}
+
 function generateMessageId() {
   return `msg_${crypto.randomUUID()}`;
 }
@@ -142,6 +155,79 @@ function logSmtpEvent(level, message, details = {}) {
   );
 
   console[level](`[smtp] ${message}`, payload);
+}
+
+function getAuthConfig() {
+  const adminUsername = process.env.ADMIN_USERNAME?.trim();
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const sessionSecret = process.env.SESSION_SECRET;
+  const sessionMaxAgeMs = Number(process.env.SESSION_MAX_AGE_MS || 12 * 60 * 60 * 1000);
+
+  const missing = [
+    !adminUsername && 'ADMIN_USERNAME',
+    !adminPassword && 'ADMIN_PASSWORD',
+    !sessionSecret && 'SESSION_SECRET',
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required auth environment variables: ${missing.join(', ')}`);
+  }
+
+  return {
+    adminUsername,
+    adminPassword,
+    sessionSecret,
+    sessionMaxAgeMs: Number.isFinite(sessionMaxAgeMs) && sessionMaxAgeMs > 0
+      ? sessionMaxAgeMs
+      : 12 * 60 * 60 * 1000,
+  };
+}
+
+function createSessionMiddleware(authConfig) {
+  return session({
+    name: 'domail.sid',
+    secret: authConfig.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    rolling: true,
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: authConfig.sessionMaxAgeMs,
+    },
+  });
+}
+
+function destroySession(request) {
+  return new Promise((resolve, reject) => {
+    if (!request.session) {
+      resolve();
+      return;
+    }
+
+    request.session.destroy((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+function regenerateSession(request) {
+  return new Promise((resolve, reject) => {
+    request.session.regenerate((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
 }
 
 async function persistIncomingMail({ raw, session }) {
@@ -191,350 +277,509 @@ async function persistIncomingMail({ raw, session }) {
   );
 }
 
-app.get('/api/health', (_request, response) => {
-  const domainStatsStatement = db.prepare('SELECT COUNT(1) AS count FROM domains');
-  const mailboxStatsStatement = db.prepare('SELECT COUNT(1) AS count FROM mailboxes');
-  const messageStatsStatement = db.prepare('SELECT COUNT(1) AS count FROM messages');
-  const stats = {
-    domains: domainStatsStatement.get().count,
-    mailboxes: mailboxStatsStatement.get().count,
-    messages: messageStatsStatement.get().count,
-  };
-
-  response.json({
-    ok: true,
-    service: 'domain-mail-backend',
-    stats,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-app.get('/api/domains', (_request, response) => {
-  response.json({
-    ok: true,
-    items: listDomains(),
-  });
-});
-
-app.get('/api/domains/:id', (request, response) => {
-  const item = getDomainById(request.params.id);
-
-  if (!item) {
-    response.status(404).json({
-      ok: false,
-      error: {
-        code: 'DOMAIN_NOT_FOUND',
-        message: '域名不存在',
-      },
-    });
+function requireAdminSession(request, response, next) {
+  if (request.session?.admin?.username) {
+    next();
     return;
   }
 
-  response.json({
-    ok: true,
-    item,
-  });
-});
+  sendAuthError(response);
+}
 
-app.post('/api/domains', (request, response) => {
-  try {
-    const payload = domainSchema.parse({
-      domain: request.body?.domain,
-      smtpHost: request.body?.smtpHost ?? null,
-      smtpPort: request.body?.smtpPort ?? null,
-      note: request.body?.note ?? '',
-      dnsRecords: request.body?.dnsRecords,
-      setupNote: request.body?.setupNote ?? '',
-    });
+export function createApp() {
+  const authConfig = getAuthConfig();
+  const app = express();
+  const corsOrigin = process.env.CORS_ORIGIN?.split(',').map((item) => item.trim()).filter(Boolean);
 
-    const created = createDomain(payload);
+  app.use(
+    cors({
+      origin: corsOrigin?.length ? corsOrigin : true,
+      credentials: true,
+    }),
+  );
+  app.use(express.json({ limit: '2mb' }));
+  app.use(createSessionMiddleware(authConfig));
 
-    response.status(201).json({
+  app.get('/api/health', (_request, response) => {
+    const domainStatsStatement = db.prepare('SELECT COUNT(1) AS count FROM domains');
+    const mailboxStatsStatement = db.prepare('SELECT COUNT(1) AS count FROM mailboxes');
+    const messageStatsStatement = db.prepare('SELECT COUNT(1) AS count FROM messages');
+    const stats = {
+      domains: domainStatsStatement.get().count,
+      mailboxes: mailboxStatsStatement.get().count,
+      messages: messageStatsStatement.get().count,
+    };
+
+    response.json({
       ok: true,
-      item: created,
+      service: 'domain-mail-backend',
+      stats,
+      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      response.status(400).json({
-        ok: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: '域名参数不合法',
-          details: error.flatten(),
+  });
+
+  app.post('/api/auth/login', async (request, response) => {
+    try {
+      const payload = loginSchema.parse({
+        username: request.body?.username,
+        password: request.body?.password,
+      });
+
+      if (
+        payload.username !== authConfig.adminUsername ||
+        payload.password !== authConfig.adminPassword
+      ) {
+        sendAuthError(response, 'INVALID_CREDENTIALS', '账号或密码错误');
+        return;
+      }
+
+      await regenerateSession(request);
+      request.session.admin = {
+        username: authConfig.adminUsername,
+        loggedInAt: new Date().toISOString(),
+      };
+
+      response.json({
+        ok: true,
+        item: {
+          username: request.session.admin.username,
         },
       });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        response.status(400).json({
+          ok: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: '登录参数不合法',
+            details: error.flatten(),
+          },
+        });
+        return;
+      }
+
+      sendError(response, error);
+    }
+  });
+
+  app.get('/api/auth/session', (request, response) => {
+    if (!request.session?.admin?.username) {
+      sendAuthError(response);
       return;
     }
 
-    sendError(response, error);
-  }
-});
-
-app.delete('/api/domains/:id', (request, response) => {
-  const deleted = removeDomain(request.params.id);
-
-  response.json({
-    ok: deleted,
-  });
-});
-
-app.get('/api/mailboxes', (_request, response) => {
-  response.json({
-    ok: true,
-    items: listMailboxes(),
-  });
-});
-
-app.post('/api/mailboxes', (request, response) => {
-  try {
-    const payload = mailboxSchema.parse({
-      domainId: request.body?.domainId,
-      localPart: request.body?.localPart,
-      random: request.body?.random ?? false,
-    });
-
-    const localPart = payload.random
-      ? generateRandomLocalPart(10)
-      : payload.localPart?.trim().toLowerCase();
-
-    if (!localPart) {
-      response.status(400).json({
-        ok: false,
-        error: {
-          code: 'LOCAL_PART_REQUIRED',
-          message: '未提供邮箱前缀，且未启用随机生成',
-        },
-      });
-      return;
-    }
-
-    const created = createMailbox({
-      domainId: payload.domainId,
-      localPart,
-      source: payload.random ? 'random' : 'manual',
-    });
-
-    response.status(201).json({
+    response.json({
       ok: true,
-      item: created,
+      item: {
+        username: request.session.admin.username,
+      },
     });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      response.status(400).json({
+  });
+
+  app.post('/api/auth/logout', async (request, response) => {
+    try {
+      await destroySession(request);
+      response.clearCookie('domail.sid');
+
+      response.json({
+        ok: true,
+      });
+    } catch (error) {
+      sendError(response, error);
+    }
+  });
+
+  app.use('/api', requireAdminSession);
+
+  app.get('/api/domains', (_request, response) => {
+    response.json({
+      ok: true,
+      items: listDomains(),
+    });
+  });
+
+  app.get('/api/domains/:id', (request, response) => {
+    const item = getDomainById(request.params.id);
+
+    if (!item) {
+      response.status(404).json({
         ok: false,
         error: {
-          code: 'VALIDATION_ERROR',
-          message: '邮箱参数不合法',
-          details: error.flatten(),
+          code: 'DOMAIN_NOT_FOUND',
+          message: '域名不存在',
         },
       });
       return;
     }
-
-    sendError(response, error);
-  }
-});
-
-app.delete('/api/mailboxes/:id', (request, response) => {
-  const deleted = removeMailbox(request.params.id);
-
-  response.json({
-    ok: deleted,
-  });
-});
-
-app.patch('/api/mailboxes/:id/retention', (request, response) => {
-  try {
-    const payload = mailboxRetentionSchema.parse({
-      retentionValue: request.body?.retentionValue ?? null,
-      retentionUnit: request.body?.retentionUnit ?? null,
-    });
-
-    const item = updateMailboxRetention(request.params.id, payload);
 
     response.json({
       ok: true,
       item,
     });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      response.status(400).json({
+  });
+
+  app.post('/api/domains', (request, response) => {
+    try {
+      const payload = domainSchema.parse({
+        domain: request.body?.domain,
+        smtpHost: request.body?.smtpHost ?? null,
+        smtpPort: request.body?.smtpPort ?? null,
+        note: request.body?.note ?? '',
+        dnsRecords: request.body?.dnsRecords,
+        setupNote: request.body?.setupNote ?? '',
+      });
+
+      const created = createDomain(payload);
+
+      response.status(201).json({
+        ok: true,
+        item: created,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        response.status(400).json({
+          ok: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: '域名参数不合法',
+            details: error.flatten(),
+          },
+        });
+        return;
+      }
+
+      sendError(response, error);
+    }
+  });
+
+  app.delete('/api/domains/:id', (request, response) => {
+    const deleted = removeDomain(request.params.id);
+
+    response.json({
+      ok: deleted,
+    });
+  });
+
+  app.get('/api/mailboxes', (_request, response) => {
+    response.json({
+      ok: true,
+      items: listMailboxes(),
+    });
+  });
+
+  app.post('/api/mailboxes', (request, response) => {
+    try {
+      const payload = mailboxSchema.parse({
+        domainId: request.body?.domainId,
+        localPart: request.body?.localPart,
+        random: request.body?.random ?? false,
+      });
+
+      const localPart = payload.random
+        ? generateRandomLocalPart(10)
+        : payload.localPart?.trim().toLowerCase();
+
+      if (!localPart) {
+        response.status(400).json({
+          ok: false,
+          error: {
+            code: 'LOCAL_PART_REQUIRED',
+            message: '未提供邮箱前缀，且未启用随机生成',
+          },
+        });
+        return;
+      }
+
+      const created = createMailbox({
+        domainId: payload.domainId,
+        localPart,
+        source: payload.random ? 'random' : 'manual',
+      });
+
+      response.status(201).json({
+        ok: true,
+        item: created,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        response.status(400).json({
+          ok: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: '邮箱参数不合法',
+            details: error.flatten(),
+          },
+        });
+        return;
+      }
+
+      sendError(response, error);
+    }
+  });
+
+  app.delete('/api/mailboxes/:id', (request, response) => {
+    const deleted = removeMailbox(request.params.id);
+
+    response.json({
+      ok: deleted,
+    });
+  });
+
+  app.patch('/api/mailboxes/:id/retention', (request, response) => {
+    try {
+      const payload = mailboxRetentionSchema.parse({
+        retentionValue: request.body?.retentionValue ?? null,
+        retentionUnit: request.body?.retentionUnit ?? null,
+      });
+
+      const item = updateMailboxRetention(request.params.id, payload);
+
+      response.json({
+        ok: true,
+        item,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        response.status(400).json({
+          ok: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: '自动清理参数不合法',
+            details: error.flatten(),
+          },
+        });
+        return;
+      }
+
+      sendError(response, error);
+    }
+  });
+
+  app.get('/api/mailboxes/:id/messages', (request, response) => {
+    const domainMailbox = listMailboxes().find((item) => item.id === request.params.id);
+
+    if (!domainMailbox) {
+      response.status(404).json({
         ok: false,
         error: {
-          code: 'VALIDATION_ERROR',
-          message: '自动清理参数不合法',
-          details: error.flatten(),
+          code: 'MAILBOX_NOT_FOUND',
+          message: '邮箱不存在',
         },
       });
       return;
     }
 
-    sendError(response, error);
-  }
-});
-
-app.get('/api/mailboxes/:id/messages', (request, response) => {
-  const domainMailbox = listMailboxes().find((item) => item.id === request.params.id);
-
-  if (!domainMailbox) {
-    response.status(404).json({
-      ok: false,
-      error: {
-        code: 'MAILBOX_NOT_FOUND',
-        message: '邮箱不存在',
-      },
+    response.json({
+      ok: true,
+      mailbox: domainMailbox,
+      items: listMessagesByMailbox(request.params.id),
     });
-    return;
-  }
-
-  response.json({
-    ok: true,
-    mailbox: domainMailbox,
-    items: listMessagesByMailbox(request.params.id),
   });
-});
 
-app.get('/api/messages/:id', (request, response) => {
-  const item = getMessageById(request.params.id);
+  app.get('/api/messages/:id', (request, response) => {
+    const item = getMessageById(request.params.id);
 
-  if (!item) {
-    response.status(404).json({
-      ok: false,
-      error: {
-        code: 'MESSAGE_NOT_FOUND',
-        message: '邮件不存在',
-      },
-    });
-    return;
-  }
-
-  response.json({
-    ok: true,
-    item,
-  });
-});
-
-app.patch('/api/messages/:id/read', (request, response) => {
-  const item = markMessageAsRead(request.params.id);
-
-  if (!item) {
-    response.status(404).json({
-      ok: false,
-      error: {
-        code: 'MESSAGE_NOT_FOUND',
-        message: '邮件不存在',
-      },
-    });
-    return;
-  }
-
-  response.json({
-    ok: true,
-    item,
-  });
-});
-
-app.delete('/api/messages/:id', (request, response) => {
-  const deleted = removeMessage(request.params.id);
-
-  if (!deleted) {
-    response.status(404).json({
-      ok: false,
-      error: {
-        code: 'MESSAGE_NOT_FOUND',
-        message: '邮件不存在',
-      },
-    });
-    return;
-  }
-
-  response.json({
-    ok: true,
-  });
-});
-
-const smtpPort = Number(process.env.SMTP_PORT || 2525);
-const httpPort = Number(process.env.HTTP_PORT || 3001);
-const smtpHost = process.env.SMTP_HOST || '0.0.0.0';
-const cleanupIntervalMs = Number(process.env.MESSAGE_CLEANUP_INTERVAL_MS || 5 * 60 * 1000);
-
-const smtpServer = new SMTPServer({
-  disabledCommands: ['AUTH'],
-  authOptional: true,
-  allowInsecureAuth: true,
-  logger: false,
-  onRcptTo(address, session, callback) {
-    const recipientAddress = String(address?.address ?? '').trim().toLowerCase();
-    const domainName = recipientAddress.split('@')[1] || '';
-    const domain = getDomainByName(domainName);
-    const domainStatus = resolveRecipientDomainStatus({
-      recipientAddress,
-      domain,
-    });
-
-    if (!domainStatus.ok) {
-      logSmtpEvent('warn', 'Recipient rejected during RCPT TO validation', {
-        ...buildSmtpSessionMeta({ session }),
-        recipient: domainStatus.recipient,
-        recipientDomain: domainStatus.domain,
-        reason: domainStatus.code,
+    if (!item) {
+      response.status(404).json({
+        ok: false,
+        error: {
+          code: 'MESSAGE_NOT_FOUND',
+          message: '邮件不存在',
+        },
       });
-      callback(createRecipientValidationError({ recipientAddress }));
       return;
     }
 
-    logSmtpEvent('info', 'Recipient accepted during RCPT TO validation', {
-      ...buildSmtpSessionMeta({ session }),
-      recipient: domainStatus.recipient,
-      recipientDomain: domainStatus.domain,
+    response.json({
+      ok: true,
+      item,
     });
-    callback();
-  },
-  async onData(stream, session, callback) {
-    const sessionMeta = buildSmtpSessionMeta({ session });
+  });
 
-    try {
-      const raw = await readRawStream(stream);
-      const savedMessage = await persistIncomingMail({ raw, session });
+  app.patch('/api/messages/:id/read', (request, response) => {
+    const item = markMessageAsRead(request.params.id);
 
-      logSmtpEvent('info', 'Incoming message stored', {
-        ...sessionMeta,
-        messageId: savedMessage.id,
-        mailboxId: savedMessage.mailboxId,
-        rawSize: raw.length,
+    if (!item) {
+      response.status(404).json({
+        ok: false,
+        error: {
+          code: 'MESSAGE_NOT_FOUND',
+          message: '邮件不存在',
+        },
+      });
+      return;
+    }
+
+    response.json({
+      ok: true,
+      item,
+    });
+  });
+
+  app.delete('/api/messages/:id', (request, response) => {
+    const deleted = removeMessage(request.params.id);
+
+    if (!deleted) {
+      response.status(404).json({
+        ok: false,
+        error: {
+          code: 'MESSAGE_NOT_FOUND',
+          message: '邮件不存在',
+        },
+      });
+      return;
+    }
+
+    response.json({
+      ok: true,
+    });
+  });
+
+  app.use((error, _request, response, _next) => {
+    sendError(response, error);
+  });
+
+  return app;
+}
+
+export function createSmtpServer() {
+  return new SMTPServer({
+    disabledCommands: ['AUTH'],
+    authOptional: true,
+    allowInsecureAuth: true,
+    logger: false,
+    onRcptTo(address, session, callback) {
+      const recipientAddress = String(address?.address ?? '').trim().toLowerCase();
+      const domainName = recipientAddress.split('@')[1] || '';
+      const domain = getDomainByName(domainName);
+      const domainStatus = resolveRecipientDomainStatus({
+        recipientAddress,
+        domain,
       });
 
+      if (!domainStatus.ok) {
+        logSmtpEvent('warn', 'Recipient rejected during RCPT TO validation', {
+          ...buildSmtpSessionMeta({ session }),
+          recipient: domainStatus.recipient,
+          recipientDomain: domainStatus.domain,
+          reason: domainStatus.code,
+        });
+        callback(createRecipientValidationError({ recipientAddress }));
+        return;
+      }
+
+      logSmtpEvent('info', 'Recipient accepted during RCPT TO validation', {
+        ...buildSmtpSessionMeta({ session }),
+        recipient: domainStatus.recipient,
+        recipientDomain: domainStatus.domain,
+      });
       callback();
-    } catch (error) {
-      logSmtpEvent('error', 'Failed to store incoming message', {
-        ...sessionMeta,
-        errorMessage: error?.message ?? 'UNKNOWN_ERROR',
-      });
-      callback(error);
-    }
-  },
-});
+    },
+    async onData(stream, session, callback) {
+      const sessionMeta = buildSmtpSessionMeta({ session });
 
-app.use((error, _request, response, _next) => {
-  sendError(response, error);
-});
+      try {
+        const raw = await readRawStream(stream);
+        const savedMessage = await persistIncomingMail({ raw, session });
 
-setInterval(() => {
-  try {
-    const removedCount = purgeExpiredMessages();
+        logSmtpEvent('info', 'Incoming message stored', {
+          ...sessionMeta,
+          messageId: savedMessage.id,
+          mailboxId: savedMessage.mailboxId,
+          rawSize: raw.length,
+        });
 
-    if (removedCount > 0) {
-      console.log(`Purged ${removedCount} expired messages`);
-    }
-  } catch (error) {
-    console.error('Failed to purge expired messages', error);
+        callback();
+      } catch (error) {
+        logSmtpEvent('error', 'Failed to store incoming message', {
+          ...sessionMeta,
+          errorMessage: error?.message ?? 'UNKNOWN_ERROR',
+        });
+        callback(error);
+      }
+    },
+  });
+}
+
+export function startCleanupTask() {
+  if (cleanupTimer) {
+    return cleanupTimer;
   }
-}, cleanupIntervalMs);
 
-app.listen(httpPort, () => {
-  console.log(`HTTP API listening on port ${httpPort}`);
-});
+  cleanupTimer = setInterval(() => {
+    try {
+      const removedCount = purgeExpiredMessages();
 
-smtpServer.listen(smtpPort, smtpHost, () => {
-  console.log(`SMTP receiver listening on ${smtpHost}:${smtpPort}`);
-});
+      if (removedCount > 0) {
+        console.log(`Purged ${removedCount} expired messages`);
+      }
+    } catch (error) {
+      console.error('Failed to purge expired messages', error);
+    }
+  }, cleanupIntervalMs);
+
+  return cleanupTimer;
+}
+
+export async function closeBackgroundServices() {
+  if (cleanupTimer) {
+    clearInterval(cleanupTimer);
+    cleanupTimer = null;
+  }
+
+  if (runningHttpServer) {
+    await new Promise((resolve, reject) => {
+      runningHttpServer.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+    runningHttpServer = null;
+  }
+
+  if (runningSmtpServer) {
+    await new Promise((resolve, reject) => {
+      runningSmtpServer.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+    runningSmtpServer = null;
+  }
+}
+
+export function startRuntime() {
+  const app = createApp();
+  const smtpServer = createSmtpServer();
+
+  startCleanupTask();
+
+  runningHttpServer = app.listen(httpPort, () => {
+    console.log(`HTTP API listening on port ${httpPort}`);
+  });
+
+  runningSmtpServer = smtpServer;
+  smtpServer.listen(smtpPort, smtpHost, () => {
+    console.log(`SMTP receiver listening on ${smtpHost}:${smtpPort}`);
+  });
+
+  return {
+    app,
+    smtpServer,
+    httpServer: runningHttpServer,
+  };
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  startRuntime();
+}
+
+export { db };

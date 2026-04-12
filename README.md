@@ -87,6 +87,10 @@ HTTP_PORT=3001
 SMTP_PORT=2525
 SMTP_HOST=0.0.0.0
 CORS_ORIGIN=https://mail.example.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-this-password
+SESSION_SECRET=change-this-session-secret
+SESSION_MAX_AGE_MS=43200000
 ```
 
 当前项目默认行为：
@@ -94,6 +98,8 @@ CORS_ORIGIN=https://mail.example.com
 - HTTP API 默认监听 `3001`
 - SMTP 默认监听 `2525`
 - SMTP 默认监听地址 `0.0.0.0`
+- 管理后台登录账号来自 `ADMIN_USERNAME` / `ADMIN_PASSWORD`
+- 管理会话通过 `SESSION_SECRET` 签名，默认有效期 12 小时（`43200000ms`）
 
 对应实现可见 `backend/src/index.js` 中的启动逻辑。
 
@@ -160,6 +166,16 @@ cp .env.example .env
 
 Windows 可手动复制 `backend/.env.example` 为 `backend/.env`。
 
+至少需要补齐以下管理员登录配置：
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=请改成强密码
+SESSION_SECRET=请改成随机长字符串
+```
+
+如果缺少这些字段，后端会拒绝启动，避免在未鉴权状态下暴露管理接口。
+
 ### 6.3 启动后端
 
 ```bash
@@ -183,9 +199,57 @@ npm run dev
 
 前端会通过 `frontend/src/api.js` 中的默认配置请求 `http://localhost:3001`。
 
+启动前端后，页面会先进入管理员登录页；只有登录成功后才会加载域名、邮箱和邮件管理数据。
+
 ---
 
-## 7. 健康检查
+## 7. 管理员登录与会话
+
+### 7.1 登录方式
+
+当前版本只支持**单管理员账号**：
+
+- 用户名：来自 `ADMIN_USERNAME`
+- 密码：来自 `ADMIN_PASSWORD`
+- 登录态：通过 Cookie + Session 保存
+- 会话查询接口：[`GET /api/auth/session`](README.md:226)
+- 退出接口：[`POST /api/auth/logout`](README.md:234)
+
+### 7.2 认证接口
+
+查询当前登录态：
+
+```bash
+curl -i http://127.0.0.1:3001/api/auth/session
+```
+
+管理员登录：
+
+```bash
+curl -i -X POST http://127.0.0.1:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your-password"}'
+```
+
+退出登录：
+
+```bash
+curl -i -X POST http://127.0.0.1:3001/api/auth/logout
+```
+
+### 7.3 受保护接口
+
+除 [`GET /api/health`](README.md:238) 与认证接口外，其余管理接口默认都要求已登录。
+
+如果未登录直接访问，例如：
+
+```bash
+curl -i http://127.0.0.1:3001/api/domains
+```
+
+预期会得到 `401`，表示需要先登录管理员账号。
+
+## 8. 健康检查
 
 先确认后端 HTTP 已正常启动：
 
@@ -205,7 +269,7 @@ curl http://127.0.0.1:3001/api/health
 
 ---
 
-## 8. 基本使用流程
+## 9. 基本使用流程
 
 推荐先通过前端页面操作，也可以直接通过 API。
 
@@ -267,7 +331,7 @@ test@example.com
 
 ---
 
-## 9. SMTP 收件测试
+## 10. SMTP 收件测试
 
 完整说明可见 `收件测试操作说明.md`。这里给出 README 中最常用的最短路径。
 
@@ -321,7 +385,7 @@ QUIT
 
 ---
 
-## 10. 查看是否已收到邮件
+## 11. 查看是否已收到邮件
 
 ### 10.1 查询邮箱列表
 
@@ -369,7 +433,7 @@ curl http://127.0.0.1:3001/api/messages/456
 
 ---
 
-## 11. 推荐测试顺序
+## 12. 推荐测试顺序
 
 建议按以下顺序执行：
 
@@ -391,7 +455,7 @@ curl http://127.0.0.1:3001/api/messages/456
 
 ---
 
-## 12. Ubuntu VPS 部署要点
+## 13. Ubuntu VPS 部署要点
 
 当前仓库未包含单独的 `DEPLOY.md` 或 `deploy.sh`，因此这里直接给出部署与排障所需的最小要点。
 
@@ -429,7 +493,7 @@ SMTP receiver listening on 0.0.0.0:2525
 
 ---
 
-## 13. 手工部署概要
+## 14. 手工部署概要
 
 ### 13.1 安装环境
 
@@ -460,6 +524,10 @@ HTTP_PORT=3001
 SMTP_PORT=2525
 SMTP_HOST=0.0.0.0
 CORS_ORIGIN=https://mail.example.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-this-password
+SESSION_SECRET=change-this-session-secret
+SESSION_MAX_AGE_MS=43200000
 ```
 
 ### 13.4 构建前端
@@ -472,7 +540,7 @@ npm run build
 
 ---
 
-## 14. Nginx 与 systemd
+## 15. Nginx 与 systemd
 
 ### Nginx
 
@@ -493,7 +561,7 @@ npm run build
 
 ---
 
-## 15. DNS / MX 与公网真实收件排障
+## 16. DNS / MX 与公网真实收件排障
 
 ### 程序级验证
 
@@ -533,7 +601,7 @@ priority 10
 
 ---
 
-## 16. 测试与验证
+## 17. 测试与验证
 
 ### 后端测试
 
@@ -558,7 +626,7 @@ npm run build
 
 ---
 
-## 17. 常见问题
+## 18. 常见问题
 
 ### 17.1 `2525` 连不上
 
@@ -616,7 +684,7 @@ test@example.com
 
 ---
 
-## 18. 成功判定标准
+## 19. 成功判定标准
 
 满足以下条件，可认为项目部署或本地验证成功：
 
@@ -629,7 +697,7 @@ test@example.com
 
 ---
 
-## 19. 补充文档
+## 20. 补充文档
 
 - `收件测试操作说明.md`：本地 SMTP 收件验证详细步骤
 - `backend/.env.example`：后端环境变量示例
@@ -637,7 +705,7 @@ test@example.com
 
 ---
 
-## 20. 一句话总结
+## 21. 一句话总结
 
 这个项目最重要的验证思路不是“调用某个发信接口”，而是：
 

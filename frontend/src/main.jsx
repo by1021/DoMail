@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ConfigProvider, App as AntdApp } from 'antd';
-import App from './App.jsx';
+import AuthApp from './AuthApp.jsx';
 import './styles.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -19,7 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       }}
     >
       <AntdApp>
-        <App />
+        <AuthApp />
       </AntdApp>
     </ConfigProvider>
   </React.StrictMode>,

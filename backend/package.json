@@ -8,15 +8,19 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test:db": "node --test test/db.test.js test/smtp-utils.test.js"
+    "test:db": "node --test test/db.test.js test/smtp-utils.test.js test/auth.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-session": "^1.18.1",
     "mailparser": "^3.7.2",
     "nanoid": "^5.1.5",
     "smtp-server": "^3.13.6",
     "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.0"
   }
 }

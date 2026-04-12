@@ -3,7 +3,23 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 10000,
+  withCredentials: true,
 });
+
+export async function loginAdmin(payload) {
+  const { data } = await api.post('/auth/login', payload);
+  return data;
+}
+
+export async function logoutAdmin() {
+  const { data } = await api.post('/auth/logout');
+  return data;
+}
+
+export async function getAdminSession() {
+  const { data } = await api.get('/auth/session');
+  return data;
+}
 
 export async function getHealth() {
   const { data } = await api.get('/health');
@@ -68,6 +84,10 @@ export async function deleteMessage(messageId) {
 export async function updateMailboxRetention(mailboxId, payload) {
   const { data } = await api.patch(`/mailboxes/${mailboxId}/retention`, payload);
   return data;
+}
+
+export function isUnauthorizedError(error) {
+  return error?.response?.status === 401;
 }
 
 export function extractErrorMessage(error, fallback = '请求失败') {

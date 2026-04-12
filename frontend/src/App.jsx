@@ -186,7 +186,7 @@ function MessagePreview({ item, onOpen, onDelete }) {
   );
 }
 
-export default function App() {
+export default function App({ adminProfile = null, onLogout = null }) {
   const { message } = AntdApp.useApp();
   const [section, setSection] = useState('overview');
   const [loading, setLoading] = useState(false);
@@ -619,6 +619,16 @@ export default function App() {
                 <Button icon={<ReloadOutlined />} onClick={loadData}>
                   刷新
                 </Button>
+                {adminProfile?.username ? (
+                  <Tag color="blue" className="admin-session-tag">
+                    管理员：{adminProfile.username}
+                  </Tag>
+                ) : null}
+                {onLogout ? (
+                  <Button onClick={onLogout}>
+                    退出登录
+                  </Button>
+                ) : null}
               </Space>
             </Col>
           </Row>

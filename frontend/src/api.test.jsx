@@ -35,6 +35,7 @@ describe('api client configuration', () => {
       expect.objectContaining({
         baseURL: '/api',
         timeout: 10000,
+        withCredentials: true,
       }),
     );
   });
@@ -48,6 +49,7 @@ describe('api client configuration', () => {
       expect.objectContaining({
         baseURL: 'http://example.com:3001',
         timeout: 10000,
+        withCredentials: true,
       }),
     );
   });
@@ -58,5 +60,20 @@ describe('api client configuration', () => {
     await getDomains();
 
     expect(axiosGet).toHaveBeenCalledWith('/domains');
+  });
+
+  it('requests admin session and login endpoints with auth paths', async () => {
+    const { getAdminSession, loginAdmin, logoutAdmin } = await import('./api.js');
+
+    await getAdminSession();
+    await loginAdmin({ username: 'admin', password: 'pass123456' });
+    await logoutAdmin();
+
+    expect(axiosGet).toHaveBeenCalledWith('/auth/session');
+    expect(axiosPost).toHaveBeenCalledWith('/auth/login', {
+      username: 'admin',
+      password: 'pass123456',
+    });
+    expect(axiosPost).toHaveBeenCalledWith('/auth/logout');
   });
 });

@@ -241,6 +241,13 @@ body {
   border-bottom: 1px solid rgba(15, 23, 42, 0.05);
 }
 
+.admin-session-tag.ant-tag {
+  margin-inline-end: 0;
+  padding-inline: 12px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
 .header-title-wrap {
   display: inline-flex;
   padding: 4px 0;
@@ -255,6 +262,63 @@ body {
 
 .app-content.ant-layout-content {
   padding: 24px;
+}
+
+.auth-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  overflow: hidden;
+}
+
+.auth-shell-background {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.14), transparent 28%),
+    linear-gradient(180deg, #eff6ff 0%, #f8fbff 52%, #f1f5f9 100%);
+}
+
+.auth-card.ant-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 460px);
+  border-radius: 28px;
+  box-shadow: 0 28px 64px rgba(15, 23, 42, 0.14);
+}
+
+.auth-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 22px;
+  color: #ffffff;
+  font-size: 28px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 16px 32px rgba(37, 99, 235, 0.24);
+}
+
+.auth-title-block {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
+.auth-alert.ant-alert {
+  border-radius: 16px;
+}
+
+.auth-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
 }
 
 .ant-card {
@@ -652,6 +716,15 @@ body {
   .global-search.ant-input-affix-wrapper,
   .mailbox-selector {
     width: 100%;
+  }
+
+  .auth-shell {
+    padding: 18px;
+  }
+
+  .auth-card.ant-card {
+    width: 100%;
+    border-radius: 22px;
   }
 
   .message-preview-header {
