@@ -173,6 +173,28 @@ body {
   margin: 8px 0 0;
 }
 
+.hero-side-card {
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f3f8ff 100%);
+  border: 1px solid rgba(22, 119, 255, 0.08);
+}
+
+.hero-side-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.hero-inline-tip {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff7e6;
+  border: 1px solid rgba(250, 173, 20, 0.22);
+}
+
 
 .summary-card {
   height: 100%;
@@ -245,6 +267,10 @@ body {
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
 }
 
+.resource-item + .resource-item {
+  margin-top: 2px;
+}
+
 .resource-item-head {
   display: flex;
   align-items: center;
@@ -285,6 +311,10 @@ body {
 .guide-item,
 .message-tip-item {
   padding-inline: 0 !important;
+}
+
+.guide-item {
+  color: #334155;
 }
 
 .guide-avatar {
@@ -371,6 +401,59 @@ body {
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(247, 250, 255, 0.96) 0%, rgba(240, 246, 255, 0.96) 100%);
   border: 1px solid rgba(22, 119, 255, 0.1);
+}
+
+.form-section-title {
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.form-section-divider.ant-divider {
+  margin: 18px 0;
+}
+
+.form-inline-alert.ant-alert {
+  margin-bottom: 16px;
+  border-radius: 14px;
+}
+
+.table-top-alert.ant-alert {
+  margin-bottom: 16px;
+  border-radius: 14px;
+}
+
+.mailbox-form-panel {
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f6faff 100%);
+  border: 1px solid rgba(22, 119, 255, 0.1);
+}
+
+.mailbox-mode-group.ant-radio-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.mailbox-mode-group .ant-radio-button-wrapper {
+  text-align: center;
+}
+
+.mailbox-preview-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.mailbox-preview-address {
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 14px;
+  color: #0f172a;
+  word-break: break-word;
 }
 
 .domain-detail-hero.ant-card {
@@ -511,6 +594,10 @@ body {
   .dns-record-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .mailbox-mode-group.ant-radio-group {
+    grid-template-columns: 1fr;
   }
 
   .summary-card .ant-statistic-content {

@@ -498,24 +498,26 @@ function normalizeDnsRecords(records = []) {
     .filter(Boolean);
 }
 
-function buildDefaultDnsRecords(domain) {
+function buildDefaultDnsRecords(domain, smtpHost) {
+  const mailHost = String(smtpHost ?? '').trim() || `mail.${domain}`;
+
   return [
     {
       type: 'MX',
       name: '@',
-      value: 'route1.mx.cloudflare.net',
+      value: mailHost,
       priority: 10,
       status: 'pending',
       proxied: false,
-      note: `接收 ${domain} 的入站邮件`,
+      note: `接收 ${domain} 的入站邮件，MX 应指向你自己的收件主机`,
     },
     {
       type: 'TXT',
       name: '@',
-      value: 'v=spf1 include:_spf.mx.cloudflare.net ~all',
+      value: `v=spf1 mx include:${domain} ~all`,
       status: 'pending',
       proxied: false,
-      note: 'SPF 发信策略示例',
+      note: 'SPF 发信策略示例，请按实际发信源调整',
     },
     {
       type: 'TXT',
@@ -536,11 +538,14 @@ function buildDefaultDnsRecords(domain) {
   ];
 }
 
-function normalizeCloudflareGuidance(domain, options = {}) {
-  const dnsRecords = normalizeDnsRecords(options.dnsRecords)?.length
-    ? normalizeDnsRecords(options.dnsRecords)
-    : buildDefaultDnsRecords(domain);
-  const setupNote = String(options.setupNote ?? '').trim();
+function normalizeDnsGuidance(domain, options = {}) {
+  const normalizedRecords = normalizeDnsRecords(options.dnsRecords);
+  const dnsRecords = normalizedRecords.length
+    ? normalizedRecords
+    : buildDefaultDnsRecords(domain, options.smtpHost);
+  const setupNote =
+    String(options.setupNote ?? '').trim() ||
+    '请先确认当前域名的 DNS 托管商，再把 MX、SPF、DKIM、DMARC 等记录补充到对应 DNS 面板中；MX 记录应指向你自己的收件主机。';
 
   return {
     dnsRecords,
@@ -685,9 +690,10 @@ export function createDomain({
 }) {
   const now = timestamp();
   const normalizedDomain = normalizeDomain(domain);
-  const guidance = normalizeCloudflareGuidance(normalizedDomain, {
+  const guidance = normalizeDnsGuidance(normalizedDomain, {
     dnsRecords,
     setupNote,
+    smtpHost,
   });
   const payload = {
     id: `dom_${nanoid()}`,

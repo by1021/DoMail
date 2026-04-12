@@ -60,6 +60,7 @@ import {
 import DomainTableSection from './components/DomainTableSection.jsx';
 import DomainCreateModal from './components/DomainCreateModal.jsx';
 import DomainDetailDrawer from './components/DomainDetailDrawer.jsx';
+import MailboxCreateModal from './components/MailboxCreateModal.jsx';
 
 const { Header, Content, Sider } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -274,6 +275,8 @@ export default function App() {
   const latestDomain = domains[0] || null;
   const latestMailbox = mailboxes[0] || null;
   const latestMessage = messages[0] || null;
+  const hasDomains = domains.length > 0;
+  const hasMailboxes = mailboxes.length > 0;
 
   const normalizedSearchText = useMemo(() => searchText.trim().toLowerCase(), [searchText]);
 
@@ -590,6 +593,19 @@ export default function App() {
     },
   ];
 
+  const domainOptions = domains.map((item) => ({
+    label: item.domain,
+    value: item.id,
+  }));
+
+  function openMailboxModal(defaults = {}) {
+    mailboxForm.setFieldsValue({
+      random: false,
+      ...defaults,
+    });
+    setMailboxModalOpen(true);
+  }
+
   return (
     <Layout className="app-shell">
       <Sider width={248} theme="light" className="app-sider">
@@ -680,30 +696,55 @@ export default function App() {
             {section === 'overview' && (
               <Space direction="vertical" size={20} style={{ width: '100%' }}>
                 <Card className="hero-card">
-                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <div>
-                      <Title level={2} style={{ margin: 0 }}>
-                        收件概览
-                      </Title>
-                      <Paragraph className="hero-copy">
-                        快速查看当前收件状态与最近内容。
-                      </Paragraph>
-                    </div>
-                    <Space wrap size={12}>
-                      <Button type="primary" icon={<PlusOutlined />} onClick={() => setDomainModalOpen(true)}>
-                        添加域名
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          mailboxForm.setFieldsValue({ random: true });
-                          setMailboxModalOpen(true);
-                        }}
-                      >
-                        新建邮箱
-                      </Button>
-                      <Button onClick={() => setSection('messages')}>查看邮件</Button>
-                    </Space>
-                  </Space>
+                  <Row gutter={[20, 20]} align="middle">
+                    <Col xs={24} xl={15}>
+                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        <div>
+                          <Title level={2} style={{ margin: 0 }}>
+                            收件概览
+                          </Title>
+                          <Paragraph className="hero-copy">
+                            先添加域名，再创建邮箱，最后进入邮件列表查看收件状态。
+                          </Paragraph>
+                        </div>
+                        <Space wrap size={12}>
+                          <Button type="primary" icon={<PlusOutlined />} onClick={() => setDomainModalOpen(true)}>
+                            添加域名
+                          </Button>
+                          <Button onClick={() => openMailboxModal({ random: false })} disabled={!hasDomains}>
+                            创建邮箱
+                          </Button>
+                          <Button onClick={() => openMailboxModal({ random: true })} disabled={!hasDomains}>
+                            随机邮箱
+                          </Button>
+                          <Button onClick={() => setSection('messages')} disabled={!hasMailboxes}>
+                            查看邮件
+                          </Button>
+                        </Space>
+                        {!hasDomains ? (
+                          <div className="hero-inline-tip">
+                            <Text type="secondary">当前还没有域名，建议先完成域名添加，再继续创建邮箱。</Text>
+                          </div>
+                        ) : null}
+                      </Space>
+                    </Col>
+                    <Col xs={24} xl={9}>
+                      <div className="hero-side-card">
+                        <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                          <Text className="hero-side-label">推荐流程</Text>
+                          <List
+                            split={false}
+                            dataSource={[
+                              '1. 添加域名并确认用途说明',
+                              '2. 为域名创建固定或随机邮箱',
+                              '3. 进入邮件列表查看收件结果',
+                            ]}
+                            renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
+                          />
+                        </Space>
+                      </div>
+                    </Col>
+                  </Row>
                 </Card>
 
                 <Row gutter={[16, 16]}>
@@ -724,36 +765,10 @@ export default function App() {
                 </Row>
 
                 <Row gutter={[16, 16]}>
-                  <Col span={24}>
-                    <Card className="workspace-pulse-card" variant="borderless">
-                      <Row gutter={[12, 12]}>
-                        <Col xs={24} md={8}>
-                          <div className="workspace-pulse-item">
-                            <Text className="workspace-pulse-label">当前页面</Text>
-                            <Text strong>{SECTION_OPTIONS.find((item) => item.value === section)?.label || '概览'}</Text>
-                          </div>
-                        </Col>
-                        <Col xs={24} md={8}>
-                          <div className="workspace-pulse-item">
-                            <Text className="workspace-pulse-label">搜索结果</Text>
-                            <Text strong>
-                              域名 {filteredDomains.length} / 邮箱 {filteredMailboxes.length} / 邮件 {filteredMessages.length}
-                            </Text>
-                          </div>
-                        </Col>
-                        <Col xs={24} md={8}>
-                          <div className="workspace-pulse-item">
-                            <Text className="workspace-pulse-label">服务状态</Text>
-                            <Text strong>{health?.ok ? '在线' : '未连接'}</Text>
-                          </div>
-                        </Col>
-                      </Row>
-                    </Card>
-                  </Col>
-                  <Col xs={24} xl={15}>
-                    <Card title="运行状态" extra={<Tag color="processing">实时</Tag>}>
+                  <Col xs={24} xl={14}>
+                    <Card title="当前状态" extra={<Tag color={health?.ok ? 'success' : 'default'}>{health?.ok ? '在线' : '未连接'}</Tag>}>
                       <Row gutter={[16, 16]}>
-                        {healthItems.map((item) => (
+                        {healthItems.slice(0, 3).map((item) => (
                           <Col xs={24} md={12} key={item.label}>
                             <div className="health-item">
                               <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -771,9 +786,9 @@ export default function App() {
                     </Card>
                   </Col>
 
-                  <Col xs={24} xl={9}>
-                    <Card title="最近内容" extra={<Tag color="geekblue">Latest</Tag>}>
-                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <Col xs={24} xl={10}>
+                    <Card title="最近资源">
+                      <Space direction="vertical" size={12} style={{ width: '100%' }}>
                         <div className="resource-item">
                           <div className="resource-item-head">
                             <Text type="secondary">最新域名</Text>
@@ -781,12 +796,9 @@ export default function App() {
                           </div>
                           <Text strong>{latestDomain?.domain || '暂无域名'}</Text>
                           <Text type="secondary">
-                            {latestDomain
-                              ? `DNS 记录 ${latestDomain.dnsRecords?.length || 0} 条`
-                              : '暂无内容'}
+                            {latestDomain ? latestDomain.note || '已创建，可继续查看 DNS 指引' : '先创建域名开始配置'}
                           </Text>
                         </div>
-                        <Divider style={{ margin: 0 }} />
                         <div className="resource-item">
                           <div className="resource-item-head">
                             <Text type="secondary">最新邮箱</Text>
@@ -794,10 +806,9 @@ export default function App() {
                           </div>
                           <Text strong>{latestMailbox?.address || '暂无邮箱'}</Text>
                           <Text type="secondary">
-                            {latestMailbox ? `来源：${latestMailbox.source}` : '暂无内容'}
+                            {latestMailbox ? `来源：${latestMailbox.source}` : '创建域名后即可新增邮箱'}
                           </Text>
                         </div>
-                        <Divider style={{ margin: 0 }} />
                         <div className="resource-item">
                           <div className="resource-item-head">
                             <Text type="secondary">最近邮件</Text>
@@ -807,7 +818,7 @@ export default function App() {
                           <Text type="secondary">
                             {latestMessage
                               ? `${latestMessage.fromAddress || latestMessage.envelopeFrom || '-'} · ${formatDateTime(latestMessage.receivedAt)}`
-                              : '暂无内容'}
+                              : '创建邮箱并投递后可在这里查看最新收件'}
                           </Text>
                         </div>
                       </Space>
@@ -816,17 +827,17 @@ export default function App() {
                 </Row>
 
                 <Row gutter={[16, 16]}>
-                  <Col xs={24} xl={13}>
+                  <Col xs={24} xl={12}>
                     <Card
                       title="最近邮件"
                       extra={
-                        <Button type="link" onClick={() => setSection('messages')}>
+                        <Button type="link" onClick={() => setSection('messages')} disabled={!hasMailboxes}>
                           查看全部
                         </Button>
                       }
                     >
                       {filteredMessages.length === 0 ? (
-                        <Empty description="当前还没有收件记录" />
+                        <Empty description={hasMailboxes ? '当前还没有收件记录' : '请先创建邮箱，再等待收件'} />
                       ) : (
                         <Space direction="vertical" size={12} style={{ width: '100%' }}>
                           {filteredMessages.slice(0, 3).map((item) => (
@@ -842,15 +853,17 @@ export default function App() {
                     </Card>
                   </Col>
 
-                  <Col xs={24} xl={11}>
-                    <Card title="简单流程" extra={<Tag color="gold">Guide</Tag>}>
+                  <Col xs={24} xl={12}>
+                    <Card title="下一步建议" extra={<Tag color="gold">Guide</Tag>}>
                       <List
                         split={false}
-                        dataSource={[
-                          '添加域名',
-                          '创建邮箱',
-                          '查看收件',
-                        ]}
+                        dataSource={
+                          !hasDomains
+                            ? ['先添加收件域名', '创建后查看 DNS 指引', '完成 DNS 配置后再创建邮箱']
+                            : !hasMailboxes
+                              ? ['已存在域名，下一步创建邮箱', '可选择固定前缀或随机前缀', '创建完成后进入邮件列表查看收件']
+                              : ['进入邮件列表处理未读邮件', '按需设置自动清理规则', '持续查看最近收件状态']
+                        }
                         renderItem={(item, index) => (
                           <List.Item className="guide-item">
                             <Space align="start">
@@ -894,15 +907,10 @@ export default function App() {
                     </Col>
                     <Col>
                       <Space wrap>
-                        <Button
-                          onClick={() => {
-                            mailboxForm.setFieldsValue({ random: true });
-                            setMailboxModalOpen(true);
-                          }}
-                        >
+                        <Button onClick={() => openMailboxModal({ random: true })} disabled={!hasDomains}>
                           随机生成邮箱
                         </Button>
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setMailboxModalOpen(true)}>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openMailboxModal({ random: false })} disabled={!hasDomains}>
                           创建邮箱
                         </Button>
                       </Space>
@@ -1101,58 +1109,14 @@ export default function App() {
         onSubmit={handleCreateDomain}
       />
 
-      <Modal
-        title="创建邮箱"
+      <MailboxCreateModal
+        form={mailboxForm}
         open={mailboxModalOpen}
-        forceRender
-        confirmLoading={submitting}
+        submitting={submitting}
+        domainOptions={domainOptions}
         onCancel={() => setMailboxModalOpen(false)}
-        onOk={() => mailboxForm.submit()}
-      >
-        <Form
-          form={mailboxForm}
-          layout="vertical"
-          initialValues={{ random: false }}
-          onFinish={handleCreateMailbox}
-        >
-          <Form.Item
-            label="所属域名"
-            name="domainId"
-            rules={[{ required: true, message: '请选择域名' }]}
-          >
-            <Select
-              placeholder="选择域名"
-              options={domains.map((item) => ({
-                label: item.domain,
-                value: item.id,
-              }))}
-            />
-          </Form.Item>
-
-          <Form.Item label="生成方式" name="random">
-            <Select
-              options={[
-                { label: '自定义前缀', value: false },
-                { label: '随机前缀', value: true },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item shouldUpdate noStyle>
-            {({ getFieldValue }) =>
-              !getFieldValue('random') ? (
-                <Form.Item
-                  label="邮箱前缀"
-                  name="localPart"
-                  rules={[{ required: true, message: '请输入邮箱前缀' }]}
-                >
-                  <Input placeholder="support / sales / dev" />
-                </Form.Item>
-              ) : null
-            }
-          </Form.Item>
-        </Form>
-      </Modal>
+        onSubmit={handleCreateMailbox}
+      />
 
       <DomainDetailDrawer
         open={domainDrawerOpen}

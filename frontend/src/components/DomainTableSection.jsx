@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, Col, Popconfirm, Row, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Popconfirm, Row, Space, Table, Tag, Typography } from 'antd';
 import { DeleteOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -12,38 +12,35 @@ function createDomainColumns({ formatDateTime, onOpenDetail, onDeleteDomain }) {
       key: 'domain',
       render: (value, record) => (
         <Space direction="vertical" size={4}>
-          <Text strong>{value}</Text>
+          <Space wrap>
+            <Text strong>{value}</Text>
+            <Tag color={record.isActive ? 'success' : 'default'}>{record.isActive ? '可收件' : '待配置'}</Tag>
+          </Space>
           <Text type="secondary">{record.note || '未填写用途说明'}</Text>
         </Space>
       ),
     },
     {
-      title: '运行状态',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      width: 120,
-      render: (value) => <Tag color={value ? 'green' : 'default'}>{value ? 'active' : 'inactive'}</Tag>,
-    },
-    {
-      title: 'Cloudflare 记录',
-      key: 'cloudflare',
+      title: 'DNS 指引',
+      key: 'dns-guidance',
       width: 220,
       render: (_, record) => (
         <Space direction="vertical" size={4}>
-          <Tag color="blue">Cloudflare DNS</Tag>
+          <Tag color="blue">DNS 配置</Tag>
           <Text type="secondary">
-            {record.dnsRecords?.length ? `${record.dnsRecords.length} 条建议记录` : '可查看建议记录清单'}
+            {record.dnsRecords?.length ? `${record.dnsRecords.length} 条建议记录` : '创建后可查看建议记录'}
           </Text>
+          <Text type="secondary">{record.isActive ? '建议继续核对记录完整性' : '建议先查看配置指引'}</Text>
         </Space>
       ),
     },
     {
-      title: 'SMTP / 更新时间',
+      title: 'SMTP / 最近更新',
       key: 'smtp',
       render: (_, record) => (
         <Space direction="vertical" size={2}>
           <Text>{record.smtpHost ? `${record.smtpHost}:${record.smtpPort || 25}` : '默认监听 0.0.0.0:2525'}</Text>
-          <Text type="secondary">更新时间：{formatDateTime(record.updatedAt || record.createdAt)}</Text>
+          <Text type="secondary">最近更新：{formatDateTime(record.updatedAt || record.createdAt)}</Text>
         </Space>
       ),
     },
@@ -54,7 +51,7 @@ function createDomainColumns({ formatDateTime, onOpenDetail, onDeleteDomain }) {
       render: (_, record) => (
         <Space>
           <Button type="link" icon={<EyeOutlined />} onClick={() => onOpenDetail(record.id)}>
-            查看设置
+            查看指引
           </Button>
           <Popconfirm title="确认删除该域名？" onConfirm={() => onDeleteDomain(record.id)}>
             <Button danger type="text" icon={<DeleteOutlined />}>
@@ -90,7 +87,7 @@ export default function DomainTableSection({
                 域名管理
               </Title>
               <Text type="secondary">
-                管理 SMTP 收件域名，并查看当域名 DNS 托管在 Cloudflare 时还需补充哪些邮件记录。
+                先添加域名，再进入详情查看通用 DNS 建议记录与后续配置步骤。
               </Text>
             </Space>
           </Col>
@@ -103,11 +100,18 @@ export default function DomainTableSection({
       </Card>
 
       <Card>
+        <Alert
+          type="info"
+          showIcon
+          className="table-top-alert"
+          message="建议流程：添加域名 → 查看 DNS 指引 → 完成记录配置 → 创建邮箱"
+          description="DNS 托管在 Cloudflare、阿里云、腾讯云或其他平台时，都应在各自的 DNS 面板完成邮件记录配置。"
+        />
         <Table
           rowKey="id"
           columns={columns}
           dataSource={domains}
-          locale={{ emptyText: '暂无域名，可先创建一个收件域名。' }}
+          locale={{ emptyText: '暂无域名，请先添加一个收件域名开始配置流程。' }}
           pagination={false}
         />
       </Card>

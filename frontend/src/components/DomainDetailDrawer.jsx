@@ -1,17 +1,17 @@
 import React from 'react';
-import { Avatar, Card, Descriptions, Drawer, Empty, Space, Tag, Typography } from 'antd';
+import { Alert, Avatar, Card, Descriptions, Drawer, Empty, Space, Tag, Typography } from 'antd';
 
 const { Title, Text } = Typography;
 
-function buildCloudflareGuideSteps() {
+function buildDnsGuideSteps() {
   return [
     {
-      title: '确认域名已在 Cloudflare 托管',
-      desc: '如果你的域名 DNS 已经托管在 Cloudflare，无需再次接入或切换托管商。',
+      title: '确认当前域名的 DNS 托管位置',
+      desc: '请先确认当前域名的 DNS 托管位置，再到对应面板补充邮件记录。',
     },
     {
-      title: '在 Cloudflare DNS 页面补充邮件记录',
-      desc: '根据下方清单配置 MX、SPF、DKIM、DMARC 等记录，注意邮件相关记录不要误开代理。',
+      title: '补充邮件记录并指向你的收件服务',
+      desc: '请把 MX、SPF、DKIM、DMARC 等记录补充到当前 DNS 托管商中，记录值应以你的收件服务为准。',
     },
     {
       title: '等待 DNS 生效后验证收件',
@@ -41,7 +41,10 @@ export default function DomainDetailDrawer({
                 <Title level={4} style={{ margin: 0 }}>
                   {domainDetail.domain}
                 </Title>
-                <Tag color="blue">Cloudflare DNS 指引</Tag>
+                <Tag color="blue">DNS 配置指引</Tag>
+                <Tag color={domainDetail.isActive ? 'success' : 'default'}>
+                  {domainDetail.isActive ? '可继续创建邮箱' : '建议先完成配置'}
+                </Tag>
               </Space>
               <Text type="secondary">{domainDetail.setupNote || domainDetail.note || '暂无额外说明'}</Text>
               <Descriptions column={2} size="small">
@@ -54,9 +57,15 @@ export default function DomainDetailDrawer({
             </Space>
           </Card>
 
-          <Card title="Cloudflare 中需要做什么">
+          <Card title="下一步操作">
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              {buildCloudflareGuideSteps().map((item, index) => (
+              <Alert
+                type="info"
+                showIcon
+                message="先按步骤补充 DNS 记录，再创建邮箱做收件验证"
+                description="这里展示的是通用 DNS 配置指引，不限定某个 DNS 服务商。"
+              />
+              {buildDnsGuideSteps().map((item, index) => (
                 <div className="setup-step-card" key={`${item.title}-${index}`}>
                   <Space align="start">
                     <Avatar size={28} className="setup-step-avatar">
@@ -72,13 +81,7 @@ export default function DomainDetailDrawer({
             </Space>
           </Card>
 
-          <Card title="说明">
-            <Text type="secondary">
-              这里展示的是“你的域名已经在 Cloudflare 托管时，还需要在 Cloudflare DNS 页面中补充哪些邮件记录”，不是再次托管或接入 Cloudflare。
-            </Text>
-          </Card>
-
-          <Card title="DNS 记录建议">
+          <Card title="DNS 记录建议" extra={<Tag color="processing">{domainDetail.dnsRecords?.length || 0} 条</Tag>}>
             {domainDetail.dnsRecords?.length ? (
               <div className="dns-record-list">
                 {domainDetail.dnsRecords.map((record, index) => (
@@ -103,6 +106,17 @@ export default function DomainDetailDrawer({
             ) : (
               <Empty description="暂无 DNS 记录建议" />
             )}
+          </Card>
+
+          <Card title="补充说明">
+            <Space direction="vertical" size={8}>
+              <Text type="secondary">
+                {domainDetail.setupNote || '请先确认当前域名的 DNS 托管商，再把邮件记录按你的收件服务实际配置补充到对应面板。'}
+              </Text>
+              <Text type="secondary">
+                如果你使用的是 Cloudflare，也是在 Cloudflare 的 DNS 面板中配置；如果使用其他 DNS 服务商，同样应在对应面板完成配置。
+              </Text>
+            </Space>
           </Card>
         </Space>
       ) : (

@@ -123,7 +123,7 @@ test('db module enforces missing domain validation for mailbox creation', async 
   }
 });
 
-test('db module stores cloudflare dns guidance records for managed domains', async () => {
+test('db module stores generic dns guidance records without forcing cloudflare-specific mx target', async () => {
   const tempDir = createTempWorkspace();
   let dbModule;
 
@@ -131,27 +131,47 @@ test('db module stores cloudflare dns guidance records for managed domains', asy
     dbModule = await loadDbModule(tempDir);
     const domain = dbModule.createDomain({
       domain: 'Mail.Example.com',
-      smtpHost: null,
-      smtpPort: null,
-      note: 'cloudflare domain',
-      setupNote: '域名 DNS 已在 Cloudflare，仅需补齐邮件记录',
+      smtpHost: 'mail.example.com',
+      smtpPort: 25,
+      note: 'self-hosted domain',
     });
 
     assert.equal(domain.domain, 'mail.example.com');
-    assert.equal(domain.setupNote, '域名 DNS 已在 Cloudflare，仅需补齐邮件记录');
+    assert.equal(
+      domain.setupNote,
+      '请先确认当前域名的 DNS 托管商，再把 MX、SPF、DKIM、DMARC 等记录补充到对应 DNS 面板中；MX 记录应指向你自己的收件主机。',
+    );
     assert.equal(Array.isArray(domain.dnsRecords), true);
     assert.equal(domain.dnsRecords.length >= 4, true);
-    assert.equal(domain.dnsRecords.some((record) => record.type === 'MX'), true);
-    assert.equal(domain.dnsRecords.some((record) => record.type === 'TXT' && String(record.value).includes('v=spf1')), true);
+    assert.equal(domain.setupNote.includes('Cloudflare'), false);
+
+    const mxRecord = domain.dnsRecords.find((record) => record.type === 'MX');
+    assert.ok(mxRecord);
+    assert.equal(mxRecord.name, '@');
+    assert.equal(mxRecord.value, 'mail.example.com');
+    assert.notEqual(mxRecord.value, 'route1.mx.cloudflare.net');
+    assert.equal(mxRecord.note.includes('自己的收件主机'), true);
+
+    const spfRecord = domain.dnsRecords.find((record) => record.type === 'TXT' && String(record.value).includes('v=spf1'));
+    assert.ok(spfRecord);
+    assert.equal(spfRecord.value.includes('_spf.mx.cloudflare.net'), false);
+    assert.equal(spfRecord.note.includes('按实际发信源调整'), true);
+
     assert.equal(domain.dnsRecords.some((record) => String(record.name).includes('_dmarc')), true);
 
     const listed = dbModule.listDomains();
     assert.equal(listed.length, 1);
     assert.equal(listed[0].dnsRecords.length >= 4, true);
+    assert.equal(listed[0].dnsRecords.find((record) => record.type === 'MX')?.value, 'mail.example.com');
+    assert.equal(listed[0].setupNote.includes('Cloudflare'), false);
 
     const lookedUp = dbModule.getDomainById(domain.id);
-    assert.equal(lookedUp.setupNote, '域名 DNS 已在 Cloudflare，仅需补齐邮件记录');
+    assert.equal(
+      lookedUp.setupNote,
+      '请先确认当前域名的 DNS 托管商，再把 MX、SPF、DKIM、DMARC 等记录补充到对应 DNS 面板中；MX 记录应指向你自己的收件主机。',
+    );
     assert.equal(lookedUp.dnsRecords[0].type, 'MX');
+    assert.equal(lookedUp.dnsRecords[0].value, 'mail.example.com');
   } finally {
     dbModule?.db.close();
     fs.rmSync(tempDir, { recursive: true, force: true });
