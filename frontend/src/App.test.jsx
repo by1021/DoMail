@@ -28,6 +28,8 @@ import {
   getHealth,
   getMailboxMessages,
   getMailboxes,
+  getMessageDetail,
+  markMessageRead,
   updateMailboxRetention,
 } from './api.js';
 
@@ -272,5 +274,73 @@ describe('App', () => {
     expect(screen.getByText('mail.example.com')).toBeInTheDocument();
     expect(screen.queryByText('route1.mx.cloudflare.net')).not.toBeInTheDocument();
     expect(screen.queryByText(/Cloudflare DNS 指引/)).not.toBeInTheDocument();
+  });
+
+  it('opens message detail drawer and marks unread message as read', async () => {
+    getMessageDetail.mockResolvedValue({
+      item: {
+        id: 'message-1',
+        mailboxId: 'mailbox-1',
+        subject: '欢迎使用',
+        isRead: false,
+        attachmentCount: 0,
+        fromName: 'DoMail Team',
+        fromAddress: 'team@example.org',
+        envelopeFrom: 'team@example.org',
+        envelopeTo: 'hello@example.com',
+        address: 'hello@example.com',
+        receivedAt: '2026-04-10T07:00:00.000Z',
+        rawSize: 128,
+        text: 'plain text body',
+        html: '<p>plain text body</p>',
+        attachments: [],
+      },
+    });
+
+    markMessageRead.mockResolvedValue({
+      ok: true,
+      item: {
+        id: 'message-1',
+        mailboxId: 'mailbox-1',
+        subject: '欢迎使用',
+        isRead: true,
+        attachmentCount: 0,
+        fromName: 'DoMail Team',
+        fromAddress: 'team@example.org',
+        envelopeFrom: 'team@example.org',
+        envelopeTo: 'hello@example.com',
+        address: 'hello@example.com',
+        receivedAt: '2026-04-10T07:00:00.000Z',
+        rawSize: 128,
+        text: 'plain text body',
+        html: '<p>plain text body</p>',
+        attachments: [],
+      },
+    });
+
+    renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByText('邮件控制台')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('邮件'));
+
+    await waitFor(() => {
+      expect(screen.getByText('邮件列表')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: /查看详情/ })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('邮件详情')).toBeInTheDocument();
+    });
+
+    expect(getMessageDetail).toHaveBeenCalledWith('message-1');
+    expect(markMessageRead).toHaveBeenCalledWith('message-1');
+    expect(screen.getByText('正文（Text）')).toBeInTheDocument();
+    expect(screen.getByText('HTML 预览源码')).toBeInTheDocument();
+    expect(screen.getByText('plain text body')).toBeInTheDocument();
+    expect(screen.getByText('无附件')).toBeInTheDocument();
   });
 });

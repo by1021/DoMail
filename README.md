@@ -97,10 +97,10 @@ CORS_ORIGIN=https://mail.example.com
 
 对应实现可见 `backend/src/index.js` 中的启动逻辑。
 
-前端默认 API 地址见 `frontend/src/api.js`：
+前端默认 API 地址见 [`frontend/src/api.js`](frontend/src/api.js)：
 
-- 开发时默认回退到 `http://localhost:3001`
-- 生产环境可通过 `VITE_API_BASE_URL` 覆盖
+- 默认使用相对路径 `/api`
+- 生产环境或特殊部署场景可通过 `VITE_API_BASE_URL` 覆盖
 
 ---
 
@@ -222,7 +222,7 @@ Windows `cmd` 示例：
 ```bat
 curl -X POST http://127.0.0.1:3001/api/domains ^
   -H "Content-Type: application/json" ^
-  -d "{\"name\":\"example.com\"}"
+  -d "{\"domain\":\"example.com\",\"note\":\"主收件域名\"}"
 ```
 
 Linux / macOS 示例：
@@ -230,7 +230,7 @@ Linux / macOS 示例：
 ```bash
 curl -X POST http://127.0.0.1:3001/api/domains \
   -H "Content-Type: application/json" \
-  -d '{"name":"example.com"}'
+  -d '{"domain":"example.com","note":"主收件域名"}'
 ```
 
 ### 8.3 查询现有邮箱
@@ -246,7 +246,7 @@ Windows `cmd` 示例：
 ```bat
 curl -X POST http://127.0.0.1:3001/api/mailboxes ^
   -H "Content-Type: application/json" ^
-  -d "{\"domain\":\"example.com\",\"localPart\":\"test\"}"
+  -d "{\"domainId\":\"<domainId>\",\"localPart\":\"test\"}"
 ```
 
 Linux / macOS 示例：
@@ -254,8 +254,10 @@ Linux / macOS 示例：
 ```bash
 curl -X POST http://127.0.0.1:3001/api/mailboxes \
   -H "Content-Type: application/json" \
-  -d '{"domain":"example.com","localPart":"test"}'
+  -d '{"domainId":"<domainId>","localPart":"test"}'
 ```
+
+其中 `<domainId>` 需要先通过 [`GET /api/domains`](README.md:215) 获取。
 
 创建成功后，目标邮箱地址类似：
 

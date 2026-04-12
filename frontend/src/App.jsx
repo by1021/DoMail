@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import dayjs from 'dayjs';
 import {
   App as AntdApp,
   Avatar,
@@ -9,31 +8,25 @@ import {
   Col,
   Descriptions,
   Divider,
-  Drawer,
   Empty,
   Form,
   Input,
   Layout,
   List,
-  Modal,
   Popconfirm,
-  Progress,
   Row,
   Segmented,
   Select,
   Space,
   Spin,
-  Statistic,
   Table,
   Tag,
   Typography,
 } from 'antd';
 import {
-  ApiOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
   EyeOutlined,
-  GlobalOutlined,
   InboxOutlined,
   MailOutlined,
   PlusOutlined,
@@ -61,6 +54,15 @@ import DomainTableSection from './components/DomainTableSection.jsx';
 import DomainCreateModal from './components/DomainCreateModal.jsx';
 import DomainDetailDrawer from './components/DomainDetailDrawer.jsx';
 import MailboxCreateModal from './components/MailboxCreateModal.jsx';
+import OverviewSection from './components/OverviewSection.jsx';
+import MessageDetailDrawer from './components/MessageDetailDrawer.jsx';
+import {
+  buildHealthItems,
+  buildSummaryCards,
+  formatDateTime,
+  formatRelativeTime,
+  getRetentionLabel,
+} from './app-helpers.js';
 
 const { Header, Content, Sider } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -72,114 +74,6 @@ const SECTION_OPTIONS = [
   { label: '邮件', value: 'messages' },
   { label: 'API', value: 'api' },
 ];
-
-function formatDateTime(value) {
-  if (!value) {
-    return '-';
-  }
-
-  return dayjs(value).format('YYYY-MM-DD HH:mm:ss');
-}
-
-function formatRelativeTime(value) {
-  if (!value) {
-    return '暂无记录';
-  }
-
-  const diffMinutes = dayjs().diff(dayjs(value), 'minute');
-
-  if (diffMinutes < 1) {
-    return '刚刚更新';
-  }
-
-  if (diffMinutes < 60) {
-    return `${diffMinutes} 分钟前`;
-  }
-
-  const diffHours = dayjs().diff(dayjs(value), 'hour');
-
-  if (diffHours < 24) {
-    return `${diffHours} 小时前`;
-  }
-
-  return `${dayjs().diff(dayjs(value), 'day')} 天前`;
-}
-
-function buildSummaryCards(stats, domains, mailboxes, messages) {
-  return [
-    {
-      title: '已配置域名',
-      value: domains.length,
-      icon: <GlobalOutlined />,
-      accent: 'summary-card-blue',
-      helper: '当前域名数量',
-    },
-    {
-      title: '活跃邮箱',
-      value: mailboxes.length,
-      icon: <MailOutlined />,
-      accent: 'summary-card-purple',
-      helper: '当前邮箱数量',
-    },
-    {
-      title: '当前列表邮件',
-      value: messages.length,
-      icon: <InboxOutlined />,
-      accent: 'summary-card-cyan',
-      helper: '当前列表邮件',
-    },
-    {
-      title: '数据库邮件总量',
-      value: stats?.messages ?? 0,
-      icon: <ApiOutlined />,
-      accent: 'summary-card-gold',
-      helper: '累计邮件总数',
-    },
-  ];
-}
-
-function buildHealthItems(health, domains, mailboxes, messages) {
-  const mailboxCoverage = domains.length ? Math.round((mailboxes.length / domains.length) * 100) : 0;
-  const unreadCount = messages.filter((item) => !item.isRead).length;
-
-  return [
-    {
-      label: '服务状态',
-      value: health?.ok ? '在线' : '待连接',
-      tone: health?.ok ? 'success' : 'processing',
-      description: health?.service || 'domain-mail-backend',
-    },
-    {
-      label: '域名覆盖',
-      value: `${domains.length} / ${Math.max(domains.length, 1)}`,
-      tone: domains.length ? 'processing' : 'default',
-      description: domains.length ? '已具备收件配置' : '请先创建域名',
-      progress: domains.length ? 100 : 12,
-    },
-    {
-      label: '邮箱密度',
-      value: `${mailboxes.length} 个`,
-      tone: mailboxes.length ? 'processing' : 'warning',
-      description: `${mailboxCoverage}% 域名覆盖率`,
-      progress: Math.max(Math.min(mailboxCoverage, 100), 8),
-    },
-    {
-      label: '待处理邮件',
-      value: `${unreadCount} 封`,
-      tone: unreadCount ? 'error' : 'success',
-      description: unreadCount ? '存在未读邮件需要查看' : '所有邮件均已处理',
-      progress: unreadCount ? Math.min(unreadCount * 15, 100) : 100,
-    },
-  ];
-}
-
-function getRetentionLabel(mailbox) {
-  if (!mailbox?.retentionValue || !mailbox?.retentionUnit) {
-    return '已关闭';
-  }
-
-  return `${mailbox.retentionValue} ${mailbox.retentionUnit === 'day' ? '天' : '小时'}`;
-}
 
 function MessagePreview({ item, onOpen, onDelete }) {
   return (
@@ -694,191 +588,23 @@ export default function App() {
         <Content className="app-content">
           <Spin spinning={loading}>
             {section === 'overview' && (
-              <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                <Card className="hero-card">
-                  <Row gutter={[20, 20]} align="middle">
-                    <Col xs={24} xl={15}>
-                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                        <div>
-                          <Title level={2} style={{ margin: 0 }}>
-                            收件概览
-                          </Title>
-                          <Paragraph className="hero-copy">
-                            先添加域名，再创建邮箱，最后进入邮件列表查看收件状态。
-                          </Paragraph>
-                        </div>
-                        <Space wrap size={12}>
-                          <Button type="primary" icon={<PlusOutlined />} onClick={() => setDomainModalOpen(true)}>
-                            添加域名
-                          </Button>
-                          <Button onClick={() => openMailboxModal({ random: false })} disabled={!hasDomains}>
-                            创建邮箱
-                          </Button>
-                          <Button onClick={() => openMailboxModal({ random: true })} disabled={!hasDomains}>
-                            随机邮箱
-                          </Button>
-                          <Button onClick={() => setSection('messages')} disabled={!hasMailboxes}>
-                            查看邮件
-                          </Button>
-                        </Space>
-                        {!hasDomains ? (
-                          <div className="hero-inline-tip">
-                            <Text type="secondary">当前还没有域名，建议先完成域名添加，再继续创建邮箱。</Text>
-                          </div>
-                        ) : null}
-                      </Space>
-                    </Col>
-                    <Col xs={24} xl={9}>
-                      <div className="hero-side-card">
-                        <Space direction="vertical" size={14} style={{ width: '100%' }}>
-                          <Text className="hero-side-label">推荐流程</Text>
-                          <List
-                            split={false}
-                            dataSource={[
-                              '1. 添加域名并确认用途说明',
-                              '2. 为域名创建固定或随机邮箱',
-                              '3. 进入邮件列表查看收件结果',
-                            ]}
-                            renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
-                          />
-                        </Space>
-                      </div>
-                    </Col>
-                  </Row>
-                </Card>
-
-                <Row gutter={[16, 16]}>
-                  {summaryCards.map((item) => (
-                    <Col xs={24} sm={12} xl={6} key={item.title}>
-                      <Card className={`summary-card ${item.accent}`}>
-                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                          <div className="summary-card-head">
-                            <div className="summary-card-icon">{item.icon}</div>
-                            <Text type="secondary">{item.title}</Text>
-                          </div>
-                          <Statistic title={null} value={item.value} />
-                          <Text type="secondary">{item.helper}</Text>
-                        </Space>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} xl={14}>
-                    <Card title="当前状态" extra={<Tag color={health?.ok ? 'success' : 'default'}>{health?.ok ? '在线' : '未连接'}</Tag>}>
-                      <Row gutter={[16, 16]}>
-                        {healthItems.slice(0, 3).map((item) => (
-                          <Col xs={24} md={12} key={item.label}>
-                            <div className="health-item">
-                              <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                                <Space align="center" justify="space-between" style={{ width: '100%' }}>
-                                  <Text strong>{item.label}</Text>
-                                  <Tag color={item.tone}>{item.value}</Tag>
-                                </Space>
-                                <Text type="secondary">{item.description}</Text>
-                                <Progress percent={item.progress ?? 0} size="small" showInfo={false} />
-                              </Space>
-                            </div>
-                          </Col>
-                        ))}
-                      </Row>
-                    </Card>
-                  </Col>
-
-                  <Col xs={24} xl={10}>
-                    <Card title="最近资源">
-                      <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                        <div className="resource-item">
-                          <div className="resource-item-head">
-                            <Text type="secondary">最新域名</Text>
-                            <Tag color="blue">Domain</Tag>
-                          </div>
-                          <Text strong>{latestDomain?.domain || '暂无域名'}</Text>
-                          <Text type="secondary">
-                            {latestDomain ? latestDomain.note || '已创建，可继续查看 DNS 指引' : '先创建域名开始配置'}
-                          </Text>
-                        </div>
-                        <div className="resource-item">
-                          <div className="resource-item-head">
-                            <Text type="secondary">最新邮箱</Text>
-                            <Tag color="purple">Mailbox</Tag>
-                          </div>
-                          <Text strong>{latestMailbox?.address || '暂无邮箱'}</Text>
-                          <Text type="secondary">
-                            {latestMailbox ? `来源：${latestMailbox.source}` : '创建域名后即可新增邮箱'}
-                          </Text>
-                        </div>
-                        <div className="resource-item">
-                          <div className="resource-item-head">
-                            <Text type="secondary">最近邮件</Text>
-                            <Tag color="cyan">Message</Tag>
-                          </div>
-                          <Text strong>{latestMessage?.subject || '暂无邮件'}</Text>
-                          <Text type="secondary">
-                            {latestMessage
-                              ? `${latestMessage.fromAddress || latestMessage.envelopeFrom || '-'} · ${formatDateTime(latestMessage.receivedAt)}`
-                              : '创建邮箱并投递后可在这里查看最新收件'}
-                          </Text>
-                        </div>
-                      </Space>
-                    </Card>
-                  </Col>
-                </Row>
-
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} xl={12}>
-                    <Card
-                      title="最近邮件"
-                      extra={
-                        <Button type="link" onClick={() => setSection('messages')} disabled={!hasMailboxes}>
-                          查看全部
-                        </Button>
-                      }
-                    >
-                      {filteredMessages.length === 0 ? (
-                        <Empty description={hasMailboxes ? '当前还没有收件记录' : '请先创建邮箱，再等待收件'} />
-                      ) : (
-                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                          {filteredMessages.slice(0, 3).map((item) => (
-                            <MessagePreview
-                              key={item.id}
-                              item={item}
-                              onOpen={handleOpenMessageDetail}
-                              onDelete={handleDeleteMessage}
-                            />
-                          ))}
-                        </Space>
-                      )}
-                    </Card>
-                  </Col>
-
-                  <Col xs={24} xl={12}>
-                    <Card title="下一步建议" extra={<Tag color="gold">Guide</Tag>}>
-                      <List
-                        split={false}
-                        dataSource={
-                          !hasDomains
-                            ? ['先添加收件域名', '创建后查看 DNS 指引', '完成 DNS 配置后再创建邮箱']
-                            : !hasMailboxes
-                              ? ['已存在域名，下一步创建邮箱', '可选择固定前缀或随机前缀', '创建完成后进入邮件列表查看收件']
-                              : ['进入邮件列表处理未读邮件', '按需设置自动清理规则', '持续查看最近收件状态']
-                        }
-                        renderItem={(item, index) => (
-                          <List.Item className="guide-item">
-                            <Space align="start">
-                              <Avatar size={28} className="guide-avatar">
-                                {index + 1}
-                              </Avatar>
-                              <Text>{item}</Text>
-                            </Space>
-                          </List.Item>
-                        )}
-                      />
-                    </Card>
-                  </Col>
-                </Row>
-              </Space>
+              <OverviewSection
+                filteredMessages={filteredMessages}
+                hasDomains={hasDomains}
+                hasMailboxes={hasMailboxes}
+                health={health}
+                healthItems={healthItems}
+                latestDomain={latestDomain}
+                latestMailbox={latestMailbox}
+                latestMessage={latestMessage}
+                onCreateDomain={() => setDomainModalOpen(true)}
+                onCreateMailbox={(random) => openMailboxModal({ random })}
+                onDeleteMessage={handleDeleteMessage}
+                onOpenMessageDetail={handleOpenMessageDetail}
+                onViewMessages={() => setSection('messages')}
+                summaryCards={summaryCards}
+                formatDateTime={formatDateTime}
+              />
             )}
 
             {section === 'domains' && (
@@ -1125,69 +851,13 @@ export default function App() {
         formatDateTime={formatDateTime}
       />
 
-      <Drawer
-        title="邮件详情"
-        width={760}
+      <MessageDetailDrawer
         open={messageDrawerOpen}
+        messageDetail={messageDetail}
         onClose={() => setMessageDrawerOpen(false)}
-        extra={
-          messageDetail ? (
-            <Popconfirm title="确认删除这封邮件？" onConfirm={() => handleDeleteMessage(messageDetail.id)}>
-              <Button danger icon={<DeleteOutlined />}>
-                删除邮件
-              </Button>
-            </Popconfirm>
-          ) : null
-        }
-      >
-        {messageDetail ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="主题">{messageDetail.subject || '(no subject)'}</Descriptions.Item>
-              <Descriptions.Item label="发件人">
-                {messageDetail.fromName
-                  ? `${messageDetail.fromName} <${messageDetail.fromAddress || '-'}>`
-                  : messageDetail.fromAddress || messageDetail.envelopeFrom || '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="收件邮箱">{messageDetail.address}</Descriptions.Item>
-              <Descriptions.Item label="Envelope To">{messageDetail.envelopeTo || '-'}</Descriptions.Item>
-              <Descriptions.Item label="接收时间">
-                {formatDateTime(messageDetail.receivedAt)}
-              </Descriptions.Item>
-              <Descriptions.Item label="原始大小">{messageDetail.rawSize || 0} bytes</Descriptions.Item>
-              <Descriptions.Item label="附件数量">{messageDetail.attachmentCount}</Descriptions.Item>
-            </Descriptions>
-
-            <Card title="正文（Text）">
-              <pre className="message-code-block">{messageDetail.text || '(empty)'}</pre>
-            </Card>
-
-            <Card title="HTML 预览源码">
-              <pre className="message-code-block">{messageDetail.html || '(empty)'}</pre>
-            </Card>
-
-            <Card title="附件元数据">
-              {messageDetail.attachments?.length ? (
-                <List
-                  dataSource={messageDetail.attachments}
-                  renderItem={(item) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        title={item.filename || '(unnamed attachment)'}
-                        description={`${item.contentType || '-'} · ${item.size || 0} bytes`}
-                      />
-                    </List.Item>
-                  )}
-                />
-              ) : (
-                <Empty description="无附件" />
-              )}
-            </Card>
-          </Space>
-        ) : (
-          <Empty description="暂无邮件详情" />
-        )}
-      </Drawer>
+        onDeleteMessage={handleDeleteMessage}
+        formatDateTime={formatDateTime}
+      />
     </Layout>
   );
 }

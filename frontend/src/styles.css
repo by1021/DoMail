@@ -81,11 +81,6 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.1);
 }
 
-.side-tip {
-  background: #ffffff;
-  border-color: rgba(148, 163, 184, 0.1);
-}
-
 .panel-label {
   display: inline-block;
   margin-bottom: 10px;
@@ -324,50 +319,8 @@ body {
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
 }
 
-.guide-footer-note {
-  margin-top: 18px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: #fff9e6;
-  border: 1px solid rgba(250, 173, 20, 0.18);
-}
-
 .mailbox-selector {
   width: 280px;
-}
-
-.workspace-pulse-card.ant-card {
-  overflow: hidden;
-  background: #1f2937;
-  border: 1px solid rgba(59, 130, 246, 0.1);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
-}
-
-.workspace-pulse-card .ant-card-body {
-  padding: 18px 20px;
-}
-
-.workspace-pulse-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 100%;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-
-.workspace-pulse-item .ant-typography {
-  color: #f8fafc;
-}
-
-.workspace-pulse-label.ant-typography {
-  color: rgba(226, 232, 240, 0.72);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .ant-table-wrapper {
@@ -473,11 +426,6 @@ body {
   background: #dbeafe;
   color: #1677ff;
   font-weight: 700;
-}
-
-.setup-step-avatar.done {
-  background: #dcfce7;
-  color: #16a34a;
 }
 
 .dns-record-list {
@@ -602,15 +550,6 @@ body {
 
   .summary-card .ant-statistic-content {
     font-size: 26px;
-  }
-
-  .workspace-pulse-card .ant-card-body {
-    padding: 14px;
-  }
-
-  .workspace-pulse-item {
-    padding: 12px 14px;
-    border-radius: 16px;
   }
 
   .ant-card {
