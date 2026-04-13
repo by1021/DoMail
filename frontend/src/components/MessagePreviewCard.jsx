@@ -1,0 +1,83 @@
+import React from 'react';
+import { Button, Card, Popconfirm, Space, Tag, Typography } from 'antd';
+import { DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
+
+export default function MessagePreviewCard({
+  item,
+  formatDateTime,
+  onDelete,
+  onOpen,
+  confirmDelete = false,
+}) {
+  return (
+    <Card className="message-preview-card" hoverable onClick={() => onOpen(item.id)}>
+      <Space direction="vertical" size={10} style={{ width: '100%' }}>
+        <div className="message-preview-header">
+          <div className="message-preview-title-group">
+            <Space wrap>
+              <Text strong>{item.subject || '(no subject)'}</Text>
+              {!item.isRead && <Tag color="blue">未读</Tag>}
+              {item.attachmentCount > 0 && <Tag color="purple">{item.attachmentCount} 个附件</Tag>}
+            </Space>
+            <Text type="secondary">发件人：{item.fromAddress || item.envelopeFrom || '-'}</Text>
+          </div>
+          <Text type="secondary">{formatDateTime(item.receivedAt)}</Text>
+        </div>
+
+        <div className="message-preview-meta">
+          <Text type="secondary">送达至：{item.envelopeTo || '-'}</Text>
+        </div>
+
+        <Space wrap className="message-preview-actions">
+          <Button
+            type="link"
+            icon={<EyeOutlined />}
+            style={{ paddingInline: 0 }}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen(item.id);
+            }}
+          >
+            查看详情
+          </Button>
+
+          {confirmDelete ? (
+            <Popconfirm
+              title="确认删除这封邮件？"
+              onConfirm={(event) => {
+                event?.stopPropagation?.();
+                onDelete(item.id);
+              }}
+              onCancel={(event) => event?.stopPropagation?.()}
+            >
+              <Button
+                danger
+                type="link"
+                icon={<DeleteOutlined />}
+                style={{ paddingInline: 0 }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                删除邮件
+              </Button>
+            </Popconfirm>
+          ) : (
+            <Button
+              danger
+              type="link"
+              icon={<DeleteOutlined />}
+              style={{ paddingInline: 0 }}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete(item.id);
+              }}
+            >
+              删除邮件
+            </Button>
+          )}
+        </Space>
+      </Space>
+    </Card>
+  );
+}

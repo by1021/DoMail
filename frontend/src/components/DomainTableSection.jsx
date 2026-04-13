@@ -1,64 +1,106 @@
 import React from 'react';
-import { Alert, Button, Card, Col, Popconfirm, Row, Space, Table, Tag, Typography } from 'antd';
-import { DeleteOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Popconfirm, Row, Col, Space, Table, Tag, Typography } from 'antd';
+import { DeleteOutlined, EyeOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
-function createDomainColumns({ formatDateTime, onOpenDetail, onDeleteDomain }) {
+function getDomainStatusMeta(record, dnsStatus) {
+  if (dnsStatus?.status === 'ready') {
+    return {
+      label: '已可收件',
+      color: 'success',
+      summary: dnsStatus.summary || '最小收件记录已齐全，域名已可用于收件。',
+      nextStep: dnsStatus.nextStep || '现在可以创建邮箱并发送测试邮件。',
+      detail: '检测已确认最小记录可用。',
+    };
+  }
+
+  if (record.isActive) {
+    return {
+      label: '已可收件',
+      color: 'success',
+      summary: 'DNS 已基本可用，下一步可以直接创建邮箱验证收件。',
+      nextStep: '创建一个邮箱并投递测试邮件',
+      detail: '当前域名已处于可收件状态。',
+    };
+  }
+
+  return {
+    label: '待完成配置',
+    color: 'default',
+    summary: dnsStatus?.summary || '域名已添加，但还需要先核对并补充最小 DNS 记录。',
+    nextStep: dnsStatus?.nextStep || '先检测 DNS，再按建议补充记录',
+    detail: `最少 ${record.dnsRecords?.length || 0} 条必需记录，建议先完成后再创建邮箱。`,
+  };
+}
+
+function createDomainColumns({ domainDnsStatus, formatDateTime, onCreateMailbox, onDetectDns, onOpenDetail, onDeleteDomain }) {
   return [
     {
       title: '域名',
       dataIndex: 'domain',
       key: 'domain',
-      render: (value, record) => (
-        <Space direction="vertical" size={4}>
-          <Space wrap>
-            <Text strong>{value}</Text>
-            <Tag color={record.isActive ? 'success' : 'default'}>{record.isActive ? '可收件' : '待配置'}</Tag>
-          </Space>
-          <Text type="secondary">{record.note || '未填写用途说明'}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'DNS 指引',
-      key: 'dns-guidance',
       width: 220,
-      render: (_, record) => (
-        <Space direction="vertical" size={4}>
-          <Tag color="blue">DNS 配置</Tag>
-          <Text type="secondary">
-            {record.dnsRecords?.length ? `${record.dnsRecords.length} 条建议记录` : '创建后可查看建议记录'}
-          </Text>
-          <Text type="secondary">{record.isActive ? '建议继续核对记录完整性' : '建议先查看配置指引'}</Text>
-        </Space>
-      ),
+      render: (value, record) => {
+        const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
+
+        return (
+          <Space direction="vertical" size={8}>
+            <Space wrap>
+              <Text strong>{value}</Text>
+              <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
+            </Space>
+            <Text type="secondary">
+              {record.note || `最小记录 ${record.dnsRecords?.length || 0} 条`}
+            </Text>
+          </Space>
+        );
+      },
     },
     {
-      title: 'SMTP / 最近更新',
-      key: 'smtp',
+      title: '状态',
+      key: 'status',
+      width: 260,
+      render: (_, record) => {
+        const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
+
+        return (
+          <div className="domain-table-cell-stack">
+            <Text strong>{statusMeta.label}</Text>
+            <Text type="secondary">{statusMeta.nextStep}</Text>
+          </div>
+        );
+      },
+    },
+    {
+      title: '更新时间',
+      key: 'updatedAt',
+      width: 180,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
-          <Text>{record.smtpHost ? `${record.smtpHost}:${record.smtpPort || 25}` : '默认监听 0.0.0.0:2525'}</Text>
-          <Text type="secondary">最近更新：{formatDateTime(record.updatedAt || record.createdAt)}</Text>
-        </Space>
+        <Text type="secondary">{formatDateTime(record.updatedAt || record.createdAt)}</Text>
       ),
     },
     {
       title: '操作',
       key: 'actions',
-      width: 180,
+      width: 240,
       render: (_, record) => (
-        <Space>
+        <div className="domain-action-group">
+          <Button type="primary" ghost icon={<ThunderboltOutlined />} onClick={() => onDetectDns(record.id)}>
+            检测 DNS
+          </Button>
           <Button type="link" icon={<EyeOutlined />} onClick={() => onOpenDetail(record.id)}>
-            查看指引
+            查看配置
+          </Button>
+          <Button type="link" onClick={() => onCreateMailbox(record.id)}>
+            创建邮箱
           </Button>
           <Popconfirm title="确认删除该域名？" onConfirm={() => onDeleteDomain(record.id)}>
             <Button danger type="text" icon={<DeleteOutlined />}>
               删除
             </Button>
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ];
@@ -66,17 +108,22 @@ function createDomainColumns({ formatDateTime, onOpenDetail, onDeleteDomain }) {
 
 export default function DomainTableSection({
   domains,
+  domainDnsStatus,
   formatDateTime,
   onCreateDomain,
+  onCreateMailbox,
   onDeleteDomain,
+  onDetectDns,
   onOpenDetail,
 }) {
   const columns = createDomainColumns({
+    domainDnsStatus,
     formatDateTime,
+    onCreateMailbox,
+    onDetectDns,
     onOpenDetail,
     onDeleteDomain,
   });
-
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Card className="section-intro-card">
@@ -87,7 +134,7 @@ export default function DomainTableSection({
                 域名管理
               </Title>
               <Text type="secondary">
-                先添加域名，再进入详情查看通用 DNS 建议记录与后续配置步骤。
+                只保留域名状态、最近更新时间和常用操作。
               </Text>
             </Space>
           </Col>
@@ -100,18 +147,11 @@ export default function DomainTableSection({
       </Card>
 
       <Card>
-        <Alert
-          type="info"
-          showIcon
-          className="table-top-alert"
-          message="建议流程：添加域名 → 查看 DNS 指引 → 完成记录配置 → 创建邮箱"
-          description="DNS 托管在 Cloudflare、阿里云、腾讯云或其他平台时，都应在各自的 DNS 面板完成邮件记录配置。"
-        />
         <Table
           rowKey="id"
           columns={columns}
           dataSource={domains}
-          locale={{ emptyText: '暂无域名，请先添加一个收件域名开始配置流程。' }}
+          locale={{ emptyText: '暂无域名，先添加一个域名。' }}
           pagination={false}
         />
       </Card>

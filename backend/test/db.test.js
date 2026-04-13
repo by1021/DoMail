@@ -35,7 +35,7 @@ test('db module can create domain, mailbox and persist message details', async (
     });
 
     assert.equal(domain.domain, 'example.com');
-    assert.equal(domain.isActive, true);
+    assert.equal(domain.isActive, false);
 
     const mailbox = dbModule.createMailbox({
       domainId: domain.id,
@@ -123,7 +123,7 @@ test('db module enforces missing domain validation for mailbox creation', async 
   }
 });
 
-test('db module stores generic dns guidance records without forcing cloudflare-specific mx target', async () => {
+test('db module stores minimal dns guidance records without forcing cloudflare-specific mx target', async () => {
   const tempDir = createTempWorkspace();
   let dbModule;
 
@@ -139,10 +139,10 @@ test('db module stores generic dns guidance records without forcing cloudflare-s
     assert.equal(domain.domain, 'mail.example.com');
     assert.equal(
       domain.setupNote,
-      '请先确认当前域名的 DNS 托管商，再把 MX、SPF、DKIM、DMARC 等记录补充到对应 DNS 面板中；MX 记录应指向你自己的收件主机。',
+      '请先确认当前域名的 DNS 托管商，再补充最小收件记录；最少只需完成 MX 和邮件主机解析。',
     );
     assert.equal(Array.isArray(domain.dnsRecords), true);
-    assert.equal(domain.dnsRecords.length >= 4, true);
+    assert.equal(domain.dnsRecords.length, 1);
     assert.equal(domain.setupNote.includes('Cloudflare'), false);
 
     const mxRecord = domain.dnsRecords.find((record) => record.type === 'MX');
@@ -153,26 +153,80 @@ test('db module stores generic dns guidance records without forcing cloudflare-s
     assert.equal(mxRecord.note.includes('自己的收件主机'), true);
 
     const spfRecord = domain.dnsRecords.find((record) => record.type === 'TXT' && String(record.value).includes('v=spf1'));
-    assert.ok(spfRecord);
-    assert.equal(spfRecord.value.includes('_spf.mx.cloudflare.net'), false);
-    assert.equal(spfRecord.note.includes('按实际发信源调整'), true);
-
-    assert.equal(domain.dnsRecords.some((record) => String(record.name).includes('_dmarc')), true);
+    assert.equal(spfRecord, undefined);
+    assert.equal(domain.dnsRecords.some((record) => String(record.name).includes('_dmarc')), false);
 
     const listed = dbModule.listDomains();
     assert.equal(listed.length, 1);
-    assert.equal(listed[0].dnsRecords.length >= 4, true);
+    assert.equal(listed[0].dnsRecords.length, 1);
     assert.equal(listed[0].dnsRecords.find((record) => record.type === 'MX')?.value, 'mail.example.com');
     assert.equal(listed[0].setupNote.includes('Cloudflare'), false);
 
     const lookedUp = dbModule.getDomainById(domain.id);
     assert.equal(
       lookedUp.setupNote,
-      '请先确认当前域名的 DNS 托管商，再把 MX、SPF、DKIM、DMARC 等记录补充到对应 DNS 面板中；MX 记录应指向你自己的收件主机。',
+      '请先确认当前域名的 DNS 托管商，再补充最小收件记录；最少只需完成 MX 和邮件主机解析。',
     );
     assert.equal(lookedUp.dnsRecords[0].type, 'MX');
     assert.equal(lookedUp.dnsRecords[0].value, 'mail.example.com');
   } finally {
+    dbModule?.db.close();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('db module reads server ip and mx host guidance from environment variables', async () => {
+  const tempDir = createTempWorkspace();
+  let dbModule;
+  const previousMailServerIp = process.env.MAIL_SERVER_IP;
+  const previousMailMxHost = process.env.MAIL_MX_HOST;
+
+  process.env.MAIL_SERVER_IP = '203.0.113.10';
+  process.env.MAIL_MX_HOST = 'mx.example.com';
+
+  try {
+    dbModule = await loadDbModule(tempDir);
+    const domain = dbModule.createDomain({
+      domain: 'example.com',
+      smtpHost: '0.0.0.0',
+      smtpPort: 2525,
+      serverIp: '203.0.113.20',
+      mxHost: 'mx-ignored.example.com',
+      note: 'mx from env',
+    });
+
+    assert.equal(domain.serverIp, '203.0.113.10');
+    assert.equal(domain.mxHost, 'mx.example.com');
+    assert.equal(domain.dnsRecords.length, 2);
+
+    const aRecord = domain.dnsRecords.find((record) => record.type === 'A' && record.name === 'mx');
+    assert.ok(aRecord);
+    assert.equal(aRecord.value, '203.0.113.10');
+    assert.equal(aRecord.note.includes('服务器 IP'), true);
+
+    const mxRecord = domain.dnsRecords.find((record) => record.type === 'MX');
+    assert.ok(mxRecord);
+    assert.equal(mxRecord.value, 'mx.example.com');
+    assert.equal(mxRecord.note.includes('主机名'), true);
+
+    const lookedUp = dbModule.getDomainById(domain.id);
+    assert.equal(lookedUp.serverIp, '203.0.113.10');
+    assert.equal(lookedUp.mxHost, 'mx.example.com');
+    assert.equal(lookedUp.dnsRecords.find((record) => record.type === 'A' && record.name === 'mx')?.value, '203.0.113.10');
+    assert.equal(lookedUp.dnsRecords.find((record) => record.type === 'MX')?.value, 'mx.example.com');
+  } finally {
+    if (previousMailServerIp === undefined) {
+      delete process.env.MAIL_SERVER_IP;
+    } else {
+      process.env.MAIL_SERVER_IP = previousMailServerIp;
+    }
+
+    if (previousMailMxHost === undefined) {
+      delete process.env.MAIL_MX_HOST;
+    } else {
+      process.env.MAIL_MX_HOST = previousMailMxHost;
+    }
+
     dbModule?.db.close();
     fs.rmSync(tempDir, { recursive: true, force: true });
   }

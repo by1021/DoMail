@@ -28,7 +28,6 @@ import {
   AppstoreOutlined,
   DeleteOutlined,
   GlobalOutlined,
-  EyeOutlined,
   InboxOutlined,
   MailOutlined,
   PlusOutlined,
@@ -42,6 +41,7 @@ import {
   deleteDomain,
   deleteMailbox,
   deleteMessage,
+  detectDomainDns,
   extractErrorMessage,
   getDomainDetail,
   getDomains,
@@ -58,6 +58,7 @@ import DomainDetailDrawer from './components/DomainDetailDrawer.jsx';
 import MailboxCreateModal from './components/MailboxCreateModal.jsx';
 import OverviewSection from './components/OverviewSection.jsx';
 import MessageDetailDrawer from './components/MessageDetailDrawer.jsx';
+import MessagePreviewCard from './components/MessagePreviewCard.jsx';
 import {
   buildHealthItems,
   buildSummaryCards,
@@ -124,67 +125,13 @@ const SECTION_META = {
   },
   messages: {
     title: '邮件',
-    description: '集中处理邮件列表与详情',
+    description: '按邮箱查看邮件并快速处理未读内容',
   },
   api: {
     title: 'API',
     description: '查看接口规划与联调参考',
   },
 };
-
-function MessagePreview({ item, onOpen, onDelete }) {
-  return (
-    <Card className="message-preview-card" hoverable onClick={() => onOpen(item.id)}>
-      <Space direction="vertical" size={10} style={{ width: '100%' }}>
-        <div className="message-preview-header">
-          <Space wrap>
-            <Text strong>{item.subject || '(no subject)'}</Text>
-            {!item.isRead && <Tag color="blue">未读</Tag>}
-            {item.attachmentCount > 0 && <Tag color="purple">{item.attachmentCount} 个附件</Tag>}
-          </Space>
-          <Text type="secondary">{formatDateTime(item.receivedAt)}</Text>
-        </div>
-
-        <div className="message-preview-meta">
-          <Text type="secondary">发件人：{item.fromAddress || item.envelopeFrom || '-'}</Text>
-          <Text type="secondary">收件人：{item.envelopeTo || '-'}</Text>
-        </div>
-
-        <Space wrap>
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            style={{ paddingInline: 0 }}
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen(item.id);
-            }}
-          >
-            查看详情
-          </Button>
-          <Popconfirm
-            title="确认删除这封邮件？"
-            onConfirm={(event) => {
-              event?.stopPropagation?.();
-              onDelete(item.id);
-            }}
-            onCancel={(event) => event?.stopPropagation?.()}
-          >
-            <Button
-              danger
-              type="link"
-              icon={<DeleteOutlined />}
-              style={{ paddingInline: 0 }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              删除邮件
-            </Button>
-          </Popconfirm>
-        </Space>
-      </Space>
-    </Card>
-  );
-}
 
 export default function App({ adminProfile = null, onLogout = null }) {
   const { message } = AntdApp.useApp();
@@ -200,6 +147,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [domainModalOpen, setDomainModalOpen] = useState(false);
   const [domainDrawerOpen, setDomainDrawerOpen] = useState(false);
   const [domainDetail, setDomainDetail] = useState(null);
+  const [domainDnsStatus, setDomainDnsStatus] = useState({});
   const [mailboxModalOpen, setMailboxModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -351,17 +299,24 @@ export default function App({ adminProfile = null, onLogout = null }) {
   async function handleCreateDomain(values) {
     try {
       setSubmitting(true);
-      await createDomain({
+      const createdResponse = await createDomain({
         domain: values.domain,
         smtpHost: values.smtpHost || null,
         smtpPort: values.smtpPort ? Number(values.smtpPort) : null,
         note: values.note || '',
         setupNote: values.setupNote || '',
       });
-      message.success('域名已创建');
+      const createdDomain = createdResponse?.item ?? null;
+
+      await loadData();
+
+      if (createdDomain?.id) {
+        await handleDetectDomainDns(createdDomain.id, { silent: true });
+      }
+
+      message.success('域名已创建，已自动开始检测 MX 记录');
       setDomainModalOpen(false);
       domainForm.resetFields();
-      await loadData();
     } catch (error) {
       message.error(extractErrorMessage(error, '创建域名失败'));
     } finally {
@@ -369,11 +324,57 @@ export default function App({ adminProfile = null, onLogout = null }) {
     }
   }
 
+  async function handleDetectDomainDns(domainId, options = {}) {
+    try {
+      const response = await detectDomainDns(domainId);
+      const nextStatus = response.item ?? null;
+
+      setDomainDnsStatus((current) => ({
+        ...current,
+        [domainId]: nextStatus,
+      }));
+
+      if (options.syncDetail && domainDetail?.id === domainId && nextStatus) {
+        setDomainDetail((current) => (
+          current
+            ? {
+                ...current,
+                dnsCheck: nextStatus,
+              }
+            : current
+        ));
+      }
+
+      if (!options.silent) {
+        message.success(nextStatus?.summary || 'DNS 检测已完成');
+      }
+
+      return nextStatus;
+    } catch (error) {
+      if (!options.silent) {
+        message.error(extractErrorMessage(error, '检测 DNS 状态失败'));
+      }
+      return null;
+    }
+  }
+
   async function handleOpenDomainDetail(domainId) {
     try {
       setLoading(true);
-      const response = await getDomainDetail(domainId);
-      setDomainDetail(response.item);
+      const [detailResponse, dnsResponse] = await Promise.all([
+        getDomainDetail(domainId),
+        detectDomainDns(domainId),
+      ]);
+      const nextDnsCheck = dnsResponse.item ?? null;
+
+      setDomainDnsStatus((current) => ({
+        ...current,
+        [domainId]: nextDnsCheck,
+      }));
+      setDomainDetail({
+        ...detailResponse.item,
+        dnsCheck: nextDnsCheck,
+      });
       setDomainDrawerOpen(true);
     } catch (error) {
       message.error(extractErrorMessage(error, '加载域名详情失败'));
@@ -484,9 +485,6 @@ export default function App({ adminProfile = null, onLogout = null }) {
       await updateMailboxRetention(selectedMailboxId, payload);
       message.success(payload.retentionValue ? '自动清理设置已更新' : '已关闭自动清理');
       await loadData();
-      if (selectedMailboxId) {
-        await loadMessages(selectedMailboxId, true);
-      }
     } catch (error) {
       message.error(extractErrorMessage(error, '更新自动清理设置失败'));
     }
@@ -660,10 +658,13 @@ export default function App({ adminProfile = null, onLogout = null }) {
             {section === 'domains' && (
               <DomainTableSection
                 domains={filteredDomains}
+                domainDnsStatus={domainDnsStatus}
                 formatDateTime={formatDateTime}
                 onCreateDomain={() => setDomainModalOpen(true)}
                 onDeleteDomain={handleDeleteDomain}
+                onDetectDns={handleDetectDomainDns}
                 onOpenDetail={handleOpenDomainDetail}
+                onCreateMailbox={() => openMailboxModal({ random: false })}
               />
             )}
 
@@ -707,12 +708,22 @@ export default function App({ adminProfile = null, onLogout = null }) {
             )}
 
             {section === 'messages' && (
-              <Row gutter={[16, 16]}>
-                <Col xs={24} xl={9}>
-                  <Card
-                    title="邮件列表"
-                    extra={
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Card className="section-intro-card">
+                  <Row justify="space-between" align="middle" gutter={[16, 16]}>
+                    <Col flex="auto">
+                      <Space direction="vertical" size={4}>
+                        <Title level={4} style={{ margin: 0 }}>
+                          邮件收件区
+                        </Title>
+                        <Text type="secondary">
+                          选择邮箱后集中查看最新邮件，常用操作都放在当前页完成。
+                        </Text>
+                      </Space>
+                    </Col>
+                    <Col>
                       <Select
+                        aria-label="选择邮箱"
                         value={selectedMailboxId}
                         onChange={(value) => loadMessages(value, true)}
                         className="mailbox-selector"
@@ -722,53 +733,82 @@ export default function App({ adminProfile = null, onLogout = null }) {
                           value: item.id,
                         }))}
                       />
-                    }
-                  >
-                    {filteredMessages.length === 0 ? (
-                      <Empty description="当前还没有收件记录" />
-                    ) : (
-                      <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                        {filteredMessages.map((item) => (
-                          <MessagePreview
-                            key={item.id}
-                            item={item}
-                            onOpen={handleOpenMessageDetail}
-                            onDelete={handleDeleteMessage}
-                          />
-                        ))}
-                      </Space>
-                    )}
-                  </Card>
-                </Col>
+                    </Col>
+                  </Row>
+                </Card>
 
-                <Col xs={24} xl={15}>
-                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <Card title="当前邮箱">
+                <Card
+                  title="邮件收件区"
+                  extra={<Tag color={unreadCount ? 'error' : 'success'}>{unreadCount} 未读</Tag>}
+                >
+                  {filteredMessages.length === 0 ? (
+                    <Empty description="当前还没有收件记录" />
+                  ) : (
+                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                      {filteredMessages.map((item) => (
+                        <MessagePreviewCard
+                          key={item.id}
+                          item={item}
+                          formatDateTime={formatDateTime}
+                          onOpen={handleOpenMessageDetail}
+                          onDelete={handleDeleteMessage}
+                          confirmDelete
+                        />
+                      ))}
+                    </Space>
+                  )}
+                </Card>
+
+                <Row gutter={[16, 16]} align="top">
+                  <Col xs={24} xl={14}>
+                    <Card title="当前邮箱概况">
                       {selectedMailbox ? (
-                        <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                          <Descriptions column={1} className="mailbox-info">
+                        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                          <Descriptions column={1} className="mailbox-info" size="small">
                             <Descriptions.Item label="邮箱地址">{selectedMailbox.address}</Descriptions.Item>
                             <Descriptions.Item label="所属域名">{selectedMailbox.domain}</Descriptions.Item>
                             <Descriptions.Item label="创建方式">{selectedMailbox.source}</Descriptions.Item>
-                            <Descriptions.Item label="邮件数量">{selectedMailbox.messageCount}</Descriptions.Item>
                             <Descriptions.Item label="最近收件">
                               {formatDateTime(selectedMailbox.latestReceivedAt)}
                             </Descriptions.Item>
                             <Descriptions.Item label="自动清理">{getRetentionLabel(selectedMailbox)}</Descriptions.Item>
                           </Descriptions>
 
-                          <Divider style={{ margin: 0 }} />
-
-                          <div>
-                            <Text strong style={{ display: 'block', marginBottom: 12 }}>
-                              自动清理设置
+                          <div className="message-summary-panel">
+                            <Text strong className="message-summary-line">
+                              当前 {messages.length} 封邮件，未读 {unreadCount} 封。
                             </Text>
-                            <Form
-                              form={retentionForm}
-                              layout="inline"
-                              onFinish={handleUpdateRetention}
-                              initialValues={{ retentionValue: null, retentionUnit: 'hour' }}
-                            >
+                            <List
+                              split={false}
+                              dataSource={[
+                                '点击邮件卡片可查看详情，并自动标记已读。',
+                                '不需要的邮件可直接删除。',
+                              ]}
+                              renderItem={(item) => <List.Item className="message-tip-item">{item}</List.Item>}
+                            />
+                          </div>
+                        </Space>
+                      ) : (
+                        <Empty description="请先创建邮箱" />
+                      )}
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} xl={10}>
+                    <Card title="当前邮箱设置">
+                      {selectedMailbox ? (
+                        <div>
+                          <Text strong style={{ display: 'block', marginBottom: 12 }}>
+                            自动清理设置
+                          </Text>
+                          <Form
+                            form={retentionForm}
+                            layout="vertical"
+                            onFinish={handleUpdateRetention}
+                            initialValues={{ retentionValue: null, retentionUnit: 'hour' }}
+                            className="retention-form"
+                          >
+                            <Space wrap align="start">
                               <Form.Item name="retentionValue">
                                 <Input
                                   aria-label="自动清理时长"
@@ -803,28 +843,16 @@ export default function App({ adminProfile = null, onLogout = null }) {
                                   关闭自动清理
                                 </Button>
                               </Form.Item>
-                            </Form>
-                          </div>
-                        </Space>
+                            </Space>
+                          </Form>
+                        </div>
                       ) : (
                         <Empty description="请先创建邮箱" />
                       )}
                     </Card>
-
-                    <Card title="处理提示" extra={<Tag color={unreadCount ? 'error' : 'success'}>{unreadCount} 未读</Tag>}>
-                      <List
-                        split={false}
-                        dataSource={[
-                          `当前邮箱共有 ${messages.length} 封邮件，未读 ${unreadCount} 封。`,
-                          '点击任意邮件卡片可打开详情抽屉并自动标记为已读。',
-                          '邮件支持手动删除，自动清理可按小时或天设置。',
-                        ]}
-                        renderItem={(item) => <List.Item className="message-tip-item">{item}</List.Item>}
-                      />
-                    </Card>
-                  </Space>
-                </Col>
-              </Row>
+                  </Col>
+                </Row>
+              </Space>
             )}
 
             {section === 'api' && (
@@ -898,6 +926,14 @@ export default function App({ adminProfile = null, onLogout = null }) {
         open={domainDrawerOpen}
         domainDetail={domainDetail}
         onClose={() => setDomainDrawerOpen(false)}
+        onDetectDns={handleDetectDomainDns}
+        onCreateMailbox={() => {
+          setDomainDrawerOpen(false);
+          openMailboxModal({
+            random: false,
+            domainId: domainDetail?.id,
+          });
+        }}
         formatDateTime={formatDateTime}
       />
 

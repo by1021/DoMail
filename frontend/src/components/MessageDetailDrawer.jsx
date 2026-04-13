@@ -1,6 +1,8 @@
 import React from 'react';
-import { Button, Card, Descriptions, Drawer, Empty, List, Popconfirm, Space } from 'antd';
+import { Button, Card, Descriptions, Drawer, Empty, List, Popconfirm, Space, Tag, Typography } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
 
 export default function MessageDetailDrawer({
   open,
@@ -12,7 +14,7 @@ export default function MessageDetailDrawer({
   return (
     <Drawer
       title="邮件详情"
-      width={760}
+      width="min(1280px, 92vw)"
       open={open}
       onClose={onClose}
       extra={
@@ -27,27 +29,39 @@ export default function MessageDetailDrawer({
     >
       {messageDetail ? (
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Descriptions column={1} size="small" bordered>
-            <Descriptions.Item label="主题">{messageDetail.subject || '(no subject)'}</Descriptions.Item>
-            <Descriptions.Item label="发件人">
-              {messageDetail.fromName
-                ? `${messageDetail.fromName} <${messageDetail.fromAddress || '-'}>`
-                : messageDetail.fromAddress || messageDetail.envelopeFrom || '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="收件邮箱">{messageDetail.address}</Descriptions.Item>
-            <Descriptions.Item label="Envelope To">{messageDetail.envelopeTo || '-'}</Descriptions.Item>
-            <Descriptions.Item label="接收时间">
-              {formatDateTime(messageDetail.receivedAt)}
-            </Descriptions.Item>
-            <Descriptions.Item label="原始大小">{messageDetail.rawSize || 0} bytes</Descriptions.Item>
-            <Descriptions.Item label="附件数量">{messageDetail.attachmentCount}</Descriptions.Item>
-          </Descriptions>
+          <Card className="message-detail-hero">
+            <Space direction="vertical" size={10} style={{ width: '100%' }}>
+              <Space wrap>
+                <Text strong>{messageDetail.subject || '(no subject)'}</Text>
+                <Tag color={messageDetail.isRead ? 'default' : 'blue'}>
+                  {messageDetail.isRead ? '已读' : '未读'}
+                </Tag>
+                <Tag color="purple">{messageDetail.attachmentCount || 0} 个附件</Tag>
+              </Space>
+              <Text type="secondary">
+                发件人：
+                {messageDetail.fromName
+                  ? `${messageDetail.fromName} <${messageDetail.fromAddress || '-'}>`
+                  : messageDetail.fromAddress || messageDetail.envelopeFrom || '-'}
+              </Text>
+              <Text type="secondary">接收时间：{formatDateTime(messageDetail.receivedAt)}</Text>
+            </Space>
+          </Card>
 
-          <Card title="正文（Text）">
+          <Card title="基础信息">
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="收件邮箱">{messageDetail.address}</Descriptions.Item>
+              <Descriptions.Item label="Envelope To">{messageDetail.envelopeTo || '-'}</Descriptions.Item>
+              <Descriptions.Item label="原始大小">{messageDetail.rawSize || 0} bytes</Descriptions.Item>
+              <Descriptions.Item label="附件数量">{messageDetail.attachmentCount}</Descriptions.Item>
+            </Descriptions>
+          </Card>
+
+          <Card title="正文">
             <pre className="message-code-block">{messageDetail.text || '(empty)'}</pre>
           </Card>
 
-          <Card title="HTML 预览源码">
+          <Card title="HTML 源码">
             <pre className="message-code-block">{messageDetail.html || '(empty)'}</pre>
           </Card>
 

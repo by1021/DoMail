@@ -10,6 +10,7 @@ vi.mock('./api.js', () => ({
   deleteDomain: vi.fn(),
   deleteMailbox: vi.fn(),
   deleteMessage: vi.fn(),
+  detectDomainDns: vi.fn(),
   extractErrorMessage: vi.fn((error, fallback = '请求失败') => error?.message || fallback),
   getDomainDetail: vi.fn(),
   getDomains: vi.fn(),
@@ -22,7 +23,9 @@ vi.mock('./api.js', () => ({
 }));
 
 import {
+  createDomain,
   deleteMessage,
+  detectDomainDns,
   getDomainDetail,
   getDomains,
   getHealth,
@@ -100,6 +103,40 @@ describe('App', () => {
           receivedAt: '2026-04-10T07:00:00.000Z',
         },
       ],
+    });
+    detectDomainDns.mockResolvedValue({
+      ok: true,
+      item: {
+        domain: 'example.com',
+        status: 'ready',
+        summary: 'MX 记录检测成功，域名已启用并可用于收件。',
+        nextStep: '现在可以创建邮箱并发送测试邮件。',
+        checkedAt: '2026-04-10T07:05:00.000Z',
+        canEnable: true,
+        isActive: true,
+        requiredRecords: [
+          {
+            type: 'MX',
+            name: '@',
+            expectedValue: 'mx.example.com',
+            matched: true,
+          },
+          {
+            type: 'A',
+            name: 'mx',
+            expectedValue: '203.0.113.10',
+            matched: true,
+          },
+        ],
+        optionalRecords: [
+          {
+            type: 'TXT',
+            name: '@',
+            expectedValue: 'v=spf1 mx ~all',
+            matched: false,
+          },
+        ],
+      },
     });
   });
 
@@ -210,8 +247,10 @@ describe('App', () => {
       expect(screen.getByRole('heading', { name: '邮件' })).toBeInTheDocument();
     });
 
-    expect(screen.getByText('集中处理邮件列表与详情')).toBeInTheDocument();
-    expect(screen.getByText('邮件列表')).toBeInTheDocument();
+    expect(screen.getByText('按邮箱查看邮件并快速处理未读内容')).toBeInTheDocument();
+    expect(screen.getAllByText('邮件收件区').length).toBeGreaterThan(0);
+    expect(screen.getByText('当前邮箱概况')).toBeInTheDocument();
+    expect(screen.getByText('当前邮箱设置')).toBeInTheDocument();
   });
 
   it('keeps the selected sidebar navigation item accessible after section switching', async () => {
@@ -243,7 +282,7 @@ describe('App', () => {
     expect(mailboxNav).not.toBeChecked();
 
     await waitFor(() => {
-      expect(screen.getByText('邮件列表')).toBeInTheDocument();
+      expect(screen.getByText('当前邮箱概况')).toBeInTheDocument();
     });
   });
 
@@ -264,7 +303,7 @@ describe('App', () => {
     expect(screen.getByText('自定义模式：适合固定用途邮箱')).toBeInTheDocument();
   });
 
-  it('renders mailbox retention setting in messages section', async () => {
+  it('renders simplified message workspace with mailbox summary and retention tools', async () => {
     renderApp();
 
     await waitFor(() => {
@@ -275,9 +314,13 @@ describe('App', () => {
     fireEvent.click(messageNav);
 
     await waitFor(() => {
-      expect(screen.getByText('当前邮箱')).toBeInTheDocument();
+      expect(screen.getByText('当前邮箱概况')).toBeInTheDocument();
     });
 
+    expect(screen.getAllByText('邮件收件区').length).toBeGreaterThan(0);
+    expect(screen.getByText('当前邮箱设置')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '选择邮箱' })).toBeInTheDocument();
+    expect(screen.getByText('当前 1 封邮件，未读 1 封。')).toBeInTheDocument();
     expect(screen.getByText('自动清理设置')).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '自动清理时长' })).toHaveValue(24);
     expect(screen.getByRole('combobox', { name: '自动清理单位' })).toBeInTheDocument();
@@ -302,8 +345,18 @@ describe('App', () => {
     expect(overviewNav).not.toBeChecked();
 
     await waitFor(() => {
-      expect(screen.getByText('建议流程：添加域名 → 查看 DNS 指引 → 完成记录配置 → 创建邮箱')).toBeInTheDocument();
+      expect(screen.getByText('域名管理')).toBeInTheDocument();
     });
+
+    expect(screen.queryByText('域名概览')).not.toBeInTheDocument();
+    expect(screen.queryByText('先看状态，再决定下一步操作。')).not.toBeInTheDocument();
+    expect(screen.queryByText('主流程：添加域名 → 检测 DNS → 查看配置 → 创建邮箱')).not.toBeInTheDocument();
+    expect(screen.queryByText('当前状态')).not.toBeInTheDocument();
+    expect(screen.queryByText('下一步')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /添加域名/ })).toHaveLength(1);
+    expect(screen.getByText('状态')).toBeInTheDocument();
+    expect(screen.getByText('更新时间')).toBeInTheDocument();
+    expect(screen.getByText('操作')).toBeInTheDocument();
   });
 
   it('keeps a single selected navigation item after switching sidebar items', async () => {
@@ -370,7 +423,7 @@ describe('App', () => {
     expect(getNavOption(/域名/)).not.toHaveClass('nav-option-active');
   });
 
-  it('submits mailbox retention setting and shows delete action in messages section', async () => {
+  it('submits mailbox retention setting and shows compact message actions in messages section', async () => {
     updateMailboxRetention.mockResolvedValue({
       ok: true,
       item: {
@@ -391,7 +444,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText('邮件'));
 
     await waitFor(() => {
-      expect(screen.getByText('自动清理设置')).toBeInTheDocument();
+      expect(screen.getByText('当前邮箱设置')).toBeInTheDocument();
     });
 
     const retentionInput = screen.getByDisplayValue('24');
@@ -406,30 +459,50 @@ describe('App', () => {
     });
 
     expect(screen.getAllByText('删除邮件').length).toBeGreaterThan(0);
+    expect(screen.getByText('当前 1 封邮件，未读 1 封。')).toBeInTheDocument();
+    expect(screen.getByText('当前邮箱设置')).toBeInTheDocument();
   });
-  it('shows generic dns guidance without forcing cloudflare-specific wording', async () => {
+  it('shows simplified domain management flow and generic dns guidance', async () => {
     getDomainDetail.mockResolvedValue({
       item: {
         id: 'domain-1',
         domain: 'example.com',
         note: '主域名',
-        setupNote: '请先确认当前域名的 DNS 托管商，再把 MX、SPF、DKIM、DMARC 等记录补充到对应 DNS 面板中；MX 记录应指向你自己的收件主机。',
+        setupNote: '请先确认当前域名的 DNS 托管商，再补充最小收件记录；最少只需完成 MX 和邮件主机解析。',
         smtpHost: 'mail.example.com',
         smtpPort: 25,
+        serverIp: '203.0.113.10',
+        mxHost: 'mx.example.com',
         dnsRecords: [
+          {
+            type: 'A',
+            name: 'mx',
+            value: '203.0.113.10',
+            status: 'pending',
+            proxied: false,
+            note: '邮件主机需要有可解析的 A 记录，指向你的收件服务器 IP',
+          },
           {
             type: 'MX',
             name: '@',
-            value: 'mail.example.com',
+            value: 'mx.example.com',
             priority: 10,
             status: 'pending',
             proxied: false,
-            note: '接收 example.com 的入站邮件，MX 应指向你自己的收件主机',
+            note: '接收 example.com 的入站邮件，MX 应指向你自己的收件主机名',
           },
         ],
         createdAt: '2026-04-10T07:00:00.000Z',
         updatedAt: '2026-04-10T07:00:00.000Z',
         isActive: true,
+      },
+    });
+
+    createDomain.mockResolvedValue({
+      ok: true,
+      item: {
+        id: 'domain-2',
+        domain: 'demo.example.com',
       },
     });
 
@@ -442,31 +515,64 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /添加域名/ })[0]);
 
     await waitFor(() => {
-      expect(screen.getByText('添加后再配置 DNS')).toBeInTheDocument();
+      expect(screen.getByText('先添加域名，系统会给出下一步配置建议')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('系统会自动生成通用邮件记录建议')).toBeInTheDocument();
-    expect(
-      screen.getByText('无论你使用哪个 DNS 托管商，创建域名后都应按实际收件服务补充 MX、SPF、DKIM、DMARC 等记录。'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('只需要填写域名，邮件服务器 IP 与 MX 记录会由后端环境变量统一生成。')).toBeInTheDocument();
+    expect(screen.queryByLabelText('服务器 IP（可选）')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('MX 主机名（可选）')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('SMTP Host')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('SMTP Port')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.change(screen.getByPlaceholderText('example.com'), {
+      target: { value: 'demo.example.com' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => {
+      expect(createDomain).toHaveBeenCalledWith({
+        domain: 'demo.example.com',
+        smtpHost: null,
+        smtpPort: null,
+        note: '',
+        setupNote: '',
+      });
+    });
+
+    await waitFor(() => {
+      expect(detectDomainDns).toHaveBeenCalledWith('domain-2');
+    });
+
     fireEvent.click(screen.getByRole('radio', { name: /域名/ }));
 
     await waitFor(() => {
-      expect(screen.getByText('建议流程：添加域名 → 查看 DNS 指引 → 完成记录配置 → 创建邮箱')).toBeInTheDocument();
+      expect(screen.getByText('域名管理')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /查看指引/ }));
+    expect(screen.queryByText('域名概览')).not.toBeInTheDocument();
+    expect(screen.queryByText('主流程：添加域名 → 检测 DNS → 查看配置 → 创建邮箱')).not.toBeInTheDocument();
+    expect(screen.getByText('example.com')).toBeInTheDocument();
+    expect(screen.getByText('状态')).toBeInTheDocument();
+    expect(screen.getByText('更新时间')).toBeInTheDocument();
+    expect(screen.getByText('操作')).toBeInTheDocument();
+    expect(screen.getByText('检测 DNS')).toBeInTheDocument();
+    expect(screen.queryByText('DNS 已基本可用，下一步可以直接创建邮箱验证收件。')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /查看配置/ }));
 
     await waitFor(() => {
-      expect(screen.getByText('下一步操作')).toBeInTheDocument();
+      expect(screen.getByText('最小必需记录')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('这里展示的是通用 DNS 配置指引，不限定某个 DNS 服务商。')).toBeInTheDocument();
-    expect(screen.getByText('请先确认当前域名的 DNS 托管位置，再到对应面板补充邮件记录。')).toBeInTheDocument();
-    expect(screen.getByText('请把 MX、SPF、DKIM、DMARC 等记录补充到当前 DNS 托管商中，记录值应以你的收件服务为准。')).toBeInTheDocument();
-    expect(screen.getByText('mail.example.com')).toBeInTheDocument();
+    expect(screen.queryByText('推荐下一步')).not.toBeInTheDocument();
+    expect(screen.queryByText('可选增强记录')).not.toBeInTheDocument();
+    expect(screen.queryByText('最近检测状态')).not.toBeInTheDocument();
+    expect(screen.getByText('当前状态')).toBeInTheDocument();
+    expect(screen.getAllByText('已可收件').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('请先确认当前域名的 DNS 托管商，再补充最小收件记录；最少只需完成 MX 和邮件主机解析。').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('203.0.113.10').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('mx.example.com').length).toBeGreaterThan(0);
     expect(screen.queryByText('route1.mx.cloudflare.net')).not.toBeInTheDocument();
     expect(screen.queryByText(/Cloudflare DNS 指引/)).not.toBeInTheDocument();
   });
@@ -522,7 +628,7 @@ describe('App', () => {
     fireEvent.click(screen.getByText('邮件'));
 
     await waitFor(() => {
-      expect(screen.getByText('邮件列表')).toBeInTheDocument();
+      expect(screen.getByText('当前邮箱概况')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getAllByRole('button', { name: /查看详情/ })[0]);
@@ -531,10 +637,14 @@ describe('App', () => {
       expect(screen.getByText('邮件详情')).toBeInTheDocument();
     });
 
+    const drawer = document.querySelector('.ant-drawer');
+    expect(drawer?.querySelector('.ant-drawer-content-wrapper')).not.toBeNull();
+
     expect(getMessageDetail).toHaveBeenCalledWith('message-1');
     expect(markMessageRead).toHaveBeenCalledWith('message-1');
-    expect(screen.getByText('正文（Text）')).toBeInTheDocument();
-    expect(screen.getByText('HTML 预览源码')).toBeInTheDocument();
+    expect(screen.getAllByText('基础信息').length).toBeGreaterThan(0);
+    expect(screen.getByText('正文')).toBeInTheDocument();
+    expect(screen.getByText('HTML 源码')).toBeInTheDocument();
     expect(screen.getByText('plain text body')).toBeInTheDocument();
     expect(screen.getByText('无附件')).toBeInTheDocument();
   });

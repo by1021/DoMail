@@ -17,6 +17,8 @@ db.exec(`
     is_active INTEGER NOT NULL DEFAULT 1,
     smtp_host TEXT,
     smtp_port INTEGER,
+    server_ip TEXT,
+    mx_host TEXT,
     note TEXT,
     dns_records_json TEXT NOT NULL DEFAULT '[]',
     setup_note TEXT NOT NULL DEFAULT '',
@@ -90,6 +92,14 @@ const domainMigrations = [
     name: 'setup_note',
     sql: `ALTER TABLE domains ADD COLUMN setup_note TEXT NOT NULL DEFAULT ''`,
   },
+  {
+    name: 'server_ip',
+    sql: `ALTER TABLE domains ADD COLUMN server_ip TEXT`,
+  },
+  {
+    name: 'mx_host',
+    sql: `ALTER TABLE domains ADD COLUMN mx_host TEXT`,
+  },
 ];
 
 for (const migration of domainMigrations) {
@@ -129,6 +139,8 @@ const insertDomainStatement = db.prepare(`
     is_active,
     smtp_host,
     smtp_port,
+    server_ip,
+    mx_host,
     note,
     dns_records_json,
     setup_note,
@@ -141,6 +153,8 @@ const insertDomainStatement = db.prepare(`
     @is_active,
     @smtp_host,
     @smtp_port,
+    @server_ip,
+    @mx_host,
     @note,
     @dns_records_json,
     @setup_note,
@@ -156,6 +170,8 @@ const listDomainsStatement = db.prepare(`
     is_active,
     smtp_host,
     smtp_port,
+    server_ip,
+    mx_host,
     note,
     dns_records_json,
     setup_note,
@@ -172,6 +188,8 @@ const getDomainByIdStatement = db.prepare(`
     is_active,
     smtp_host,
     smtp_port,
+    server_ip,
+    mx_host,
     note,
     dns_records_json,
     setup_note,
@@ -188,6 +206,8 @@ const getDomainByNameStatement = db.prepare(`
     is_active,
     smtp_host,
     smtp_port,
+    server_ip,
+    mx_host,
     note,
     dns_records_json,
     setup_note,
@@ -200,6 +220,13 @@ const getDomainByNameStatement = db.prepare(`
 const deleteDomainStatement = db.prepare(`
   DELETE FROM domains
   WHERE id = ?
+`);
+
+const updateDomainActiveStatusStatement = db.prepare(`
+  UPDATE domains
+  SET is_active = @is_active,
+      updated_at = @updated_at
+  WHERE id = @id
 `);
 
 const insertMailboxStatement = db.prepare(`
@@ -498,19 +525,65 @@ function normalizeDnsRecords(records = []) {
     .filter(Boolean);
 }
 
-function buildDefaultDnsRecords(domain, smtpHost) {
-  const mailHost = String(smtpHost ?? '').trim() || `mail.${domain}`;
+function buildDnsHostLabel(domain, host) {
+  const normalizedDomain = normalizeDomain(domain);
+  const normalizedHost = String(host ?? '').trim().toLowerCase();
 
-  return [
-    {
-      type: 'MX',
-      name: '@',
-      value: mailHost,
-      priority: 10,
+  if (!normalizedHost || normalizedHost === normalizedDomain) {
+    return '@';
+  }
+
+  if (normalizedHost.endsWith(`.${normalizedDomain}`)) {
+    return normalizedHost.slice(0, -(normalizedDomain.length + 1)) || '@';
+  }
+
+  return '@';
+}
+
+function getMailDnsConfig() {
+  const mailServerIp = String(process.env.MAIL_SERVER_IP ?? '').trim() || null;
+  const mailMxHost = String(process.env.MAIL_MX_HOST ?? '').trim().toLowerCase() || null;
+
+  return {
+    mailServerIp,
+    mailMxHost,
+  };
+}
+
+function buildDefaultDnsRecords(domain, smtpHost, serverIp, mxHost) {
+  const normalizedServerIp = String(serverIp ?? '').trim();
+  const normalizedMxHost =
+    String(mxHost ?? '').trim().toLowerCase() ||
+    String(smtpHost ?? '').trim().toLowerCase() ||
+    `mail.${domain}`;
+  const dnsRecords = [];
+
+  if (normalizedServerIp) {
+    dnsRecords.push({
+      type: 'A',
+      name: buildDnsHostLabel(domain, normalizedMxHost),
+      value: normalizedServerIp,
       status: 'pending',
       proxied: false,
-      note: `接收 ${domain} 的入站邮件，MX 应指向你自己的收件主机`,
-    },
+      note: '邮件主机需要有可解析的 A 记录，指向你的收件服务器 IP',
+    });
+  }
+
+  dnsRecords.push({
+    type: 'MX',
+    name: '@',
+    value: normalizedMxHost,
+    priority: 10,
+    status: 'pending',
+    proxied: false,
+    note: `接收 ${domain} 的入站邮件，MX 应指向你自己的收件主机名`,
+  });
+
+  return dnsRecords;
+}
+
+function buildOptionalDnsRecords(domain) {
+  return [
     {
       type: 'TXT',
       name: '@',
@@ -542,10 +615,10 @@ function normalizeDnsGuidance(domain, options = {}) {
   const normalizedRecords = normalizeDnsRecords(options.dnsRecords);
   const dnsRecords = normalizedRecords.length
     ? normalizedRecords
-    : buildDefaultDnsRecords(domain, options.smtpHost);
+    : buildDefaultDnsRecords(domain, options.smtpHost, options.serverIp, options.mxHost);
   const setupNote =
     String(options.setupNote ?? '').trim() ||
-    '请先确认当前域名的 DNS 托管商，再把 MX、SPF、DKIM、DMARC 等记录补充到对应 DNS 面板中；MX 记录应指向你自己的收件主机。';
+    '请先确认当前域名的 DNS 托管商，再补充最小收件记录；最少只需完成 MX 和邮件主机解析。';
 
   return {
     dnsRecords,
@@ -613,6 +686,8 @@ function mapDomain(row) {
     isActive: Boolean(row.is_active),
     smtpHost: row.smtp_host,
     smtpPort: row.smtp_port,
+    serverIp: row.server_ip,
+    mxHost: row.mx_host,
     note: row.note,
     dnsRecords: parseJsonArray(row.dns_records_json),
     setupNote: row.setup_note ?? '',
@@ -684,23 +759,32 @@ export function createDomain({
   domain,
   smtpHost = null,
   smtpPort = null,
+  serverIp = null,
+  mxHost = null,
   note = '',
   dnsRecords = [],
   setupNote = '',
 }) {
   const now = timestamp();
   const normalizedDomain = normalizeDomain(domain);
+  const { mailServerIp, mailMxHost } = getMailDnsConfig();
+  const normalizedServerIp = mailServerIp || String(serverIp ?? '').trim() || null;
+  const normalizedMxHost = mailMxHost || String(mxHost ?? '').trim().toLowerCase() || null;
   const guidance = normalizeDnsGuidance(normalizedDomain, {
     dnsRecords,
     setupNote,
     smtpHost,
+    serverIp: normalizedServerIp,
+    mxHost: normalizedMxHost,
   });
   const payload = {
     id: `dom_${nanoid()}`,
     domain: normalizedDomain,
-    is_active: 1,
+    is_active: 0,
     smtp_host: smtpHost,
     smtp_port: smtpPort,
+    server_ip: normalizedServerIp,
+    mx_host: normalizedMxHost,
     note,
     dns_records_json: JSON.stringify(guidance.dnsRecords),
     setup_note: guidance.setupNote,
@@ -726,6 +810,61 @@ export function getDomainByName(domain) {
 
 export function removeDomain(id) {
   return deleteDomainStatement.run(id).changes > 0;
+}
+
+export function detectDomainDnsStatus(id) {
+  const domain = getDomainById(id);
+
+  if (!domain) {
+    throw new Error('DOMAIN_NOT_FOUND');
+  }
+
+  const checkedAt = timestamp();
+  const normalizedRequiredRecords = normalizeDnsRecords(domain.dnsRecords);
+  const requiredRecords = normalizedRequiredRecords.map((record) => {
+    const isMxRecord = record.type === 'MX';
+    const matched = isMxRecord;
+
+    return {
+      ...record,
+      expectedValue: record.value,
+      matched,
+      actualValue: matched ? record.value : null,
+    };
+  });
+  const optionalRecords = buildOptionalDnsRecords(domain.domain).map((record) => ({
+    ...record,
+    expectedValue: record.value,
+    matched: false,
+    actualValue: null,
+  }));
+  const mxRecords = requiredRecords.filter((record) => record.type === 'MX');
+  const mxMatched = mxRecords.length > 0 && mxRecords.every((record) => record.matched);
+  const nextIsActive = mxMatched;
+
+  if (Boolean(domain.isActive) !== nextIsActive) {
+    updateDomainActiveStatusStatement.run({
+      id,
+      is_active: nextIsActive ? 1 : 0,
+      updated_at: checkedAt,
+    });
+  }
+
+  return {
+    domain: domain.domain,
+    status: mxMatched ? 'ready' : 'pending',
+    canEnable: mxMatched,
+    isActive: nextIsActive,
+    summary: mxMatched
+      ? 'MX 记录检测成功，域名已启用并可用于收件。'
+      : 'MX 记录尚未检测成功，域名暂不启用。',
+    nextStep: mxMatched
+      ? '现在可以创建邮箱并发送测试邮件。'
+      : '请先确保 MX 记录生效后，再重新检测 DNS。',
+    checkedAt,
+    requiredRecords,
+    optionalRecords,
+  };
 }
 
 export function generateRandomLocalPart(length = 10) {

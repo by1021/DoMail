@@ -46,6 +46,11 @@ export async function deleteDomain(id) {
   return data;
 }
 
+export async function detectDomainDns(domainId) {
+  const { data } = await api.post(`/domains/${domainId}/detect-dns`);
+  return data;
+}
+
 export async function getMailboxes() {
   const { data } = await api.get('/mailboxes');
   return data;

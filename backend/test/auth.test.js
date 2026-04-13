@@ -94,6 +94,62 @@ test('auth api rejects unauthenticated access to protected endpoints and allows 
     assert.equal(expiredSession.status, 401);
     assert.equal(expiredSession.body.ok, false);
     assert.equal(expiredSession.body.error.code, 'AUTH_REQUIRED');
+
+    const rejectedAfterLogout = await request.post('/api/domains').send({
+      domain: 'example.com',
+      serverIp: '203.0.113.10',
+      mxHost: 'mx.example.com',
+    });
+    assert.equal(rejectedAfterLogout.status, 401);
+    assert.equal(rejectedAfterLogout.body.ok, false);
+    assert.equal(rejectedAfterLogout.body.error.code, 'AUTH_REQUIRED');
+
+    process.env.MAIL_SERVER_IP = '203.0.113.10';
+    process.env.MAIL_MX_HOST = 'mx.example.com';
+
+    const reloginResponse = await request.post('/api/auth/login').send({
+      username: 'admin',
+      password: 'pass123456',
+    });
+    assert.equal(reloginResponse.status, 200);
+    assert.equal(reloginResponse.body.ok, true);
+
+    const createdDomain = await request.post('/api/domains').send({
+      domain: 'example.com',
+      serverIp: '203.0.113.20',
+      mxHost: 'mx-ignored.example.com',
+    });
+    assert.equal(createdDomain.status, 201);
+    assert.equal(createdDomain.body.ok, true);
+    assert.equal(createdDomain.body.item.serverIp, '203.0.113.10');
+    assert.equal(createdDomain.body.item.mxHost, 'mx.example.com');
+    assert.equal(createdDomain.body.item.dnsRecords.length, 2);
+    assert.equal(createdDomain.body.item.isActive, false);
+
+    const detectResponse = await request.post(`/api/domains/${createdDomain.body.item.id}/detect-dns`);
+    assert.equal(detectResponse.status, 200);
+    assert.equal(detectResponse.body.ok, true);
+    assert.equal(detectResponse.body.item.domain, 'example.com');
+    assert.equal(detectResponse.body.item.status, 'ready');
+    assert.equal(detectResponse.body.item.canEnable, true);
+    assert.equal(detectResponse.body.item.isActive, true);
+    assert.equal(Array.isArray(detectResponse.body.item.requiredRecords), true);
+    assert.equal(detectResponse.body.item.requiredRecords.length, 2);
+    assert.equal(Array.isArray(detectResponse.body.item.optionalRecords), true);
+    assert.equal(typeof detectResponse.body.item.summary, 'string');
+    assert.equal(typeof detectResponse.body.item.nextStep, 'string');
+    assert.equal(typeof detectResponse.body.item.checkedAt, 'string');
+
+    const mxRecord = detectResponse.body.item.requiredRecords.find((record) => record.type === 'MX');
+    const aRecord = detectResponse.body.item.requiredRecords.find((record) => record.type === 'A');
+    assert.ok(mxRecord);
+    assert.ok(aRecord);
+    assert.equal(mxRecord.expectedValue, 'mx.example.com');
+    assert.equal(mxRecord.matched, true);
+    assert.equal(mxRecord.actualValue, 'mx.example.com');
+    assert.equal(aRecord.expectedValue, '203.0.113.10');
+    assert.equal(aRecord.matched, false);
+    assert.equal(aRecord.actualValue, null);
   } finally {
     appModule?.restoreEnv?.();
     appModule?.closeBackgroundServices?.();
@@ -141,6 +197,28 @@ test('app creation fails fast when admin auth env is missing', async () => {
     process.env.ADMIN_PASSWORD = previousEnv.ADMIN_PASSWORD;
     process.env.SESSION_SECRET = previousEnv.SESSION_SECRET;
     process.env.NODE_ENV = previousEnv.NODE_ENV;
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('dns detect endpoint requires auth before exposing domain dns status', async () => {
+  const tempDir = createTempWorkspace();
+  let appModule;
+
+  try {
+    appModule = await loadAppModule(tempDir);
+    const request = supertest(appModule.createApp());
+
+    const detectResponse = await request.post('/api/domains/domain-1/detect-dns');
+    assert.equal(detectResponse.status, 401);
+    assert.equal(detectResponse.body.ok, false);
+    assert.equal(detectResponse.body.error.code, 'AUTH_REQUIRED');
+  } finally {
+    appModule?.restoreEnv?.();
+    appModule?.closeBackgroundServices?.();
+    try {
+      appModule?.db?.close?.();
+    } catch {}
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });

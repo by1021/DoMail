@@ -1,53 +1,8 @@
 import React from 'react';
 import { Avatar, Button, Card, Col, Empty, List, Progress, Row, Space, Statistic, Tag, Typography } from 'antd';
+import MessagePreviewCard from './MessagePreviewCard.jsx';
 
 const { Title, Paragraph, Text } = Typography;
-
-function MessagePreview({ item, onOpen, onDelete, formatDateTime }) {
-  return (
-    <Card className="message-preview-card" hoverable onClick={() => onOpen(item.id)}>
-      <Space direction="vertical" size={10} style={{ width: '100%' }}>
-        <div className="message-preview-header">
-          <Space wrap>
-            <Text strong>{item.subject || '(no subject)'}</Text>
-            {!item.isRead && <Tag color="blue">未读</Tag>}
-            {item.attachmentCount > 0 && <Tag color="purple">{item.attachmentCount} 个附件</Tag>}
-          </Space>
-          <Text type="secondary">{formatDateTime(item.receivedAt)}</Text>
-        </div>
-
-        <div className="message-preview-meta">
-          <Text type="secondary">发件人：{item.fromAddress || item.envelopeFrom || '-'}</Text>
-          <Text type="secondary">收件人：{item.envelopeTo || '-'}</Text>
-        </div>
-
-        <Space wrap>
-          <Button
-            type="link"
-            style={{ paddingInline: 0 }}
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen(item.id);
-            }}
-          >
-            查看详情
-          </Button>
-          <Button
-            danger
-            type="link"
-            style={{ paddingInline: 0 }}
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(item.id);
-            }}
-          >
-            删除邮件
-          </Button>
-        </Space>
-      </Space>
-    </Card>
-  );
-}
 
 export default function OverviewSection({
   filteredMessages,
@@ -214,7 +169,7 @@ export default function OverviewSection({
             ) : (
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 {filteredMessages.slice(0, 3).map((item) => (
-                  <MessagePreview
+                  <MessagePreviewCard
                     key={item.id}
                     item={item}
                     onOpen={onOpenMessageDetail}

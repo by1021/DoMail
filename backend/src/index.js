@@ -15,6 +15,7 @@ import {
   createDomain,
   createMailbox,
   db,
+  detectDomainDnsStatus,
   generateRandomLocalPart,
   getDomainById,
   getDomainByName,
@@ -117,6 +118,27 @@ function sendError(response, error) {
 
 function sendAuthError(response, code = 'AUTH_REQUIRED', message = '请先登录管理账号') {
   response.status(401).json({
+    ok: false,
+    error: {
+      code,
+      message,
+    },
+  });
+}
+
+function sendValidationError(response, error, message) {
+  response.status(400).json({
+    ok: false,
+    error: {
+      code: 'VALIDATION_ERROR',
+      message,
+      details: error.flatten(),
+    },
+  });
+}
+
+function sendNotFoundError(response, code, message) {
+  response.status(404).json({
     ok: false,
     error: {
       code,
@@ -347,14 +369,7 @@ export function createApp() {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        response.status(400).json({
-          ok: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: '登录参数不合法',
-            details: error.flatten(),
-          },
-        });
+        sendValidationError(response, error, '登录参数不合法');
         return;
       }
 
@@ -402,13 +417,7 @@ export function createApp() {
     const item = getDomainById(request.params.id);
 
     if (!item) {
-      response.status(404).json({
-        ok: false,
-        error: {
-          code: 'DOMAIN_NOT_FOUND',
-          message: '域名不存在',
-        },
-      });
+      sendNotFoundError(response, 'DOMAIN_NOT_FOUND', '域名不存在');
       return;
     }
 
@@ -437,14 +446,7 @@ export function createApp() {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        response.status(400).json({
-          ok: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: '域名参数不合法',
-            details: error.flatten(),
-          },
-        });
+        sendValidationError(response, error, '域名参数不合法');
         return;
       }
 
@@ -458,6 +460,19 @@ export function createApp() {
     response.json({
       ok: deleted,
     });
+  });
+
+  app.post('/api/domains/:id/detect-dns', (request, response) => {
+    try {
+      const item = detectDomainDnsStatus(request.params.id);
+
+      response.json({
+        ok: true,
+        item,
+      });
+    } catch (error) {
+      sendError(response, error);
+    }
   });
 
   app.get('/api/mailboxes', (_request, response) => {
@@ -502,14 +517,7 @@ export function createApp() {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        response.status(400).json({
-          ok: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: '邮箱参数不合法',
-            details: error.flatten(),
-          },
-        });
+        sendValidationError(response, error, '邮箱参数不合法');
         return;
       }
 
@@ -540,14 +548,7 @@ export function createApp() {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        response.status(400).json({
-          ok: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: '自动清理参数不合法',
-            details: error.flatten(),
-          },
-        });
+        sendValidationError(response, error, '自动清理参数不合法');
         return;
       }
 
@@ -559,13 +560,7 @@ export function createApp() {
     const domainMailbox = listMailboxes().find((item) => item.id === request.params.id);
 
     if (!domainMailbox) {
-      response.status(404).json({
-        ok: false,
-        error: {
-          code: 'MAILBOX_NOT_FOUND',
-          message: '邮箱不存在',
-        },
-      });
+      sendNotFoundError(response, 'MAILBOX_NOT_FOUND', '邮箱不存在');
       return;
     }
 
@@ -580,13 +575,7 @@ export function createApp() {
     const item = getMessageById(request.params.id);
 
     if (!item) {
-      response.status(404).json({
-        ok: false,
-        error: {
-          code: 'MESSAGE_NOT_FOUND',
-          message: '邮件不存在',
-        },
-      });
+      sendNotFoundError(response, 'MESSAGE_NOT_FOUND', '邮件不存在');
       return;
     }
 
@@ -600,13 +589,7 @@ export function createApp() {
     const item = markMessageAsRead(request.params.id);
 
     if (!item) {
-      response.status(404).json({
-        ok: false,
-        error: {
-          code: 'MESSAGE_NOT_FOUND',
-          message: '邮件不存在',
-        },
-      });
+      sendNotFoundError(response, 'MESSAGE_NOT_FOUND', '邮件不存在');
       return;
     }
 
@@ -620,13 +603,7 @@ export function createApp() {
     const deleted = removeMessage(request.params.id);
 
     if (!deleted) {
-      response.status(404).json({
-        ok: false,
-        error: {
-          code: 'MESSAGE_NOT_FOUND',
-          message: '邮件不存在',
-        },
-      });
+      sendNotFoundError(response, 'MESSAGE_NOT_FOUND', '邮件不存在');
       return;
     }
 
