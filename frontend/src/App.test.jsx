@@ -577,7 +577,7 @@ describe('App', () => {
     expect(screen.queryByText(/Cloudflare DNS 指引/)).not.toBeInTheDocument();
   });
 
-  it('opens message detail drawer and marks unread message as read', async () => {
+  it('opens message detail in a focused workspace and upgrades message body presentation', async () => {
     getMessageDetail.mockResolvedValue({
       item: {
         id: 'message-1',
@@ -592,8 +592,8 @@ describe('App', () => {
         address: 'hello@example.com',
         receivedAt: '2026-04-10T07:00:00.000Z',
         rawSize: 128,
-        text: 'plain text body',
-        html: '<p>plain text body</p>',
+        text: 'plain text body\nsecond line',
+        html: '<p><strong>plain text body</strong></p><p>second line</p>',
         attachments: [],
       },
     });
@@ -613,13 +613,13 @@ describe('App', () => {
         address: 'hello@example.com',
         receivedAt: '2026-04-10T07:00:00.000Z',
         rawSize: 128,
-        text: 'plain text body',
-        html: '<p>plain text body</p>',
+        text: 'plain text body\nsecond line',
+        html: '<p><strong>plain text body</strong></p><p>second line</p>',
         attachments: [],
       },
     });
 
-    renderApp();
+    const { container } = renderApp();
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
@@ -631,21 +631,29 @@ describe('App', () => {
       expect(screen.getByText('当前邮箱概况')).toBeInTheDocument();
     });
 
+    expect(screen.getByText('请选择一封邮件查看详情')).toBeInTheDocument();
+
     fireEvent.click(screen.getAllByRole('button', { name: /查看详情/ })[0]);
 
     await waitFor(() => {
-      expect(screen.getByText('邮件详情')).toBeInTheDocument();
+      expect(screen.getByText('当前邮件详情')).toBeInTheDocument();
     });
-
-    const drawer = document.querySelector('.ant-drawer');
-    expect(drawer?.querySelector('.ant-drawer-content-wrapper')).not.toBeNull();
 
     expect(getMessageDetail).toHaveBeenCalledWith('message-1');
     expect(markMessageRead).toHaveBeenCalledWith('message-1');
+    expect(screen.getAllByText('欢迎使用').length).toBeGreaterThan(0);
     expect(screen.getAllByText('基础信息').length).toBeGreaterThan(0);
-    expect(screen.getByText('正文')).toBeInTheDocument();
+    expect(screen.getByText('邮件正文')).toBeInTheDocument();
+    expect(screen.getByText('HTML 预览')).toBeInTheDocument();
     expect(screen.getByText('HTML 源码')).toBeInTheDocument();
-    expect(screen.getByText('plain text body')).toBeInTheDocument();
+    expect(screen.getAllByText('plain text body').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('second line').length).toBeGreaterThan(0);
     expect(screen.getByText('无附件')).toBeInTheDocument();
+    expect(screen.queryByText('当前邮箱概况')).not.toBeInTheDocument();
+    expect(screen.queryByText('当前邮箱设置')).not.toBeInTheDocument();
+    expect(container.querySelector('.message-detail-layout')).not.toBeNull();
+    expect(container.querySelector('.message-html-preview')).not.toBeNull();
+    expect(container.querySelector('.message-body-text')).not.toBeNull();
+    expect(screen.getAllByText('邮件详情').length).toBeGreaterThan(0);
   });
 });

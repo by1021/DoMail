@@ -143,7 +143,6 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [selectedMailboxId, setSelectedMailboxId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageDetail, setMessageDetail] = useState(null);
-  const [messageDrawerOpen, setMessageDrawerOpen] = useState(false);
   const [domainModalOpen, setDomainModalOpen] = useState(false);
   const [domainDrawerOpen, setDomainDrawerOpen] = useState(false);
   const [domainDetail, setDomainDetail] = useState(null);
@@ -427,7 +426,6 @@ export default function App({ adminProfile = null, onLogout = null }) {
       setLoading(true);
       const detailResponse = await getMessageDetail(messageId);
       setMessageDetail(detailResponse.item);
-      setMessageDrawerOpen(true);
 
       if (!detailResponse.item?.isRead) {
         const readResponse = await markMessageRead(messageId);
@@ -456,7 +454,6 @@ export default function App({ adminProfile = null, onLogout = null }) {
       message.success('邮件已删除');
 
       if (messageDetail?.id === id) {
-        setMessageDrawerOpen(false);
         setMessageDetail(null);
       }
 
@@ -468,6 +465,10 @@ export default function App({ adminProfile = null, onLogout = null }) {
     } catch (error) {
       message.error(extractErrorMessage(error, '删除邮件失败'));
     }
+  }
+
+  function handleBackToMessageList() {
+    setMessageDetail(null);
   }
 
   async function handleUpdateRetention(values) {
@@ -714,144 +715,171 @@ export default function App({ adminProfile = null, onLogout = null }) {
                     <Col flex="auto">
                       <Space direction="vertical" size={4}>
                         <Title level={4} style={{ margin: 0 }}>
-                          邮件收件区
+                          {messageDetail ? '邮件详情' : '邮件收件区'}
                         </Title>
                         <Text type="secondary">
-                          选择邮箱后集中查看最新邮件，常用操作都放在当前页完成。
+                          {messageDetail
+                            ? '聚焦查看当前邮件内容，处理完成后可返回邮件列表继续浏览。'
+                            : '选择邮箱后集中查看最新邮件，常用操作都放在当前页完成。'}
                         </Text>
                       </Space>
                     </Col>
                     <Col>
-                      <Select
-                        aria-label="选择邮箱"
-                        value={selectedMailboxId}
-                        onChange={(value) => loadMessages(value, true)}
-                        className="mailbox-selector"
-                        placeholder="选择邮箱"
-                        options={mailboxes.map((item) => ({
-                          label: item.address,
-                          value: item.id,
-                        }))}
-                      />
+                      <Space wrap>
+                        {messageDetail ? (
+                          <Button onClick={handleBackToMessageList}>返回邮件列表</Button>
+                        ) : null}
+                        <Select
+                          aria-label="选择邮箱"
+                          value={selectedMailboxId}
+                          onChange={(value) => loadMessages(value, true)}
+                          className="mailbox-selector"
+                          placeholder="选择邮箱"
+                          options={mailboxes.map((item) => ({
+                            label: item.address,
+                            value: item.id,
+                          }))}
+                        />
+                      </Space>
                     </Col>
                   </Row>
                 </Card>
 
-                <Card
-                  title="邮件收件区"
-                  extra={<Tag color={unreadCount ? 'error' : 'success'}>{unreadCount} 未读</Tag>}
-                >
-                  {filteredMessages.length === 0 ? (
-                    <Empty description="当前还没有收件记录" />
-                  ) : (
-                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                      {filteredMessages.map((item) => (
-                        <MessagePreviewCard
-                          key={item.id}
-                          item={item}
-                          formatDateTime={formatDateTime}
-                          onOpen={handleOpenMessageDetail}
-                          onDelete={handleDeleteMessage}
-                          confirmDelete
-                        />
-                      ))}
-                    </Space>
-                  )}
-                </Card>
+                {messageDetail ? (
+                  <div className="message-detail-layout">
+                    <MessageDetailDrawer
+                      messageDetail={messageDetail}
+                      onDeleteMessage={handleDeleteMessage}
+                      onBack={handleBackToMessageList}
+                      formatDateTime={formatDateTime}
+                    />
+                  </div>
+                ) : (
+                  <Row gutter={[16, 16]} align="top">
+                    <Col xs={24} xl={14}>
+                      <Card
+                        title="邮件收件区"
+                        extra={<Tag color={unreadCount ? 'error' : 'success'}>{unreadCount} 未读</Tag>}
+                      >
+                        {filteredMessages.length === 0 ? (
+                          <Empty description="当前还没有收件记录" />
+                        ) : (
+                          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                            {filteredMessages.map((item) => (
+                              <MessagePreviewCard
+                                key={item.id}
+                                item={item}
+                                formatDateTime={formatDateTime}
+                                onOpen={handleOpenMessageDetail}
+                                onDelete={handleDeleteMessage}
+                                confirmDelete
+                              />
+                            ))}
+                          </Space>
+                        )}
+                      </Card>
+                    </Col>
 
-                <Row gutter={[16, 16]} align="top">
-                  <Col xs={24} xl={14}>
-                    <Card title="当前邮箱概况">
-                      {selectedMailbox ? (
-                        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                          <Descriptions column={1} className="mailbox-info" size="small">
-                            <Descriptions.Item label="邮箱地址">{selectedMailbox.address}</Descriptions.Item>
-                            <Descriptions.Item label="所属域名">{selectedMailbox.domain}</Descriptions.Item>
-                            <Descriptions.Item label="创建方式">{selectedMailbox.source}</Descriptions.Item>
-                            <Descriptions.Item label="最近收件">
-                              {formatDateTime(selectedMailbox.latestReceivedAt)}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="自动清理">{getRetentionLabel(selectedMailbox)}</Descriptions.Item>
-                          </Descriptions>
+                    <Col xs={24} xl={10}>
+                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        <Card title="当前邮箱概况">
+                          {selectedMailbox ? (
+                            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                              <Descriptions column={1} className="mailbox-info" size="small">
+                                <Descriptions.Item label="邮箱地址">{selectedMailbox.address}</Descriptions.Item>
+                                <Descriptions.Item label="所属域名">{selectedMailbox.domain}</Descriptions.Item>
+                                <Descriptions.Item label="创建方式">{selectedMailbox.source}</Descriptions.Item>
+                                <Descriptions.Item label="最近收件">
+                                  {formatDateTime(selectedMailbox.latestReceivedAt)}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="自动清理">{getRetentionLabel(selectedMailbox)}</Descriptions.Item>
+                              </Descriptions>
 
-                          <div className="message-summary-panel">
-                            <Text strong className="message-summary-line">
-                              当前 {messages.length} 封邮件，未读 {unreadCount} 封。
-                            </Text>
-                            <List
-                              split={false}
-                              dataSource={[
-                                '点击邮件卡片可查看详情，并自动标记已读。',
-                                '不需要的邮件可直接删除。',
-                              ]}
-                              renderItem={(item) => <List.Item className="message-tip-item">{item}</List.Item>}
-                            />
-                          </div>
-                        </Space>
-                      ) : (
-                        <Empty description="请先创建邮箱" />
-                      )}
-                    </Card>
-                  </Col>
-
-                  <Col xs={24} xl={10}>
-                    <Card title="当前邮箱设置">
-                      {selectedMailbox ? (
-                        <div>
-                          <Text strong style={{ display: 'block', marginBottom: 12 }}>
-                            自动清理设置
-                          </Text>
-                          <Form
-                            form={retentionForm}
-                            layout="vertical"
-                            onFinish={handleUpdateRetention}
-                            initialValues={{ retentionValue: null, retentionUnit: 'hour' }}
-                            className="retention-form"
-                          >
-                            <Space wrap align="start">
-                              <Form.Item name="retentionValue">
-                                <Input
-                                  aria-label="自动清理时长"
-                                  type="number"
-                                  min={1}
-                                  placeholder="关闭时留空"
-                                  style={{ width: 140 }}
-                                />
-                              </Form.Item>
-                              <Form.Item name="retentionUnit">
-                                <Select
-                                  aria-label="自动清理单位"
-                                  style={{ width: 100 }}
-                                  options={[
-                                    { label: '小时', value: 'hour' },
-                                    { label: '天', value: 'day' },
+                              <div className="message-summary-panel">
+                                <Text strong className="message-summary-line">
+                                  当前 {messages.length} 封邮件，未读 {unreadCount} 封。
+                                </Text>
+                                <List
+                                  split={false}
+                                  dataSource={[
+                                    '点击邮件卡片后，会切换到沉浸式详情页。',
+                                    '不需要的邮件可直接删除。',
                                   ]}
+                                  renderItem={(item) => <List.Item className="message-tip-item">{item}</List.Item>}
                                 />
-                              </Form.Item>
-                              <Form.Item>
-                                <Button type="primary" htmlType="submit">
-                                  保存
-                                </Button>
-                              </Form.Item>
-                              <Form.Item>
-                                <Button
-                                  onClick={() => {
-                                    retentionForm.setFieldsValue({ retentionValue: null, retentionUnit: 'hour' });
-                                    retentionForm.submit();
-                                  }}
-                                >
-                                  关闭自动清理
-                                </Button>
-                              </Form.Item>
+                              </div>
                             </Space>
-                          </Form>
-                        </div>
-                      ) : (
-                        <Empty description="请先创建邮箱" />
-                      )}
-                    </Card>
-                  </Col>
-                </Row>
+                          ) : (
+                            <Empty description="请先创建邮箱" />
+                          )}
+                        </Card>
+
+                        <Card title="当前邮箱设置">
+                          {selectedMailbox ? (
+                            <div>
+                              <Text strong style={{ display: 'block', marginBottom: 12 }}>
+                                自动清理设置
+                              </Text>
+                              <Form
+                                form={retentionForm}
+                                layout="vertical"
+                                onFinish={handleUpdateRetention}
+                                initialValues={{ retentionValue: null, retentionUnit: 'hour' }}
+                                className="retention-form"
+                              >
+                                <Space wrap align="start">
+                                  <Form.Item name="retentionValue">
+                                    <Input
+                                      aria-label="自动清理时长"
+                                      type="number"
+                                      min={1}
+                                      placeholder="关闭时留空"
+                                      style={{ width: 140 }}
+                                    />
+                                  </Form.Item>
+                                  <Form.Item name="retentionUnit">
+                                    <Select
+                                      aria-label="自动清理单位"
+                                      style={{ width: 100 }}
+                                      options={[
+                                        { label: '小时', value: 'hour' },
+                                        { label: '天', value: 'day' },
+                                      ]}
+                                    />
+                                  </Form.Item>
+                                  <Form.Item>
+                                    <Button type="primary" htmlType="submit">
+                                      保存
+                                    </Button>
+                                  </Form.Item>
+                                  <Form.Item>
+                                    <Button
+                                      onClick={() => {
+                                        retentionForm.setFieldsValue({ retentionValue: null, retentionUnit: 'hour' });
+                                        retentionForm.submit();
+                                      }}
+                                    >
+                                      关闭自动清理
+                                    </Button>
+                                  </Form.Item>
+                                </Space>
+                              </Form>
+                            </div>
+                          ) : (
+                            <Empty description="请先创建邮箱" />
+                          )}
+                        </Card>
+
+                        <MessageDetailDrawer
+                          messageDetail={messageDetail}
+                          onDeleteMessage={handleDeleteMessage}
+                          onBack={handleBackToMessageList}
+                          formatDateTime={formatDateTime}
+                        />
+                      </Space>
+                    </Col>
+                  </Row>
+                )}
               </Space>
             )}
 
@@ -937,13 +965,6 @@ export default function App({ adminProfile = null, onLogout = null }) {
         formatDateTime={formatDateTime}
       />
 
-      <MessageDetailDrawer
-        open={messageDrawerOpen}
-        messageDetail={messageDetail}
-        onClose={() => setMessageDrawerOpen(false)}
-        onDeleteMessage={handleDeleteMessage}
-        formatDateTime={formatDateTime}
-      />
     </Layout>
   );
 }
