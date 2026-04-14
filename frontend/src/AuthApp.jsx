@@ -16,8 +16,9 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
   return (
     <div className="auth-shell">
       <div className="auth-shell-background" />
-      <Card className="auth-card">
-        <Space direction="vertical" size={20} style={{ width: '100%' }}>
+      <div className="auth-shell-content">
+        <Card className="auth-card">
+          <Space direction="vertical" size={20} style={{ width: '100%' }}>
           <Space direction="vertical" size={10} align="center" style={{ width: '100%' }}>
             <div className="auth-logo">
               <ThunderboltOutlined />
@@ -44,6 +45,7 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
             <Form
               form={form}
               layout="vertical"
+              className="auth-form"
               onFinish={onSubmit}
               initialValues={{
                 username: '',
@@ -83,8 +85,9 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
               </Form.Item>
             </Form>
           </Spin>
-        </Space>
-      </Card>
+          </Space>
+        </Card>
+      </div>
     </div>
   );
 }

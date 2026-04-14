@@ -125,7 +125,7 @@ export default function DomainTableSection({
     onDeleteDomain,
   });
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={16} style={{ width: '100%' }} className="domain-table-section">
       <Card className="section-intro-card">
         <Row justify="space-between" align="middle" gutter={[16, 16]}>
           <Col flex="auto">
@@ -146,7 +146,7 @@ export default function DomainTableSection({
         </Row>
       </Card>
 
-      <Card>
+      <Card className="domain-table-card">
         <Table
           rowKey="id"
           columns={columns}

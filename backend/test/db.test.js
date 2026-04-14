@@ -197,12 +197,8 @@ test('db module reads server ip and mx host guidance from environment variables'
 
     assert.equal(domain.serverIp, '203.0.113.10');
     assert.equal(domain.mxHost, 'mx.example.com');
-    assert.equal(domain.dnsRecords.length, 2);
-
-    const aRecord = domain.dnsRecords.find((record) => record.type === 'A' && record.name === 'mx');
-    assert.ok(aRecord);
-    assert.equal(aRecord.value, '203.0.113.10');
-    assert.equal(aRecord.note.includes('服务器 IP'), true);
+    assert.equal(domain.dnsRecords.length, 1);
+    assert.equal(domain.dnsRecords.some((record) => record.type === 'A'), false);
 
     const mxRecord = domain.dnsRecords.find((record) => record.type === 'MX');
     assert.ok(mxRecord);
@@ -212,7 +208,7 @@ test('db module reads server ip and mx host guidance from environment variables'
     const lookedUp = dbModule.getDomainById(domain.id);
     assert.equal(lookedUp.serverIp, '203.0.113.10');
     assert.equal(lookedUp.mxHost, 'mx.example.com');
-    assert.equal(lookedUp.dnsRecords.find((record) => record.type === 'A' && record.name === 'mx')?.value, '203.0.113.10');
+    assert.equal(lookedUp.dnsRecords.some((record) => record.type === 'A'), false);
     assert.equal(lookedUp.dnsRecords.find((record) => record.type === 'MX')?.value, 'mx.example.com');
   } finally {
     if (previousMailServerIp === undefined) {

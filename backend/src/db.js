@@ -551,35 +551,22 @@ function getMailDnsConfig() {
 }
 
 function buildDefaultDnsRecords(domain, smtpHost, serverIp, mxHost) {
-  const normalizedServerIp = String(serverIp ?? '').trim();
   const normalizedMxHost =
     String(mxHost ?? '').trim().toLowerCase() ||
     String(smtpHost ?? '').trim().toLowerCase() ||
     `mail.${domain}`;
-  const dnsRecords = [];
 
-  if (normalizedServerIp) {
-    dnsRecords.push({
-      type: 'A',
-      name: buildDnsHostLabel(domain, normalizedMxHost),
-      value: normalizedServerIp,
+  return [
+    {
+      type: 'MX',
+      name: '@',
+      value: normalizedMxHost,
+      priority: 10,
       status: 'pending',
       proxied: false,
-      note: '邮件主机需要有可解析的 A 记录，指向你的收件服务器 IP',
-    });
-  }
-
-  dnsRecords.push({
-    type: 'MX',
-    name: '@',
-    value: normalizedMxHost,
-    priority: 10,
-    status: 'pending',
-    proxied: false,
-    note: `接收 ${domain} 的入站邮件，MX 应指向你自己的收件主机名`,
-  });
-
-  return dnsRecords;
+      note: `接收 ${domain} 的入站邮件，MX 应指向你自己的收件主机名`,
+    },
+  ];
 }
 
 function buildOptionalDnsRecords(domain) {

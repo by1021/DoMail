@@ -60,7 +60,7 @@ describe('AuthApp', () => {
   });
 
   it('shows login page when session is not authenticated', async () => {
-    renderAuthApp();
+    const { container } = renderAuthApp();
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: '管理员登录' })).toBeInTheDocument();
@@ -69,6 +69,10 @@ describe('AuthApp', () => {
     expect(screen.getByPlaceholderText('请输入管理员账号')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('请输入管理员密码')).toBeInTheDocument();
     expect(screen.queryByText('管理后台')).not.toBeInTheDocument();
+    expect(container.querySelector('.auth-shell')).not.toBeNull();
+    expect(container.querySelector('.auth-shell-content')).not.toBeNull();
+    expect(container.querySelector('.auth-card')).not.toBeNull();
+    expect(container.querySelector('.auth-form')).not.toBeNull();
   });
 
   it('shows app after existing session is restored', async () => {
@@ -90,11 +94,13 @@ describe('AuthApp', () => {
   });
 
   it('submits login form and switches to app view', async () => {
-    renderAuthApp();
+    const { container } = renderAuthApp();
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: '管理员登录' })).toBeInTheDocument();
     });
+
+    expect(container.querySelector('.auth-shell-content')).not.toBeNull();
 
     fireEvent.change(screen.getByPlaceholderText('请输入管理员账号'), {
       target: { value: 'admin' },

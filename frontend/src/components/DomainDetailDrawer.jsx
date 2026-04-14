@@ -39,9 +39,10 @@ export default function DomainDetailDrawer({
       width={720}
       open={open}
       onClose={onClose}
+      className="domain-detail-drawer"
     >
       {domainDetail ? (
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }} className="domain-detail-content">
           <Card className="domain-detail-hero">
             <Space direction="vertical" size={14} style={{ width: '100%' }}>
               <Space wrap>

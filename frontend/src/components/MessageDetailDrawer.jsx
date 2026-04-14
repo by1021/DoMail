@@ -31,7 +31,7 @@ export default function MessageDetailDrawer({
   return (
     <Card
       title="当前邮件详情"
-      className="message-detail-panel"
+      className="message-detail-panel message-detail-panel-responsive"
       extra={
         <Space wrap>
           {onBack ? <Button onClick={onBack}>返回列表</Button> : null}

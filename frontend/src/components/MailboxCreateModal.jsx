@@ -37,10 +37,12 @@ export default function MailboxCreateModal({
       confirmLoading={submitting}
       onCancel={onCancel}
       onOk={() => form.submit()}
+      className="mailbox-create-modal"
     >
       <Form
         form={form}
         layout="vertical"
+        className="mailbox-create-form"
         initialValues={{ random: false }}
         onFinish={onSubmit}
       >

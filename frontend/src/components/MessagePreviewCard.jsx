@@ -12,7 +12,7 @@ export default function MessagePreviewCard({
   confirmDelete = false,
 }) {
   return (
-    <Card className="message-preview-card" hoverable onClick={() => onOpen(item.id)}>
+    <Card className="message-preview-card message-preview-card-responsive" hoverable onClick={() => onOpen(item.id)}>
       <Space direction="vertical" size={10} style={{ width: '100%' }}>
         <div className="message-preview-header">
           <div className="message-preview-title-group">

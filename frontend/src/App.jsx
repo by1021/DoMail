@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   App as AntdApp,
   Avatar,
@@ -219,27 +219,38 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
   const selectedMailbox = mailboxes.find((item) => item.id === selectedMailboxId) || null;
 
-  async function loadMessages(mailboxId, keepSection = false) {
-    if (!mailboxId) {
-      setMessages([]);
-      setSelectedMailboxId(null);
-      return;
-    }
+  const loadMessages = useCallback(
+    async (mailboxId, options = {}) => {
+      const { keepSection = false, silent = false } = options;
 
-    try {
-      setLoading(true);
-      const response = await getMailboxMessages(mailboxId);
-      setSelectedMailboxId(mailboxId);
-      setMessages(response.items ?? []);
-      if (!keepSection) {
-        setSection('messages');
+      if (!mailboxId) {
+        setMessages([]);
+        setSelectedMailboxId(null);
+        return;
       }
-    } catch (error) {
-      message.error(extractErrorMessage(error, '加载邮件列表失败'));
-    } finally {
-      setLoading(false);
-    }
-  }
+
+      try {
+        if (!silent) {
+          setLoading(true);
+        }
+        const response = await getMailboxMessages(mailboxId);
+        setSelectedMailboxId(mailboxId);
+        setMessages(response.items ?? []);
+        if (!keepSection) {
+          setSection('messages');
+        }
+      } catch (error) {
+        if (!silent) {
+          message.error(extractErrorMessage(error, '加载邮件列表失败'));
+        }
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [message],
+  );
 
   async function loadData() {
     try {
@@ -287,6 +298,28 @@ export default function App({ adminProfile = null, onLogout = null }) {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!selectedMailboxId) {
+      return undefined;
+    }
+
+    loadMessages(selectedMailboxId, {
+      keepSection: true,
+      silent: true,
+    });
+
+    const pollTimer = window.setInterval(() => {
+      loadMessages(selectedMailboxId, {
+        keepSection: true,
+        silent: true,
+      });
+    }, 5000);
+
+    return () => {
+      window.clearInterval(pollTimer);
+    };
+  }, [loadMessages, selectedMailboxId, section]);
 
   useEffect(() => {
     retentionForm.setFieldsValue({
@@ -458,7 +491,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
       }
 
       if (selectedMailboxId) {
-        await loadMessages(selectedMailboxId, true);
+        await loadMessages(selectedMailboxId, { keepSection: true });
       } else {
         await loadData();
       }
@@ -534,7 +567,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
       width: 170,
       render: (_, record) => (
         <Space>
-          <Button type="link" onClick={() => loadMessages(record.id)}>
+          <Button type="link" onClick={() => loadMessages(record.id, { keepSection: false })}>
             查看邮件
           </Button>
           <Popconfirm title="确认删除该邮箱？" onConfirm={() => handleDeleteMailbox(record.id)}>
@@ -559,7 +592,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   }
 
   return (
-    <Layout className="app-shell">
+    <Layout className="app-shell app-shell-responsive">
       <Sider width={320} theme="light" className="app-sider">
         <div className="brand-block">
           <div className="brand-surface">
@@ -592,9 +625,9 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
       </Sider>
 
-      <Layout>
+      <Layout className="app-main-layout">
         <Header className="app-header">
-          <Row align="middle" justify="space-between" gutter={[16, 16]} wrap>
+          <Row className="app-header-main" align="middle" justify="space-between" gutter={[16, 16]} wrap>
             <Col flex="auto">
               <div className="header-title-wrap">
                 <Space direction="vertical" size={4}>
@@ -607,28 +640,32 @@ export default function App({ adminProfile = null, onLogout = null }) {
             </Col>
             <Col>
               <div className="header-actions">
-                <Input
-                  aria-label="全局搜索"
-                  placeholder="搜索域名、邮箱、主题"
-                  prefix={<SearchOutlined />}
-                  className="global-search"
-                  value={searchText}
-                  onChange={(event) => setSearchText(event.target.value)}
-                />
-                <Button icon={<ReloadOutlined />} onClick={loadData} className="header-refresh-button">
-                  刷新
-                </Button>
-                {adminProfile?.username ? (
-                  <div className="admin-session-card" aria-label={`当前管理员 ${adminProfile.username}`}>
-                    <div className="admin-session-label">管理员</div>
-                    <div className="admin-session-value">{adminProfile.username}</div>
-                  </div>
-                ) : null}
-                {onLogout ? (
-                  <Button onClick={onLogout} className="header-logout-button">
-                    退出登录
+                <div className="header-search-wrap">
+                  <Input
+                    aria-label="全局搜索"
+                    placeholder="搜索域名、邮箱、主题"
+                    prefix={<SearchOutlined />}
+                    className="global-search"
+                    value={searchText}
+                    onChange={(event) => setSearchText(event.target.value)}
+                  />
+                </div>
+                <div className="header-action-buttons">
+                  <Button icon={<ReloadOutlined />} onClick={loadData} className="header-refresh-button">
+                    刷新
                   </Button>
-                ) : null}
+                  {adminProfile?.username ? (
+                    <div className="admin-session-card" aria-label={`当前管理员 ${adminProfile.username}`}>
+                      <div className="admin-session-label">管理员</div>
+                      <div className="admin-session-value">{adminProfile.username}</div>
+                    </div>
+                  ) : null}
+                  {onLogout ? (
+                    <Button onClick={onLogout} className="header-logout-button">
+                      退出登录
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </Col>
           </Row>
@@ -726,13 +763,10 @@ export default function App({ adminProfile = null, onLogout = null }) {
                     </Col>
                     <Col>
                       <Space wrap>
-                        {messageDetail ? (
-                          <Button onClick={handleBackToMessageList}>返回邮件列表</Button>
-                        ) : null}
                         <Select
                           aria-label="选择邮箱"
                           value={selectedMailboxId}
-                          onChange={(value) => loadMessages(value, true)}
+                          onChange={(value) => loadMessages(value, { keepSection: true })}
                           className="mailbox-selector"
                           placeholder="选择邮箱"
                           options={mailboxes.map((item) => ({

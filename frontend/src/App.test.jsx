@@ -1,7 +1,7 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ConfigProvider, App as AntdApp } from 'antd';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App.jsx';
 
 vi.mock('./api.js', () => ({
@@ -47,8 +47,12 @@ function renderApp(props = {}) {
 }
 
 describe('App', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     getHealth.mockResolvedValue({
       ok: true,
@@ -182,9 +186,14 @@ describe('App', () => {
 
     const actionBar = container.querySelector('.header-actions');
     expect(actionBar).not.toBeNull();
+    expect(container.querySelector('.app-shell-responsive')).not.toBeNull();
+    expect(container.querySelector('.app-main-layout')).not.toBeNull();
+    expect(container.querySelector('.app-header-main')).not.toBeNull();
     expect(actionBar?.querySelector('.admin-session-card')).not.toBeNull();
     expect(actionBar?.querySelector('.header-refresh-button')).not.toBeNull();
     expect(actionBar?.querySelector('.header-logout-button')).not.toBeNull();
+    expect(actionBar?.querySelector('.header-search-wrap')).not.toBeNull();
+    expect(actionBar?.querySelector('.header-action-buttons')).not.toBeNull();
   });
 
   it('renders mailbox table after switching section', async () => {
@@ -287,7 +296,7 @@ describe('App', () => {
   });
 
   it('renders mailbox creation modal with preview flow', async () => {
-    renderApp();
+    const { container } = renderApp();
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
@@ -301,6 +310,8 @@ describe('App', () => {
 
     expect(screen.getByText('邮箱预览')).toBeInTheDocument();
     expect(screen.getByText('自定义模式：适合固定用途邮箱')).toBeInTheDocument();
+    expect(document.querySelector('.mailbox-create-modal')).not.toBeNull();
+    expect(document.querySelector('.mailbox-create-form')).not.toBeNull();
   });
 
   it('renders simplified message workspace with mailbox summary and retention tools', async () => {
@@ -506,7 +517,7 @@ describe('App', () => {
       },
     });
 
-    renderApp();
+    const { container } = renderApp();
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
@@ -550,6 +561,8 @@ describe('App', () => {
       expect(screen.getByText('域名管理')).toBeInTheDocument();
     });
 
+    expect(container.querySelector('.domain-table-section')).not.toBeNull();
+    expect(container.querySelector('.domain-table-card')).not.toBeNull();
     expect(screen.queryByText('域名概览')).not.toBeInTheDocument();
     expect(screen.queryByText('主流程：添加域名 → 检测 DNS → 查看配置 → 创建邮箱')).not.toBeInTheDocument();
     expect(screen.getByText('example.com')).toBeInTheDocument();
@@ -565,6 +578,8 @@ describe('App', () => {
       expect(screen.getByText('最小必需记录')).toBeInTheDocument();
     });
 
+    expect(document.querySelector('.domain-detail-drawer')).not.toBeNull();
+    expect(document.querySelector('.domain-detail-content')).not.toBeNull();
     expect(screen.queryByText('推荐下一步')).not.toBeInTheDocument();
     expect(screen.queryByText('可选增强记录')).not.toBeInTheDocument();
     expect(screen.queryByText('最近检测状态')).not.toBeInTheDocument();
@@ -576,6 +591,72 @@ describe('App', () => {
     expect(screen.queryByText('route1.mx.cloudflare.net')).not.toBeInTheDocument();
     expect(screen.queryByText(/Cloudflare DNS 指引/)).not.toBeInTheDocument();
   });
+
+  it(
+    'auto refreshes mailbox messages in messages section so new mail appears without manual reload',
+    async () => {
+      getMailboxMessages
+        .mockResolvedValueOnce({
+          items: [
+            {
+              id: 'message-1',
+              subject: '欢迎使用',
+              isRead: false,
+              attachmentCount: 0,
+              fromAddress: 'team@example.org',
+              envelopeFrom: 'team@example.org',
+              envelopeTo: 'hello@example.com',
+              receivedAt: '2026-04-10T07:00:00.000Z',
+            },
+          ],
+        })
+        .mockResolvedValue({
+          items: [
+            {
+              id: 'message-2',
+              subject: '新的实时邮件',
+              isRead: false,
+              attachmentCount: 0,
+              fromAddress: 'notify@example.org',
+              envelopeFrom: 'notify@example.org',
+              envelopeTo: 'hello@example.com',
+              receivedAt: '2026-04-10T07:05:00.000Z',
+            },
+            {
+              id: 'message-1',
+              subject: '欢迎使用',
+              isRead: false,
+              attachmentCount: 0,
+              fromAddress: 'team@example.org',
+              envelopeFrom: 'team@example.org',
+              envelopeTo: 'hello@example.com',
+              receivedAt: '2026-04-10T07:00:00.000Z',
+            },
+          ],
+        });
+
+      renderApp();
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('邮件'));
+
+      await waitFor(() => {
+        expect(screen.getByText('当前邮箱概况')).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(getMailboxMessages.mock.calls.length).toBeGreaterThanOrEqual(2);
+      });
+
+      expect(getMailboxMessages).toHaveBeenLastCalledWith('mailbox-1');
+      expect(screen.getByText('新的实时邮件')).toBeInTheDocument();
+      expect(screen.getByText('当前 2 封邮件，未读 2 封。')).toBeInTheDocument();
+    },
+    10000,
+  );
 
   it('opens message detail in a focused workspace and upgrades message body presentation', async () => {
     getMessageDetail.mockResolvedValue({
@@ -652,8 +733,11 @@ describe('App', () => {
     expect(screen.queryByText('当前邮箱概况')).not.toBeInTheDocument();
     expect(screen.queryByText('当前邮箱设置')).not.toBeInTheDocument();
     expect(container.querySelector('.message-detail-layout')).not.toBeNull();
+    expect(container.querySelector('.message-detail-panel-responsive')).not.toBeNull();
     expect(container.querySelector('.message-html-preview')).not.toBeNull();
     expect(container.querySelector('.message-body-text')).not.toBeNull();
     expect(screen.getAllByText('邮件详情').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: '返回列表' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: '返回邮件列表' })).not.toBeInTheDocument();
   });
 });
