@@ -91,6 +91,21 @@ export async function updateMailboxRetention(mailboxId, payload) {
   return data;
 }
 
+export async function getApiTokens() {
+  const { data } = await api.get('/tokens');
+  return data;
+}
+
+export async function createApiToken(payload) {
+  const { data } = await api.post('/tokens', payload);
+  return data;
+}
+
+export async function deleteApiToken(tokenId) {
+  const { data } = await api.delete(`/tokens/${tokenId}`);
+  return data;
+}
+
 export function isUnauthorizedError(error) {
   return error?.response?.status === 401;
 }

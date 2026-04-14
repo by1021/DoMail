@@ -249,6 +249,97 @@ curl -i http://127.0.0.1:3001/api/domains
 
 预期会得到 `401`，表示需要先登录管理员账号。
 
+### 7.4 API Token（Bearer Token）
+
+当前版本支持由管理员在后台创建 **API Token**，供程序只读访问邮件接口。
+
+#### Token 用途
+
+Token 只允许访问以下两个只读接口：
+
+- `GET /api/mailboxes/:mailboxId/messages`
+- `GET /api/messages/:messageId`
+
+其他接口（如域名管理、邮箱创建、删除邮件等）仍然只允许管理员 Session 访问。
+
+#### Token 创建方式
+
+1. 使用管理员账号登录后台
+2. 打开前端侧边栏中的 [`API`](frontend/src/App.jsx) 页面
+3. 输入名称并创建 Token
+4. 系统只会在创建成功当次返回完整 Token，请立即复制保存
+
+数据库中不会保存明文 Token，只保存哈希与前缀信息。
+
+#### Bearer 请求头格式
+
+```text
+Authorization: Bearer <token>
+```
+
+#### `mailboxId` 是什么？怎么获取？
+
+`mailboxId` 不是邮箱地址，也不是域名，而是系统为每个邮箱生成的唯一 ID。
+
+例如你创建了邮箱 `test@example.com`，真正用于调用以下接口的，是这个邮箱对应的 `id` 字段：
+
+- `GET /api/mailboxes/:mailboxId/messages`
+- `GET /api/mailboxes/:mailboxId/messages?latest=1`
+
+获取方式如下：
+
+1. 先调用 [`GET /api/mailboxes`](README.md:348)
+2. 在返回结果中找到目标邮箱，例如 `test@example.com`
+3. 读取该邮箱对象里的 `id`
+4. 把这个 `id` 填到 `<mailboxId>` 位置
+
+也就是说：
+
+- 邮箱地址：`test@example.com`
+- mailboxId：邮箱列表结果里的 `id`，例如 `mbx_xxxxx`
+
+示例流程：
+
+```bash
+curl http://127.0.0.1:3001/api/mailboxes
+```
+
+返回结果中你会看到类似：
+
+```json
+{
+  "items": [
+    {
+      "id": "mbx_abc123",
+      "address": "test@example.com"
+    }
+  ]
+}
+```
+
+此时：
+
+- `address` 用来确认你要查的是哪个邮箱
+- `id` 就是后续 API 调用里要用的 `mailboxId`
+
+#### 查询某个邮箱的邮件列表（Bearer Token）
+
+```bash
+curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages \
+  -H "Authorization: Bearer <token>"
+```
+
+#### 查询单封邮件详情（Bearer Token）
+
+```bash
+curl http://127.0.0.1:3001/api/messages/<messageId> \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Token 失效
+
+删除某个 Token 后，使用该 Token 的后续请求会立即返回 `401`。
+
 ## 8. 健康检查
 
 先确认后端 HTTP 已正常启动：
@@ -393,30 +484,52 @@ QUIT
 curl http://127.0.0.1:3001/api/mailboxes
 ```
 
-从结果中找到目标邮箱的 `id`。
+从结果中找到目标邮箱的 `id`，这个值就是后续邮件查询接口需要使用的 `mailboxId`。
 
 ### 10.2 查询某个邮箱的邮件列表
+
+这里的 `<mailboxId>` 就是上一步邮箱列表结果中的 `id` 字段，不是邮箱地址本身。
+
+管理员已登录时：
 
 ```bash
 curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages
 ```
 
+使用 Bearer Token 时：
+
+```bash
+curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages \
+  -H "Authorization: Bearer <token>"
+```
+
 例如：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/123/messages
+curl http://127.0.0.1:3001/api/mailboxes/123/messages \
+  -H "Authorization: Bearer dm_xxx"
 ```
 
 ### 10.3 查询单封邮件详情
+
+管理员已登录时：
 
 ```bash
 curl http://127.0.0.1:3001/api/messages/<messageId>
 ```
 
+使用 Bearer Token 时：
+
+```bash
+curl http://127.0.0.1:3001/api/messages/<messageId> \
+  -H "Authorization: Bearer <token>"
+```
+
 例如：
 
 ```bash
-curl http://127.0.0.1:3001/api/messages/456
+curl http://127.0.0.1:3001/api/messages/456 \
+  -H "Authorization: Bearer dm_xxx"
 ```
 
 ### 10.4 前端对应接口

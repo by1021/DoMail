@@ -5,13 +5,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App.jsx';
 
 vi.mock('./api.js', () => ({
+  createApiToken: vi.fn(),
   createDomain: vi.fn(),
   createMailbox: vi.fn(),
+  deleteApiToken: vi.fn(),
   deleteDomain: vi.fn(),
   deleteMailbox: vi.fn(),
   deleteMessage: vi.fn(),
   detectDomainDns: vi.fn(),
   extractErrorMessage: vi.fn((error, fallback = '请求失败') => error?.message || fallback),
+  getApiTokens: vi.fn(),
   getDomainDetail: vi.fn(),
   getDomains: vi.fn(),
   getHealth: vi.fn(),
@@ -23,9 +26,12 @@ vi.mock('./api.js', () => ({
 }));
 
 import {
+  createApiToken,
   createDomain,
+  deleteApiToken,
   deleteMessage,
   detectDomainDns,
+  getApiTokens,
   getDomainDetail,
   getDomains,
   getHealth,
@@ -142,6 +148,34 @@ describe('App', () => {
         ],
       },
     });
+
+    getApiTokens.mockResolvedValue({
+      items: [
+        {
+          id: 'tok_1',
+          name: '默认只读 Token',
+          tokenPrefix: 'dm_1234567890',
+          lastUsedAt: null,
+          createdAt: '2026-04-10T07:00:00.000Z',
+          updatedAt: '2026-04-10T07:00:00.000Z',
+        },
+      ],
+    });
+
+    createApiToken.mockResolvedValue({
+      ok: true,
+      item: {
+        id: 'tok_2',
+        name: '收件机器人',
+        tokenPrefix: 'dm_abcdef1234',
+        token: 'dm_full_token_value_for_copy',
+        lastUsedAt: null,
+        createdAt: '2026-04-10T08:00:00.000Z',
+        updatedAt: '2026-04-10T08:00:00.000Z',
+      },
+    });
+
+    deleteApiToken.mockResolvedValue({ ok: true });
   });
 
   it('renders current section information instead of a shared console heading', async () => {
@@ -739,5 +773,82 @@ describe('App', () => {
     expect(screen.getAllByText('邮件详情').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: '返回列表' })).toHaveLength(1);
     expect(screen.queryByRole('button', { name: '返回邮件列表' })).not.toBeInTheDocument();
+  });
+  it('renders a compact api workspace with only core token and endpoint content', async () => {
+    const { container } = renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('radio', { name: /API/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'API' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('创建 Bearer Token 并查询邮件列表与详情')).toBeInTheDocument();
+    expect(screen.getAllByText('创建 Token').length).toBeGreaterThan(0);
+    expect(screen.getByText('已有 Token')).toBeInTheDocument();
+    expect(screen.getByText('默认只读 Token')).toBeInTheDocument();
+    expect(screen.getByText('前缀：dm_1234567890')).toBeInTheDocument();
+    expect(screen.getByText('核心接口')).toBeInTheDocument();
+    expect(screen.getByText('Authorization: Bearer <token>')).toBeInTheDocument();
+    expect(screen.getByText('GET /api/mailboxes/:mailboxId/messages')).toBeInTheDocument();
+    expect(screen.getByText('GET /api/mailboxes/:mailboxId/messages?latest=1')).toBeInTheDocument();
+    expect(screen.getByText('GET /api/messages/:messageId')).toBeInTheDocument();
+    expect(container.querySelector('.api-compact-grid')).not.toBeNull();
+    expect(container.querySelector('.api-endpoint-list')).not.toBeNull();
+
+    expect(screen.queryByText('调用说明')).not.toBeInTheDocument();
+    expect(screen.queryByText('mailboxId 是什么？')).not.toBeInTheDocument();
+    expect(screen.queryByText('推荐调用顺序')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /查询全部邮件/ })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Token 名称' }), {
+      target: { value: '收件机器人' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '创建 Token' }));
+
+    await waitFor(() => {
+      expect(createApiToken).toHaveBeenCalledWith({
+        name: '收件机器人',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('新建 Token')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('收件机器人')).toBeInTheDocument();
+    expect(screen.getByText('dm_full_token_value_for_copy')).toBeInTheDocument();
+    expect(screen.getByText('请立即复制保存，该 Token 不会再次完整展示。')).toBeInTheDocument();
+    expect(getApiTokens).toHaveBeenCalled();
+  });
+
+  it('deletes api token from compact api management section', async () => {
+    renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '概览' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('radio', { name: /API/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText('默认只读 Token')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /delete 删除/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText('确认删除该 API Token？')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^OK$/i }));
+
+    await waitFor(() => {
+      expect(deleteApiToken).toHaveBeenCalledWith('tok_1');
+    });
   });
 });

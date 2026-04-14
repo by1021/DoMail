@@ -12,24 +12,29 @@ import {
   resolveRecipientDomainStatus,
 } from './smtp-utils.js';
 import {
+  createApiToken,
   createDomain,
   createMailbox,
   db,
   detectDomainDnsStatus,
   generateRandomLocalPart,
+  getApiTokenByHash,
   getDomainById,
   getDomainByName,
   getMailboxByAddress,
+  listApiTokens,
   listDomains,
   listMailboxes,
   listMessagesByMailbox,
   getMessageById,
   markMessageAsRead,
   purgeExpiredMessages,
+  removeApiToken,
   removeDomain,
   removeMailbox,
   removeMessage,
   saveIncomingMessage,
+  touchApiTokenLastUsedAt,
   updateMailboxRetention,
 } from './db.js';
 
@@ -66,6 +71,10 @@ const mailboxRetentionSchema = z.object({
 const loginSchema = z.object({
   username: z.string().min(1).max(128),
   password: z.string().min(1).max(256),
+});
+
+const apiTokenSchema = z.object({
+  name: z.string().min(1).max(120),
 });
 
 const smtpPort = Number(process.env.SMTP_PORT || 2525);
@@ -153,6 +162,29 @@ function generateMessageId() {
 
 function generateAttachmentId() {
   return `att_${crypto.randomUUID()}`;
+}
+
+function generateApiTokenValue() {
+  return `dm_${crypto.randomBytes(24).toString('hex')}`;
+}
+
+function generateApiTokenId() {
+  return `tok_${crypto.randomUUID()}`;
+}
+
+function hashApiToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function parseBearerToken(request) {
+  const authorization = request.headers.authorization;
+
+  if (!authorization || typeof authorization !== 'string') {
+    return null;
+  }
+
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
 }
 
 function readRawStream(stream) {
@@ -308,6 +340,35 @@ function requireAdminSession(request, response, next) {
   sendAuthError(response);
 }
 
+function requireApiAccess(request, response, next) {
+  if (request.session?.admin?.username) {
+    next();
+    return;
+  }
+
+  const bearerToken = parseBearerToken(request);
+
+  if (!bearerToken) {
+    sendAuthError(response);
+    return;
+  }
+
+  const apiToken = getApiTokenByHash(hashApiToken(bearerToken));
+
+  if (!apiToken) {
+    sendAuthError(response);
+    return;
+  }
+
+  touchApiTokenLastUsedAt(apiToken.id);
+  request.apiToken = {
+    id: apiToken.id,
+    name: apiToken.name,
+    tokenPrefix: apiToken.tokenPrefix,
+  };
+  next();
+}
+
 export function createApp() {
   const authConfig = getAuthConfig();
   const app = express();
@@ -404,7 +465,27 @@ export function createApp() {
     }
   });
 
-  app.use('/api', requireAdminSession);
+  app.use('/api', (request, response, next) => {
+    if (
+      request.path === '/health' ||
+      request.path === '/auth/login' ||
+      request.path === '/auth/logout' ||
+      request.path === '/auth/session'
+    ) {
+      next();
+      return;
+    }
+
+    if (
+      request.method === 'GET' &&
+      (/^\/mailboxes\/[^/]+\/messages$/.test(request.path) || /^\/messages\/[^/]+$/.test(request.path))
+    ) {
+      requireApiAccess(request, response, next);
+      return;
+    }
+
+    requireAdminSession(request, response, next);
+  });
 
   app.get('/api/domains', (_request, response) => {
     response.json({
@@ -554,6 +635,50 @@ export function createApp() {
 
       sendError(response, error);
     }
+  });
+
+  app.get('/api/tokens', (_request, response) => {
+    response.json({
+      ok: true,
+      items: listApiTokens(),
+    });
+  });
+
+  app.post('/api/tokens', (request, response) => {
+    try {
+      const payload = apiTokenSchema.parse({
+        name: request.body?.name,
+      });
+
+      const token = generateApiTokenValue();
+      const item = createApiToken({
+        id: generateApiTokenId(),
+        name: payload.name.trim(),
+        tokenHash: hashApiToken(token),
+        tokenPrefix: token.slice(0, 12),
+      });
+
+      response.status(201).json({
+        ok: true,
+        item: {
+          ...item,
+          token,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        sendValidationError(response, error, 'API Token 参数不合法');
+        return;
+      }
+
+      sendError(response, error);
+    }
+  });
+
+  app.delete('/api/tokens/:id', (request, response) => {
+    response.json({
+      ok: removeApiToken(request.params.id),
+    });
   });
 
   app.get('/api/mailboxes/:id/messages', (request, response) => {
@@ -759,4 +884,4 @@ if (process.env.NODE_ENV !== 'test') {
   startRuntime();
 }
 
-export { db };
+export { db, saveIncomingMessage };

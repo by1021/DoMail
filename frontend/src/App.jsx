@@ -7,7 +7,6 @@ import {
   Card,
   Col,
   Descriptions,
-  Divider,
   Empty,
   Form,
   Input,
@@ -36,13 +35,16 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import {
+  createApiToken,
   createDomain,
   createMailbox,
+  deleteApiToken,
   deleteDomain,
   deleteMailbox,
   deleteMessage,
   detectDomainDns,
   extractErrorMessage,
+  getApiTokens,
   getDomainDetail,
   getDomains,
   getHealth,
@@ -68,7 +70,7 @@ import {
 } from './app-helpers.js';
 
 const { Header, Content, Sider } = Layout;
-const { Title, Paragraph, Text } = Typography;
+const { Title, Text } = Typography;
 
 const SECTION_DEFINITIONS = [
   {
@@ -129,9 +131,30 @@ const SECTION_META = {
   },
   api: {
     title: 'API',
-    description: '查看接口规划与联调参考',
+    description: '创建 Bearer Token 并查询邮件列表与详情',
   },
 };
+
+const API_ENDPOINTS = [
+  {
+    key: 'messages',
+    title: '全部邮件',
+    endpoint: 'GET /api/mailboxes/:mailboxId/messages',
+    summary: '按邮箱获取完整邮件列表。',
+  },
+  {
+    key: 'latest',
+    title: '最新邮件',
+    endpoint: 'GET /api/mailboxes/:mailboxId/messages?latest=1',
+    summary: '只读取最新一封邮件。',
+  },
+  {
+    key: 'detail',
+    title: '邮件详情',
+    endpoint: 'GET /api/messages/:messageId',
+    summary: '根据 messageId 获取正文详情。',
+  },
+];
 
 export default function App({ adminProfile = null, onLogout = null }) {
   const { message } = AntdApp.useApp();
@@ -150,10 +173,12 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [mailboxModalOpen, setMailboxModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searchText, setSearchText] = useState('');
-
+  const [apiTokens, setApiTokens] = useState([]);
+  const [newApiToken, setNewApiToken] = useState(null);
   const [domainForm] = Form.useForm();
   const [mailboxForm] = Form.useForm();
   const [retentionForm] = Form.useForm();
+  const [apiTokenForm] = Form.useForm();
 
   const summaryCards = useMemo(
     () => buildSummaryCards(health?.stats, domains, mailboxes, messages),
@@ -252,21 +277,40 @@ export default function App({ adminProfile = null, onLogout = null }) {
     [message],
   );
 
+  async function loadApiTokens(options = {}) {
+    try {
+      const response = await getApiTokens();
+      setApiTokens(response.items ?? []);
+
+      if (!options.silentSuccess) {
+        return response.items ?? [];
+      }
+
+      return response.items ?? [];
+    } catch (error) {
+      message.error(extractErrorMessage(error, '加载 API Token 失败'));
+      return [];
+    }
+  }
+
   async function loadData() {
     try {
       setLoading(true);
-      const [healthResponse, domainsResponse, mailboxesResponse] = await Promise.all([
+      const [healthResponse, domainsResponse, mailboxesResponse, apiTokensResponse] = await Promise.all([
         getHealth(),
         getDomains(),
         getMailboxes(),
+        getApiTokens(),
       ]);
 
       const nextDomains = domainsResponse.items ?? [];
       const nextMailboxes = mailboxesResponse.items ?? [];
+      const nextApiTokens = apiTokensResponse.items ?? [];
 
       setHealth(healthResponse);
       setDomains(nextDomains);
       setMailboxes(nextMailboxes);
+      setApiTokens(nextApiTokens);
 
       const nextMailboxId =
         selectedMailboxId && nextMailboxes.some((item) => item.id === selectedMailboxId)
@@ -524,6 +568,37 @@ export default function App({ adminProfile = null, onLogout = null }) {
     }
   }
 
+  async function handleCreateApiToken(values) {
+    try {
+      setSubmitting(true);
+      const response = await createApiToken({
+        name: values.name,
+      });
+
+      setNewApiToken(response.item ?? null);
+      apiTokenForm.resetFields();
+      await loadApiTokens({ silentSuccess: true });
+      message.success('API Token 已创建，仅本次展示明文');
+    } catch (error) {
+      message.error(extractErrorMessage(error, '创建 API Token 失败'));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDeleteApiToken(tokenId) {
+    try {
+      await deleteApiToken(tokenId);
+      if (newApiToken?.id === tokenId) {
+        setNewApiToken(null);
+      }
+      await loadApiTokens({ silentSuccess: true });
+      message.success('API Token 已删除');
+    } catch (error) {
+      message.error(extractErrorMessage(error, '删除 API Token 失败'));
+    }
+  }
+
   const mailboxColumns = [
     {
       title: '邮箱地址',
@@ -582,6 +657,54 @@ export default function App({ adminProfile = null, onLogout = null }) {
     label: item.domain,
     value: item.id,
   }));
+
+  const apiTokenColumns = [
+    {
+      title: '名称',
+      dataIndex: 'name',
+      key: 'name',
+      render: (value, record) => (
+        <Space direction="vertical" size={2}>
+          <Text strong>{value}</Text>
+          <Text type="secondary">前缀：{record.tokenPrefix}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: '最近使用',
+      dataIndex: 'lastUsedAt',
+      key: 'lastUsedAt',
+      render: (value) => (
+        <Space direction="vertical" size={2}>
+          <Text>{formatDateTime(value)}</Text>
+          <Text type="secondary">{value ? formatRelativeTime(value) : '尚未使用'}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (value) => (
+        <Space direction="vertical" size={2}>
+          <Text>{formatDateTime(value)}</Text>
+          <Text type="secondary">{formatRelativeTime(value)}</Text>
+        </Space>
+      ),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 120,
+      render: (_, record) => (
+        <Popconfirm title="确认删除该 API Token？" onConfirm={() => handleDeleteApiToken(record.id)}>
+          <Button danger type="text" icon={<DeleteOutlined />}>
+            删除
+          </Button>
+        </Popconfirm>
+      ),
+    },
+  ];
 
   function openMailboxModal(defaults = {}) {
     mailboxForm.setFieldsValue({
@@ -919,48 +1042,139 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
             {section === 'api' && (
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Card className="section-intro-card">
-                  <Space direction="vertical" size={4}>
-                    <Title level={4} style={{ margin: 0 }}>
-                      API 规划与调用入口
-                    </Title>
-                    <Text type="secondary">
-                      当前前端已接入基础管理接口，以下内容可作为联调与验收参考。
-                    </Text>
-                  </Space>
+                <Card className="api-hero-card">
+                  <div className="api-hero-layout">
+                    <div className="api-hero-main">
+                      <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                        <Tag color="blue" className="api-hero-tag">
+                          Bearer Token
+                        </Tag>
+                        <Title level={4} style={{ margin: 0 }}>
+                          API 调用中心
+                        </Title>
+                        <Text type="secondary" className="api-hero-copy">
+                          在这里统一完成 Token 创建、只读接口查阅与联调准备。页面重点聚焦 Bearer Token
+                          的生成、复制和接口调用说明，减少切换成本。
+                        </Text>
+                      </Space>
+                    </div>
+                    <div className="api-hero-meta">
+                      <div className="api-hero-stat">
+                        <Text type="secondary">可用 Token</Text>
+                        <Text strong className="api-hero-stat-value">
+                          {apiTokens.length}
+                        </Text>
+                      </div>
+                      <div className="api-hero-stat">
+                        <Text type="secondary">接口条目</Text>
+                        <Text strong className="api-hero-stat-value">
+                          {API_ENDPOINTS.length}
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
                 </Card>
 
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} xl={8}>
-                    <Card title="创建邮箱" className="api-card">
-                      <Text code>POST /api/mailboxes</Text>
-                      <Paragraph style={{ marginTop: 12, marginBottom: 12 }}>
-                        支持传入域名、指定前缀或随机生成前缀。
-                      </Paragraph>
-                      <Tag color="purple">manual / random</Tag>
-                    </Card>
-                  </Col>
+                {newApiToken?.token ? (
+                  <Card className="api-token-highlight-card" title="新建 Token">
+                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                      <div className="api-token-highlight-head">
+                        <Text>
+                          名称：<Text strong>{newApiToken.name}</Text>
+                        </Text>
+                        <Tag color="success">仅展示一次</Tag>
+                      </div>
+                      <Text copyable={{ text: newApiToken.token }} code className="api-token-inline-code">
+                        {newApiToken.token}
+                      </Text>
+                      <Text type="secondary">请立即复制保存，该 Token 不会再次完整展示。</Text>
+                    </Space>
+                  </Card>
+                ) : null}
 
-                  <Col xs={24} xl={8}>
-                    <Card title="查询邮件列表" className="api-card">
-                      <Text code>GET /api/mailboxes/:mailboxId/messages</Text>
-                      <Paragraph style={{ marginTop: 12, marginBottom: 12 }}>
-                        返回指定邮箱的邮件列表及收件摘要信息。
-                      </Paragraph>
-                      <Tag color="blue">mailbox messages</Tag>
-                    </Card>
-                  </Col>
+                <div className="api-compact-grid api-layout-grid">
+                  <Card title="添加 Token" className="api-card api-create-card">
+                    <Space direction="vertical" size={18} style={{ width: '100%' }}>
+                      <div className="api-panel-intro">
+                        <Text strong>创建新的 Bearer Token</Text>
+                        <Text type="secondary">
+                          建议按调用场景命名，便于后续区分机器人、脚本或不同系统来源。
+                        </Text>
+                      </div>
 
-                  <Col xs={24} xl={8}>
-                    <Card title="邮件详情" className="api-card">
-                      <Text code>GET /api/messages/:messageId</Text>
-                      <Paragraph style={{ marginTop: 12, marginBottom: 12 }}>
-                        返回正文、HTML、附件元数据和 SMTP 收件信息。
-                      </Paragraph>
-                      <Tag color="gold">detail + attachments</Tag>
-                    </Card>
-                  </Col>
-                </Row>
+                      <Form form={apiTokenForm} layout="vertical" onFinish={handleCreateApiToken}>
+                        <Form.Item
+                          label="Token 名称"
+                          name="name"
+                          rules={[
+                            { required: true, message: '请输入 Token 名称' },
+                          ]}
+                        >
+                          <Input
+                            aria-label="Token 名称"
+                            placeholder="例如：收件机器人"
+                            maxLength={120}
+                          />
+                        </Form.Item>
+                        <Button type="primary" htmlType="submit" loading={submitting} block>
+                          创建 Token
+                        </Button>
+                      </Form>
+
+                      <div className="api-create-tips">
+                        <Text strong className="api-tips-title">
+                          使用建议
+                        </Text>
+                        <List
+                          split={false}
+                          dataSource={[
+                            '创建成功后立即复制保存明文 Token。',
+                            'Token 仅适用于只读邮件查询接口。',
+                            '不再使用时可在下方列表中直接删除。',
+                          ]}
+                          renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
+                        />
+                      </div>
+                    </Space>
+                  </Card>
+
+                  <Card title="核心接口" className="api-card api-endpoints-card">
+                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                      <div className="api-auth-panel">
+                        <div className="api-auth-panel-head">
+                          <Text strong>鉴权请求头</Text>
+                          <Tag color="processing">Bearer</Tag>
+                        </div>
+                        <pre className="message-code-block api-code-block">
+Authorization: Bearer {'<token>'}
+                        </pre>
+                      </div>
+
+                      <div className="api-endpoint-list">
+                        {API_ENDPOINTS.map((item) => (
+                          <div key={item.key} className="api-endpoint-item">
+                            <div className="api-endpoint-head">
+                              <Text strong>{item.title}</Text>
+                              <Tag color="blue">READ ONLY</Tag>
+                            </div>
+                            <pre className="message-code-block api-code-block">{item.endpoint}</pre>
+                            <Text type="secondary">{item.summary}</Text>
+                          </div>
+                        ))}
+                      </div>
+                    </Space>
+                  </Card>
+                </div>
+
+                <Card title="已有 Token" className="api-card api-token-table-card">
+                  <Table
+                    rowKey="id"
+                    columns={apiTokenColumns}
+                    dataSource={apiTokens}
+                    pagination={false}
+                    locale={{ emptyText: '还没有 API Token，请先创建一个。' }}
+                  />
+                </Card>
               </Space>
             )}
           </Spin>

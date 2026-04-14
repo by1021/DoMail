@@ -69,11 +69,23 @@ db.exec(`
     FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS api_tokens (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    token_prefix TEXT NOT NULL,
+    last_used_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_domains_domain ON domains(domain);
   CREATE INDEX IF NOT EXISTS idx_mailboxes_domain_id ON mailboxes(domain_id);
   CREATE INDEX IF NOT EXISTS idx_mailboxes_address ON mailboxes(address);
   CREATE INDEX IF NOT EXISTS idx_messages_mailbox_id ON messages(mailbox_id);
   CREATE INDEX IF NOT EXISTS idx_messages_received_at ON messages(received_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash);
+  CREATE INDEX IF NOT EXISTS idx_api_tokens_created_at ON api_tokens(created_at DESC);
 `);
 
 const domainColumns = new Set(
@@ -471,6 +483,64 @@ const markMessageReadStatement = db.prepare(`
   WHERE id = ?
 `);
 
+const insertApiTokenStatement = db.prepare(`
+  INSERT INTO api_tokens (
+    id,
+    name,
+    token_hash,
+    token_prefix,
+    last_used_at,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    @id,
+    @name,
+    @token_hash,
+    @token_prefix,
+    @last_used_at,
+    @created_at,
+    @updated_at
+  )
+`);
+
+const listApiTokensStatement = db.prepare(`
+  SELECT
+    id,
+    name,
+    token_prefix,
+    last_used_at,
+    created_at,
+    updated_at
+  FROM api_tokens
+  ORDER BY created_at DESC
+`);
+
+const getApiTokenByHashStatement = db.prepare(`
+  SELECT
+    id,
+    name,
+    token_hash,
+    token_prefix,
+    last_used_at,
+    created_at,
+    updated_at
+  FROM api_tokens
+  WHERE token_hash = ?
+`);
+
+const deleteApiTokenStatement = db.prepare(`
+  DELETE FROM api_tokens
+  WHERE id = ?
+`);
+
+const touchApiTokenLastUsedAtStatement = db.prepare(`
+  UPDATE api_tokens
+  SET last_used_at = @last_used_at,
+      updated_at = @updated_at
+  WHERE id = @id
+`);
+
 function timestamp() {
   return new Date().toISOString();
 }
@@ -729,6 +799,22 @@ function mapMessage(row) {
   };
 }
 
+function mapApiToken(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    name: row.name,
+    tokenHash: row.token_hash,
+    tokenPrefix: row.token_prefix,
+    lastUsedAt: row.last_used_at ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function runInTransaction(callback) {
   db.exec('BEGIN');
 
@@ -974,6 +1060,44 @@ export function markMessageAsRead(id) {
 
 export function removeMessage(id) {
   return deleteMessageStatement.run(id).changes > 0;
+}
+
+export function createApiToken({ id, name, tokenHash, tokenPrefix }) {
+  const now = timestamp();
+  insertApiTokenStatement.run({
+    id,
+    name: String(name ?? '').trim(),
+    token_hash: tokenHash,
+    token_prefix: tokenPrefix,
+    last_used_at: null,
+    created_at: now,
+    updated_at: now,
+  });
+
+  return listApiTokens().find((item) => item.id === id) ?? null;
+}
+
+export function listApiTokens() {
+  return listApiTokensStatement.all().map(mapApiToken);
+}
+
+export function getApiTokenByHash(tokenHash) {
+  return mapApiToken(getApiTokenByHashStatement.get(tokenHash));
+}
+
+export function touchApiTokenLastUsedAt(id) {
+  const now = timestamp();
+  touchApiTokenLastUsedAtStatement.run({
+    id,
+    last_used_at: now,
+    updated_at: now,
+  });
+
+  return listApiTokens().find((item) => item.id === id) ?? null;
+}
+
+export function removeApiToken(id) {
+  return deleteApiTokenStatement.run(id).changes > 0;
 }
 
 export function purgeExpiredMessages(referenceTime = timestamp()) {

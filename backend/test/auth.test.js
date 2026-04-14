@@ -222,3 +222,174 @@ test('dns detect endpoint requires auth before exposing domain dns status', asyn
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test('api token can read mailbox messages and message detail with bearer auth only after admin creates it', async () => {
+  const tempDir = createTempWorkspace();
+  let appModule;
+
+  try {
+    appModule = await loadAppModule(tempDir);
+    const adminRequest = supertest.agent(appModule.createApp());
+
+    process.env.MAIL_SERVER_IP = '203.0.113.10';
+    process.env.MAIL_MX_HOST = 'mx.example.com';
+
+    const loginResponse = await adminRequest.post('/api/auth/login').send({
+      username: 'admin',
+      password: 'pass123456',
+    });
+    assert.equal(loginResponse.status, 200);
+
+    const createdDomain = await adminRequest.post('/api/domains').send({
+      domain: 'example.com',
+    });
+    assert.equal(createdDomain.status, 201);
+
+    const createdMailbox = await adminRequest.post('/api/mailboxes').send({
+      domainId: createdDomain.body.item.id,
+      localPart: 'api-reader',
+    });
+    assert.equal(createdMailbox.status, 201);
+
+    const savedMessage = appModule.saveIncomingMessage({
+      id: 'msg_token_1',
+      mailbox_id: createdMailbox.body.item.id,
+      message_id: '<api-token-test-1@example.com>',
+      envelope_from: 'sender@example.net',
+      envelope_to: createdMailbox.body.item.address,
+      from_name: 'Sender',
+      from_address: 'sender@example.net',
+      subject: 'Token visible message',
+      text_content: 'hello from token',
+      html_content: '<p>hello from token</p>',
+      received_at: '2026-04-14T03:00:00.000Z',
+      raw_size: 128,
+      attachment_count: 0,
+      is_read: 0,
+    });
+    assert.equal(savedMessage.id, 'msg_token_1');
+
+    const unauthenticatedMailboxMessages = await supertest(appModule.createApp())
+      .get(`/api/mailboxes/${createdMailbox.body.item.id}/messages`);
+    assert.equal(unauthenticatedMailboxMessages.status, 401);
+
+    const createTokenResponse = await adminRequest.post('/api/tokens').send({
+      name: 'Read only token',
+    });
+    assert.equal(createTokenResponse.status, 201);
+    assert.equal(createTokenResponse.body.ok, true);
+    assert.equal(createTokenResponse.body.item.name, 'Read only token');
+    assert.equal(typeof createTokenResponse.body.item.token, 'string');
+    assert.ok(createTokenResponse.body.item.token.length >= 24);
+
+    const bearerToken = createTokenResponse.body.item.token;
+
+    const mailboxMessagesResponse = await supertest(appModule.createApp())
+      .get(`/api/mailboxes/${createdMailbox.body.item.id}/messages`)
+      .set('Authorization', `Bearer ${bearerToken}`);
+    assert.equal(mailboxMessagesResponse.status, 200);
+    assert.equal(mailboxMessagesResponse.body.ok, true);
+    assert.equal(mailboxMessagesResponse.body.mailbox.id, createdMailbox.body.item.id);
+    assert.equal(mailboxMessagesResponse.body.items.length, 1);
+    assert.equal(mailboxMessagesResponse.body.items[0].id, 'msg_token_1');
+    assert.equal(mailboxMessagesResponse.body.items[0].subject, 'Token visible message');
+
+    const messageDetailResponse = await supertest(appModule.createApp())
+      .get('/api/messages/msg_token_1')
+      .set('Authorization', `Bearer ${bearerToken}`);
+    assert.equal(messageDetailResponse.status, 200);
+    assert.equal(messageDetailResponse.body.ok, true);
+    assert.equal(messageDetailResponse.body.item.id, 'msg_token_1');
+    assert.equal(messageDetailResponse.body.item.subject, 'Token visible message');
+    assert.equal(messageDetailResponse.body.item.text, 'hello from token');
+
+    const forbiddenDomainList = await supertest(appModule.createApp())
+      .get('/api/domains')
+      .set('Authorization', `Bearer ${bearerToken}`);
+    assert.equal(forbiddenDomainList.status, 401);
+    assert.equal(forbiddenDomainList.body.ok, false);
+    assert.equal(forbiddenDomainList.body.error.code, 'AUTH_REQUIRED');
+  } finally {
+    appModule?.restoreEnv?.();
+    appModule?.closeBackgroundServices?.();
+    try {
+      appModule?.db?.close?.();
+    } catch {}
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('deleting api token immediately revokes bearer access to mailbox message endpoints', async () => {
+  const tempDir = createTempWorkspace();
+  let appModule;
+
+  try {
+    appModule = await loadAppModule(tempDir);
+    const adminRequest = supertest.agent(appModule.createApp());
+
+    const loginResponse = await adminRequest.post('/api/auth/login').send({
+      username: 'admin',
+      password: 'pass123456',
+    });
+    assert.equal(loginResponse.status, 200);
+
+    process.env.MAIL_SERVER_IP = '203.0.113.10';
+    process.env.MAIL_MX_HOST = 'mx.example.com';
+
+    const createdDomain = await adminRequest.post('/api/domains').send({
+      domain: 'example.com',
+    });
+    const createdMailbox = await adminRequest.post('/api/mailboxes').send({
+      domainId: createdDomain.body.item.id,
+      localPart: 'revoked',
+    });
+
+    appModule.saveIncomingMessage({
+      id: 'msg_token_2',
+      mailbox_id: createdMailbox.body.item.id,
+      message_id: '<api-token-test-2@example.com>',
+      envelope_from: 'sender@example.net',
+      envelope_to: createdMailbox.body.item.address,
+      from_name: 'Sender',
+      from_address: 'sender@example.net',
+      subject: 'Revoked token message',
+      text_content: 'will be revoked',
+      html_content: '',
+      received_at: '2026-04-14T03:01:00.000Z',
+      raw_size: 64,
+      attachment_count: 0,
+      is_read: 0,
+    });
+
+    const createTokenResponse = await adminRequest.post('/api/tokens').send({
+      name: 'Disposable token',
+    });
+    assert.equal(createTokenResponse.status, 201);
+
+    const tokenId = createTokenResponse.body.item.id;
+    const bearerToken = createTokenResponse.body.item.token;
+
+    const allowedBeforeDelete = await supertest(appModule.createApp())
+      .get(`/api/mailboxes/${createdMailbox.body.item.id}/messages`)
+      .set('Authorization', `Bearer ${bearerToken}`);
+    assert.equal(allowedBeforeDelete.status, 200);
+
+    const deleteTokenResponse = await adminRequest.delete(`/api/tokens/${tokenId}`);
+    assert.equal(deleteTokenResponse.status, 200);
+    assert.equal(deleteTokenResponse.body.ok, true);
+
+    const rejectedAfterDelete = await supertest(appModule.createApp())
+      .get(`/api/mailboxes/${createdMailbox.body.item.id}/messages`)
+      .set('Authorization', `Bearer ${bearerToken}`);
+    assert.equal(rejectedAfterDelete.status, 401);
+    assert.equal(rejectedAfterDelete.body.ok, false);
+    assert.equal(rejectedAfterDelete.body.error.code, 'AUTH_REQUIRED');
+  } finally {
+    appModule?.restoreEnv?.();
+    appModule?.closeBackgroundServices?.();
+    try {
+      appModule?.db?.close?.();
+    } catch {}
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});

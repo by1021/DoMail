@@ -76,4 +76,18 @@ describe('api client configuration', () => {
     });
     expect(axiosPost).toHaveBeenCalledWith('/auth/logout');
   });
+
+  it('requests api token management endpoints without duplicating the api prefix', async () => {
+    const { getApiTokens, createApiToken, deleteApiToken } = await import('./api.js');
+
+    await getApiTokens();
+    await createApiToken({ name: 'Read only token' });
+    await deleteApiToken('tok_123');
+
+    expect(axiosGet).toHaveBeenCalledWith('/tokens');
+    expect(axiosPost).toHaveBeenCalledWith('/tokens', {
+      name: 'Read only token',
+    });
+    expect(axiosDelete).toHaveBeenCalledWith('/tokens/tok_123');
+  });
 });

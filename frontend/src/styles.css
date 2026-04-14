@@ -749,6 +749,165 @@ body {
   height: 100%;
 }
 
+.api-hero-card.ant-card {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at right top, rgba(22, 119, 255, 0.16), transparent 28%),
+    linear-gradient(135deg, #ffffff 0%, #f3f8ff 58%, #eef6ff 100%);
+}
+
+.api-hero-card .ant-card-body {
+  padding: 24px 26px;
+}
+
+.api-hero-layout {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.api-hero-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.api-hero-tag.ant-tag {
+  width: fit-content;
+  margin: 0;
+  padding-inline: 10px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.api-hero-copy {
+  max-width: 680px;
+  line-height: 1.8;
+}
+
+.api-hero-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 12px;
+  min-width: 280px;
+}
+
+.api-hero-stat {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.06);
+}
+
+.api-hero-stat-value {
+  font-size: 28px;
+  line-height: 1;
+  color: #1677ff;
+}
+
+.api-token-highlight-card.ant-card {
+  border-color: rgba(22, 119, 255, 0.16);
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(255, 255, 255, 1) 100%);
+  box-shadow: 0 18px 36px rgba(37, 99, 235, 0.08);
+}
+
+.api-token-highlight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.api-token-inline-code.ant-typography {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  word-break: break-all;
+}
+
+.api-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.api-create-card.ant-card,
+.api-endpoints-card.ant-card,
+.api-token-table-card.ant-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 251, 255, 0.98) 100%);
+}
+
+.api-create-card .ant-card-head,
+.api-endpoints-card .ant-card-head,
+.api-token-table-card .ant-card-head {
+  border-bottom-color: rgba(148, 163, 184, 0.12);
+}
+
+.api-panel-intro {
+  display: grid;
+  gap: 6px;
+}
+
+.api-create-tips {
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.api-tips-title {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.api-auth-panel,
+.api-endpoint-item {
+  display: grid;
+  gap: 10px;
+}
+
+.api-auth-panel {
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.92) 0%, rgba(248, 251, 255, 1) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+}
+
+.api-auth-panel-head,
+.api-endpoint-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.api-endpoint-list {
+  display: grid;
+  gap: 14px;
+}
+
+.api-endpoint-item {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.api-code-block {
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+}
+
 .cloudflare-form-panel {
   margin-bottom: 18px;
   padding: 16px;
@@ -1049,6 +1208,19 @@ body {
     padding: 20px;
   }
 
+  .api-hero-layout,
+  .api-layout-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .api-hero-layout {
+    display: grid;
+  }
+
+  .api-hero-meta {
+    min-width: 0;
+  }
+
   .message-detail-panel .ant-card-extra {
     margin-inline-start: 0;
   }
@@ -1166,7 +1338,8 @@ body {
   .hero-card .ant-card-body,
   .section-intro-card .ant-card-body,
   .domain-table-card .ant-card-body,
-  .message-detail-panel .ant-card-body {
+  .message-detail-panel .ant-card-body,
+  .api-hero-card .ant-card-body {
     padding: 18px;
   }
 
@@ -1309,7 +1482,8 @@ body {
   .section-intro-card .ant-card-body,
   .domain-table-card .ant-card-body,
   .message-detail-panel .ant-card-body,
-  .auth-card .ant-card-body {
+  .auth-card .ant-card-body,
+  .api-hero-card .ant-card-body {
     padding: 16px 14px;
   }
 
@@ -1369,5 +1543,20 @@ body {
   .message-body-text,
   .message-html-preview {
     padding: 14px;
+  }
+
+  .api-auth-panel,
+  .api-endpoint-item,
+  .api-create-tips,
+  .api-hero-stat {
+    padding: 12px;
+  }
+
+  .api-hero-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .api-hero-stat-value {
+    font-size: 24px;
   }
 }
