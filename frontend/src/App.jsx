@@ -156,13 +156,13 @@ const API_ENDPOINTS = [
     summary: '通过 Bearer Token 创建邮箱，支持手动前缀或随机前缀。',
     usage: [
       '请求头携带 Authorization: Bearer <token>。',
-      '请求体传入 domainId；如需固定前缀再补充 localPart。',
+      '请求体直接传入 domain；如需固定前缀再补充 localPart。',
       'random=true 时由系统自动生成前缀。',
     ],
     example: `curl -X POST http://127.0.0.1:3001/api/mailboxes \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer <token>" \\
-  -d '{"domainId":"<domainId>","localPart":"test","random":false}'`,
+  -d '{"domain":"example.com","localPart":"test","random":false}'`,
   },
   {
     key: 'delete-mailbox',
@@ -562,7 +562,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
     try {
       setSubmitting(true);
       await createMailbox({
-        domainId: values.domainId,
+        domain: values.domain,
         localPart: values.random ? undefined : values.localPart,
         random: values.random,
       });
@@ -1174,7 +1174,7 @@ Authorization: Bearer {'<token>'}
                             split={false}
                             dataSource={[
                               '先登录后台并创建一个 API Token。',
-                              'domainId 需从域名管理接口获取。',
+                              'domain 直接填写已创建的域名字符串，例如 example.com。',
                               '邮箱地址可通过"查询邮箱列表"接口获取，并在路径中做 URL 编码。',
                               'messageId 需从邮件列表接口返回结果中获取。',
                               '页面仅提供说明和示例，实际调用请在终端、脚本或你的客户端中完成。',
@@ -1271,7 +1271,7 @@ Authorization: Bearer {'<token>'}
           setDomainDrawerOpen(false);
           openMailboxModal({
             random: false,
-            domainId: domainDetail?.id,
+            domain: domainDetail?.domain,
           });
         }}
         formatDateTime={formatDateTime}

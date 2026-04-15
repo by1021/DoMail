@@ -3,29 +3,29 @@ import { Alert, Form, Input, Modal, Radio, Select, Space, Tag, Typography } from
 
 const { Paragraph, Text } = Typography;
 
-function buildPreviewAddress(domainOptions, domainId, localPart, random) {
-  const domain = domainOptions.find((item) => item.value === domainId)?.label;
+function buildPreviewAddress(domain, localPart, random) {
+  const normalizedDomain = String(domain ?? '').trim().toLowerCase();
 
-  if (!domain) {
-    return '请先选择域名';
+  if (!normalizedDomain) {
+    return '请先输入域名';
   }
 
   if (random) {
-    return `系统将自动生成随机前缀 @ ${domain}`;
+    return `系统将自动生成随机前缀 @ ${normalizedDomain}`;
   }
 
   if (!localPart) {
-    return `请输入前缀，预览格式：prefix@${domain}`;
+    return `请输入前缀，预览格式：prefix@${normalizedDomain}`;
   }
 
-  return `${localPart}@${domain}`;
+  return `${localPart}@${normalizedDomain}`;
 }
 
 export default function MailboxCreateModal({
   form,
   open,
   submitting,
-  domainOptions,
+  domainOptions: _domainOptions,
   onCancel,
   onSubmit,
 }) {
@@ -50,22 +50,17 @@ export default function MailboxCreateModal({
           <Space direction="vertical" size={6} style={{ width: '100%' }}>
             <Text strong>创建流程</Text>
             <Paragraph type="secondary" style={{ margin: 0 }}>
-              先选择所属域名，再决定使用自定义前缀还是随机前缀。创建完成后即可去收件列表查看邮件。
+              直接输入已创建的域名，再决定使用自定义前缀还是随机前缀。创建完成后即可去收件列表查看邮件。
             </Paragraph>
           </Space>
         </div>
 
         <Form.Item
           label="所属域名"
-          name="domainId"
-          rules={[{ required: true, message: '请选择域名' }]}
+          name="domain"
+          rules={[{ required: true, message: '请输入域名' }]}
         >
-          <Select
-            placeholder="选择域名"
-            options={domainOptions}
-            showSearch
-            optionFilterProp="label"
-          />
+          <Input placeholder="例如：example.com" />
         </Form.Item>
 
         <Form.Item label="生成方式" name="random">
@@ -78,7 +73,7 @@ export default function MailboxCreateModal({
         <Form.Item shouldUpdate noStyle>
           {({ getFieldValue }) => {
             const random = getFieldValue('random');
-            const domainId = getFieldValue('domainId');
+            const domain = getFieldValue('domain');
             const localPart = getFieldValue('localPart');
 
             return (
@@ -114,7 +109,7 @@ export default function MailboxCreateModal({
                       </Tag>
                     </Space>
                     <Text className="mailbox-preview-address">
-                      {buildPreviewAddress(domainOptions, domainId, localPart, random)}
+                      {buildPreviewAddress(domain, localPart, random)}
                     </Text>
                   </Space>
                 </div>

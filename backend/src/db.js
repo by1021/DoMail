@@ -983,10 +983,10 @@ export function generateRandomLocalPart(length = 10) {
   return `m${timePart}${nanoid(randomLength)}`.slice(0, safeLength);
 }
 
-export function createMailbox({ domainId, localPart, source = 'manual' }) {
-  const domain = getDomainById(domainId);
+export function createMailbox({ domain, localPart, source = 'manual' }) {
+  const matchedDomain = getDomainByName(domain);
 
-  if (!domain) {
+  if (!matchedDomain) {
     throw new Error('DOMAIN_NOT_FOUND');
   }
 
@@ -994,9 +994,9 @@ export function createMailbox({ domainId, localPart, source = 'manual' }) {
   const now = timestamp();
   const payload = {
     id: `mbx_${nanoid()}`,
-    domain_id: domainId,
+    domain_id: matchedDomain.id,
     local_part: normalizedLocalPart,
-    address: normalizeAddress(normalizedLocalPart, domain.domain),
+    address: normalizeAddress(normalizedLocalPart, matchedDomain.domain),
     source,
     is_active: 1,
     retention_value: null,

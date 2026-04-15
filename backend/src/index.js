@@ -58,7 +58,7 @@ const domainSchema = z.object({
 });
 
 const mailboxSchema = z.object({
-  domainId: z.string().min(1),
+  domain: z.string().min(1).max(255),
   localPart: z.string().min(1).max(64).regex(/^[a-zA-Z0-9._-]+$/).optional(),
   random: z.boolean().optional(),
 });
@@ -568,7 +568,7 @@ export function createApp() {
   app.post('/api/mailboxes', (request, response) => {
     try {
       const payload = mailboxSchema.parse({
-        domainId: request.body?.domainId,
+        domain: request.body?.domain,
         localPart: request.body?.localPart,
         random: request.body?.random ?? false,
       });
@@ -589,7 +589,7 @@ export function createApp() {
       }
 
       const created = createMailbox({
-        domainId: payload.domainId,
+        domain: payload.domain,
         localPart,
         source: payload.random ? 'random' : 'manual',
       });
