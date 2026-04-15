@@ -477,8 +477,9 @@ export function createApp() {
     }
 
     if (
-      request.method === 'GET' &&
-      (/^\/mailboxes\/[^/]+\/messages$/.test(request.path) || /^\/messages\/[^/]+$/.test(request.path))
+      (request.method === 'GET' &&
+        (/^\/mailboxes$/.test(request.path) || /^\/mailboxes\/[^/]+\/messages$/.test(request.path) || /^\/messages\/[^/]+$/.test(request.path))) ||
+      ((request.method === 'POST' || request.method === 'DELETE') && /^\/mailboxes(?:\/[^/]+)?$/.test(request.path))
     ) {
       requireApiAccess(request, response, next);
       return;
@@ -689,10 +690,16 @@ export function createApp() {
       return;
     }
 
+    const latestOnly = ['1', 'true', 'yes'].includes(
+      String(request.query?.latest ?? '').trim().toLowerCase(),
+    );
+    const items = listMessagesByMailbox(request.params.id);
+
     response.json({
       ok: true,
       mailbox: domainMailbox,
-      items: listMessagesByMailbox(request.params.id),
+      items: latestOnly ? items.slice(0, 1) : items,
+      latest: latestOnly,
     });
   });
 

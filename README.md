@@ -249,23 +249,23 @@ curl -i http://127.0.0.1:3001/api/domains
 
 ### 7.4 API Token（Bearer Token）
 
-当前版本支持由管理员在后台创建 **API Token**，供程序只读访问邮件接口。
+当前版本支持由管理员在后台创建 **API Token**，并在前端 [`API`](frontend/src/App.jsx) 页面查看以下核心接口的说明与示例用法，也可在外部脚本或终端中直接调用：
 
-#### Token 用途
-
-Token 只允许访问以下两个只读接口：
-
+- `POST /api/mailboxes`
+- `DELETE /api/mailboxes/:mailboxId`
 - `GET /api/mailboxes/:mailboxId/messages`
+- `GET /api/mailboxes/:mailboxId/messages?latest=1`
 - `GET /api/messages/:messageId`
 
-其他接口（如域名管理、邮箱创建、删除邮件等）仍然只允许管理员 Session 访问。
+不在上面这组范围内的接口，仍然要求管理员 Session 访问。
 
 #### Token 创建方式
 
 1. 使用管理员账号登录后台
-2. 打开前端侧边栏中的 [`API`](frontend/src/App.jsx) 页面
-3. 输入名称并创建 Token
+2. 打开侧边栏中的 [`API`](frontend/src/App.jsx) 页面
+3. 在“新建 Token”区域输入名称并创建
 4. 系统只会在创建成功当次返回完整 Token，请立即复制保存
+5. 将该 Token 带入页面提供的示例命令、你的脚本或 API 客户端中使用
 
 数据库中不会保存明文 Token，只保存哈希与前缀信息。
 
@@ -275,64 +275,81 @@ Token 只允许访问以下两个只读接口：
 Authorization: Bearer <token>
 ```
 
-#### `mailboxId` 是什么？怎么获取？
+#### `domainId` / `mailboxId` / `messageId` 获取方式
 
-`mailboxId` 不是邮箱地址，也不是域名，而是系统为每个邮箱生成的唯一 ID。
+- `domainId`：先调用 `GET /api/domains`，从域名对象中取 `id`
+- `mailboxId`：先调用 `GET /api/mailboxes`，从邮箱对象中取 `id`
+- `messageId`：先调用 `GET /api/mailboxes/:mailboxId/messages`，从邮件对象中取 `id`
 
-例如你创建了邮箱 `test@example.com`，真正用于调用以下接口的，是这个邮箱对应的 `id` 字段：
+其中：
 
-- `GET /api/mailboxes/:mailboxId/messages`
-- `GET /api/mailboxes/:mailboxId/messages?latest=1`
+- 邮箱地址（如 `test@example.com`）用于人工识别目标邮箱
+- 真正用于 API 调用的是对象里的 `id` 字段
 
-获取方式如下：
+#### Token 可调用接口示例
 
-1. 先调用 [`GET /api/mailboxes`](README.md:348)
-2. 在返回结果中找到目标邮箱，例如 `test@example.com`
-3. 读取该邮箱对象里的 `id`
-4. 把这个 `id` 填到 `<mailboxId>` 位置
-
-也就是说：
-
-- 邮箱地址：`test@example.com`
-- mailboxId：邮箱列表结果里的 `id`，例如 `mbx_xxxxx`
-
-示例流程：
+查询邮箱列表：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes
+curl http://127.0.0.1:3001/api/mailboxes \
+  -H "Authorization: Bearer <token>"
 ```
 
-返回结果中你会看到类似：
+创建邮箱：
 
-```json
-{
-  "items": [
-    {
-      "id": "mbx_abc123",
-      "address": "test@example.com"
-    }
-  ]
-}
+```bash
+curl -X POST http://127.0.0.1:3001/api/mailboxes \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"domainId":"<domainId>","localPart":"test","random":false}'
 ```
 
-此时：
+随机创建邮箱：
 
-- `address` 用来确认你要查的是哪个邮箱
-- `id` 就是后续 API 调用里要用的 `mailboxId`
+```bash
+curl -X POST http://127.0.0.1:3001/api/mailboxes \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"domainId":"<domainId>","random":true}'
+```
 
-#### 查询某个邮箱的邮件列表（Bearer Token）
+删除邮箱：
+
+```bash
+curl -X DELETE http://127.0.0.1:3001/api/mailboxes/<mailboxId> \
+  -H "Authorization: Bearer <token>"
+```
+
+查询某个邮箱的邮件列表：
 
 ```bash
 curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages \
   -H "Authorization: Bearer <token>"
 ```
 
-#### 查询单封邮件详情（Bearer Token）
+查询最新邮件：
+
+```bash
+curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages?latest=1 \
+  -H "Authorization: Bearer <token>"
+```
+
+查询单封邮件详情：
 
 ```bash
 curl http://127.0.0.1:3001/api/messages/<messageId> \
   -H "Authorization: Bearer <token>"
 ```
+
+#### 前端 API 页面说明
+
+[`frontend/src/App.jsx`](frontend/src/App.jsx) 中的 API 页面现已精简为三块：
+
+- Token 创建与已有 Token 管理
+- Bearer 请求头格式与使用前准备说明
+- 核心接口清单、调用说明与 `curl` 示例
+
+页面不再内置“发送请求”或“返回结果展示”功能，重点保留接口说明和用法参考。
 
 #### Token 失效
 
@@ -506,7 +523,22 @@ curl http://127.0.0.1:3001/api/mailboxes/123/messages \
   -H "Authorization: Bearer dm_xxx"
 ```
 
-### 11.3 查询单封邮件详情
+### 11.3 查询某个邮箱的最新邮件
+
+```bash
+curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages?latest=1 \
+  -H "Authorization: Bearer <token>"
+```
+
+返回中的 `items` 最多只包含 1 条最新邮件，同时会返回：
+
+```json
+{
+  "latest": true
+}
+```
+
+### 11.4 查询单封邮件详情
 
 管理员已登录时：
 
@@ -528,17 +560,19 @@ curl http://127.0.0.1:3001/api/messages/456 \
   -H "Authorization: Bearer dm_xxx"
 ```
 
-### 11.4 前端对应接口
+### 11.5 前端对应接口
 
-前端对邮件相关接口的封装在 `frontend/src/api.js` 中，主要包括：
+前端常规管理接口封装位于 [`frontend/src/api.js`](frontend/src/api.js)，主要包括：
 
-- `getMailboxes`
 - `createMailbox`
+- `deleteMailbox`
 - `getMailboxMessages`
 - `getMessageDetail`
-- `markMessageRead`
-- `deleteMessage`
-- `updateMailboxRetention`
+- `getApiTokens`
+- `createApiToken`
+- `deleteApiToken`
+
+其中 Token 的实际调用方式以 [`frontend/src/App.jsx`](frontend/src/App.jsx) 页面中的请求头说明和 `curl` 示例为准。
 
 ---
 

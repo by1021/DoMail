@@ -137,22 +137,80 @@ const SECTION_META = {
 
 const API_ENDPOINTS = [
   {
+    key: 'list-mailboxes',
+    title: '查询邮箱列表',
+    endpoint: 'GET /api/mailboxes',
+    summary: '获取所有邮箱列表，返回邮箱地址、域名、邮件数等信息。',
+    usage: [
+      '使用 Bearer Token 认证即可查询所有邮箱。',
+      '返回的 items 数组包含每个邮箱的详细信息。',
+      '从返回结果中获取 mailboxId 用于后续查询邮件列表。',
+    ],
+    example: `curl http://127.0.0.1:3001/api/mailboxes \\
+  -H "Authorization: Bearer <token>"`,
+  },
+  {
+    key: 'create-mailbox',
+    title: '创建邮箱',
+    endpoint: 'POST /api/mailboxes',
+    summary: '通过 Bearer Token 创建邮箱，支持手动前缀或随机前缀。',
+    usage: [
+      '请求头携带 Authorization: Bearer <token>。',
+      '请求体传入 domainId；如需固定前缀再补充 localPart。',
+      'random=true 时由系统自动生成前缀。',
+    ],
+    example: `curl -X POST http://127.0.0.1:3001/api/mailboxes \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer <token>" \\
+  -d '{"domainId":"<domainId>","localPart":"test","random":false}'`,
+  },
+  {
+    key: 'delete-mailbox',
+    title: '删除邮箱',
+    endpoint: 'DELETE /api/mailboxes/:mailboxId',
+    summary: '通过 Bearer Token 删除指定邮箱。',
+    usage: [
+      '先从邮箱列表中确认目标 mailboxId。',
+      '删除后该邮箱后续将不再接收邮件。',
+    ],
+    example: `curl -X DELETE http://127.0.0.1:3001/api/mailboxes/<mailboxId> \\
+  -H "Authorization: Bearer <token>"`,
+  },
+  {
     key: 'messages',
-    title: '全部邮件',
+    title: '邮件列表',
     endpoint: 'GET /api/mailboxes/:mailboxId/messages',
     summary: '按邮箱获取完整邮件列表。',
+    usage: [
+      'mailboxId 需先通过邮箱列表接口获取。',
+      '返回 items 数组，可继续提取 messageId 查看详情。',
+    ],
+    example: `curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages \\
+  -H "Authorization: Bearer <token>"`,
   },
   {
     key: 'latest',
     title: '最新邮件',
     endpoint: 'GET /api/mailboxes/:mailboxId/messages?latest=1',
-    summary: '只读取最新一封邮件。',
+    summary: '只返回最新一封邮件，适合轮询或快速检查。',
+    usage: [
+      '在邮件列表接口基础上增加 latest=1 查询参数。',
+      '返回的 items 最多只有一条记录。',
+    ],
+    example: `curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages?latest=1 \\
+  -H "Authorization: Bearer <token>"`,
   },
   {
     key: 'detail',
     title: '邮件详情',
     endpoint: 'GET /api/messages/:messageId',
-    summary: '根据 messageId 获取正文详情。',
+    summary: '根据 messageId 获取单封邮件详情。',
+    usage: [
+      'messageId 通常来自邮件列表返回结果。',
+      '适合获取完整正文、头信息与附件元数据。',
+    ],
+    example: `curl http://127.0.0.1:3001/api/messages/<messageId> \\
+  -H "Authorization: Bearer <token>"`,
   },
 ];
 
@@ -214,6 +272,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [searchText, setSearchText] = useState('');
   const [apiTokens, setApiTokens] = useState([]);
   const [newApiToken, setNewApiToken] = useState(null);
+  const [apiEndpointKey, setApiEndpointKey] = useState('messages');
   const [domainForm] = Form.useForm();
   const [mailboxForm] = Form.useForm();
   const [retentionForm] = Form.useForm();
@@ -241,6 +300,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const hasMailboxes = mailboxes.length > 0;
   const sectionOptions = useMemo(() => buildSectionOptions(section), [section]);
   const currentSectionMeta = SECTION_META[section] ?? SECTION_META.overview;
+  const activeApiEndpoint = API_ENDPOINTS.find((item) => item.key === apiEndpointKey) ?? API_ENDPOINTS[0];
 
   const normalizedSearchText = useMemo(() => searchText.trim().toLowerCase(), [searchText]);
 
@@ -1050,38 +1110,11 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
             {section === 'api' && (
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
-                <Card className="api-hero-card">
-                  <div className="api-hero-layout">
-                    <div className="api-hero-main">
-                      <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                        <Tag color="blue" className="api-hero-tag">
-                          Bearer Token
-                        </Tag>
-                        <Title level={4} style={{ margin: 0 }}>
-                          API 调用中心
-                        </Title>
-                        <Text type="secondary" className="api-hero-copy">
-                          在这里统一完成 Token 创建、只读接口查阅与联调准备。页面重点聚焦 Bearer Token
-                          的生成、复制和接口调用说明，减少切换成本。
-                        </Text>
-                      </Space>
-                    </div>
-                    <div className="api-hero-meta">
-                      <div className="api-hero-stat">
-                        <Text type="secondary">可用 Token</Text>
-                        <Text strong className="api-hero-stat-value">
-                          {apiTokens.length}
-                        </Text>
-                      </div>
-                      <div className="api-hero-stat">
-                        <Text type="secondary">接口条目</Text>
-                        <Text strong className="api-hero-stat-value">
-                          {API_ENDPOINTS.length}
-                        </Text>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+                <SectionHero
+                  title="API 说明"
+                  description="保留 Token 管理、接口清单、请求头格式和 curl 用法示例，不在页面内直接发请求。"
+                  extra={<Tag color="blue">{API_ENDPOINTS.length} 个核心接口</Tag>}
+                />
 
                 {newApiToken?.token ? (
                   <Card className="api-token-highlight-card" title="新建 Token">
@@ -1095,84 +1128,107 @@ export default function App({ adminProfile = null, onLogout = null }) {
                       <Text copyable={{ text: newApiToken.token }} code className="api-token-inline-code">
                         {newApiToken.token}
                       </Text>
-                      <Text type="secondary">请立即复制保存，该 Token 不会再次完整展示。</Text>
+                      <Text type="secondary">
+                        请立即复制保存。页面不再内置调试请求能力，如需使用请将该 Token 带入下方示例命令。
+                      </Text>
                     </Space>
                   </Card>
                 ) : null}
 
-                <div className="api-compact-grid api-layout-grid">
-                  <Card title="添加 Token" className="api-card api-create-card">
-                    <Space direction="vertical" size={18} style={{ width: '100%' }}>
-                      <div className="api-panel-intro">
-                        <Text strong>创建新的 Bearer Token</Text>
-                        <Text type="secondary">
-                          建议按调用场景命名，便于后续区分机器人、脚本或不同系统来源。
-                        </Text>
-                      </div>
+                <Row gutter={[16, 16]} align="top">
+                  <Col xs={24} xl={10}>
+                    <Card title="Token 管理" className="api-card">
+                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        <Form form={apiTokenForm} layout="vertical" onFinish={handleCreateApiToken}>
+                          <Form.Item
+                            label="新建 Token"
+                            name="name"
+                            rules={[{ required: true, message: '请输入 Token 名称' }]}
+                          >
+                            <Input
+                              aria-label="Token 名称"
+                              placeholder="例如：mailbox-readonly"
+                              maxLength={120}
+                            />
+                          </Form.Item>
+                          <Button type="primary" htmlType="submit" loading={submitting} block>
+                            创建 Token
+                          </Button>
+                        </Form>
 
-                      <Form form={apiTokenForm} layout="vertical" onFinish={handleCreateApiToken}>
-                        <Form.Item
-                          label="Token 名称"
-                          name="name"
-                          rules={[
-                            { required: true, message: '请输入 Token 名称' },
-                          ]}
-                        >
-                          <Input
-                            aria-label="Token 名称"
-                            placeholder="例如：收件机器人"
-                            maxLength={120}
-                          />
-                        </Form.Item>
-                        <Button type="primary" htmlType="submit" loading={submitting} block>
-                          创建 Token
-                        </Button>
-                      </Form>
-
-                      <div className="api-create-tips">
-                        <Text strong className="api-tips-title">
-                          使用建议
-                        </Text>
-                        <List
-                          split={false}
-                          dataSource={[
-                            '创建成功后立即复制保存明文 Token。',
-                            'Token 仅适用于只读邮件查询接口。',
-                            '不再使用时可在下方列表中直接删除。',
-                          ]}
-                          renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
-                        />
-                      </div>
-                    </Space>
-                  </Card>
-
-                  <Card title="核心接口" className="api-card api-endpoints-card">
-                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                      <div className="api-auth-panel">
-                        <div className="api-auth-panel-head">
-                          <Text strong>鉴权请求头</Text>
-                          <Tag color="processing">Bearer</Tag>
-                        </div>
-                        <pre className="message-code-block api-code-block">
-Authorization: Bearer {'<token>'}
-                        </pre>
-                      </div>
-
-                      <div className="api-endpoint-list">
-                        {API_ENDPOINTS.map((item) => (
-                          <div key={item.key} className="api-endpoint-item">
-                            <div className="api-endpoint-head">
-                              <Text strong>{item.title}</Text>
-                              <Tag color="blue">READ ONLY</Tag>
-                            </div>
-                            <pre className="message-code-block api-code-block">{item.endpoint}</pre>
-                            <Text type="secondary">{item.summary}</Text>
+                        <div className="api-auth-panel">
+                          <div className="api-auth-panel-head">
+                            <Text strong>请求头格式</Text>
+                            <Tag color="processing">Bearer</Tag>
                           </div>
-                        ))}
-                      </div>
-                    </Space>
-                  </Card>
-                </div>
+                          <pre className="message-code-block api-code-block">
+Authorization: Bearer {'<token>'}
+                          </pre>
+                        </div>
+
+                        <div className="api-create-tips">
+                          <Text strong className="api-tips-title">
+                            使用前准备
+                          </Text>
+                          <List
+                            split={false}
+                            dataSource={[
+                              '先登录后台并创建一个 API Token。',
+                              'domainId 需从域名管理接口获取。',
+                              'mailboxId 可通过"查询邮箱列表"接口获取。',
+                              'messageId 需从邮件列表接口返回结果中获取。',
+                              '页面仅提供说明和示例，实际调用请在终端、脚本或你的客户端中完成。',
+                            ]}
+                            renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
+                          />
+                        </div>
+                      </Space>
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} xl={14}>
+                    <Card title="接口清单与用法" className="api-card">
+                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        <Form layout="vertical">
+                          <Form.Item label="接口选择">
+                            <Segmented
+                              block
+                              value={apiEndpointKey}
+                              onChange={setApiEndpointKey}
+                              options={API_ENDPOINTS.map((item) => ({
+                                label: item.title,
+                                value: item.key,
+                              }))}
+                            />
+                          </Form.Item>
+                        </Form>
+
+                        <Card size="small" className="api-endpoint-preview">
+                          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            <Text strong>{activeApiEndpoint.title}</Text>
+                            <pre className="message-code-block api-code-block">{activeApiEndpoint.endpoint}</pre>
+                            <Text type="secondary">{activeApiEndpoint.summary}</Text>
+                          </Space>
+                        </Card>
+
+                        <div className="api-create-tips">
+                          <Text strong className="api-tips-title">
+                            调用说明
+                          </Text>
+                          <List
+                            split={false}
+                            dataSource={activeApiEndpoint.usage}
+                            renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
+                          />
+                        </div>
+
+                        <Card size="small" title="curl 示例">
+                          <pre className="message-code-block api-code-block">{activeApiEndpoint.example}</pre>
+                        </Card>
+                      </Space>
+                    </Card>
+                  </Col>
+                </Row>
 
                 <Card title="已有 Token" className="api-card api-token-table-card">
                   <Table
