@@ -52,7 +52,6 @@
 - Vite
 - Ant Design
 - Axios
-- Vitest
 
 ---
 
@@ -64,7 +63,6 @@
 │  ├─ src/
 │  │  ├─ index.js
 │  │  └─ db.js
-│  ├─ test/
 │  ├─ .env.example
 │  └─ package.json
 ├─ frontend/
@@ -424,15 +422,13 @@ test@example.com
 
 ## 10. SMTP 收件测试
 
-完整说明可见 `收件测试操作说明.md`。这里给出 README 中最常用的最短路径。
-
-### 9.1 使用 swaks 测试
+### 10.1 使用 swaks 测试
 
 ```bash
 swaks --server 127.0.0.1 --port 2525 --to test@example.com --from hello@abc.com --header "Subject: quick test" --body "hello"
 ```
 
-### 9.2 使用 Python 标准库测试
+### 10.2 使用 Python 标准库测试
 
 ```bash
 python - <<'PY'
@@ -458,7 +454,7 @@ Windows 可以将脚本保存为 `test_mail.py` 后执行：
 python .\test_mail.py
 ```
 
-### 9.3 手工 SMTP 对话
+### 10.3 手工 SMTP 对话
 
 ```text
 EHLO localhost
@@ -478,7 +474,7 @@ QUIT
 
 ## 11. 查看是否已收到邮件
 
-### 10.1 查询邮箱列表
+### 11.1 查询邮箱列表
 
 ```bash
 curl http://127.0.0.1:3001/api/mailboxes
@@ -486,7 +482,7 @@ curl http://127.0.0.1:3001/api/mailboxes
 
 从结果中找到目标邮箱的 `id`，这个值就是后续邮件查询接口需要使用的 `mailboxId`。
 
-### 10.2 查询某个邮箱的邮件列表
+### 11.2 查询某个邮箱的邮件列表
 
 这里的 `<mailboxId>` 就是上一步邮箱列表结果中的 `id` 字段，不是邮箱地址本身。
 
@@ -510,7 +506,7 @@ curl http://127.0.0.1:3001/api/mailboxes/123/messages \
   -H "Authorization: Bearer dm_xxx"
 ```
 
-### 10.3 查询单封邮件详情
+### 11.3 查询单封邮件详情
 
 管理员已登录时：
 
@@ -532,7 +528,7 @@ curl http://127.0.0.1:3001/api/messages/456 \
   -H "Authorization: Bearer dm_xxx"
 ```
 
-### 10.4 前端对应接口
+### 11.4 前端对应接口
 
 前端对邮件相关接口的封装在 `frontend/src/api.js` 中，主要包括：
 
@@ -572,13 +568,13 @@ curl http://127.0.0.1:3001/api/messages/456 \
 
 当前仓库未包含单独的 `DEPLOY.md` 或 `deploy.sh`，因此这里直接给出部署与排障所需的最小要点。
 
-### 12.1 推荐部署目录
+### 13.1 推荐部署目录
 
 ```bash
 /opt/domain-mail
 ```
 
-### 12.2 最小部署步骤
+### 13.2 最小部署步骤
 
 ```bash
 cd /opt/domain-mail/backend && npm ci
@@ -595,7 +591,7 @@ HTTP API listening on port 3001
 SMTP receiver listening on 0.0.0.0:2525
 ```
 
-### 12.3 部署后第一轮自检
+### 13.3 部署后第一轮自检
 
 1. 调用 `GET /api/health`
 2. 在系统中创建目标域名
@@ -608,7 +604,7 @@ SMTP receiver listening on 0.0.0.0:2525
 
 ## 14. 手工部署概要
 
-### 13.1 安装环境
+### 14.1 安装环境
 
 ```bash
 apt update
@@ -617,14 +613,14 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt install -y nodejs
 ```
 
-### 13.2 安装依赖
+### 14.2 安装依赖
 
 ```bash
 cd /opt/domain-mail/backend && npm ci
 cd /opt/domain-mail/frontend && npm ci
 ```
 
-### 13.3 配置后端
+### 14.3 配置后端
 
 ```bash
 cp /opt/domain-mail/backend/.env.example /opt/domain-mail/backend/.env
@@ -643,7 +639,7 @@ SESSION_SECRET=change-this-session-secret
 SESSION_MAX_AGE_MS=43200000
 ```
 
-### 13.4 构建前端
+### 14.4 构建前端
 
 ```bash
 cd /opt/domain-mail/frontend
@@ -714,32 +710,7 @@ priority 10
 
 ---
 
-## 17. 测试与验证
-
-### 后端测试
-
-```bash
-cd backend
-npm run test:db
-```
-
-### 前端测试
-
-```bash
-cd frontend
-npm test
-```
-
-### 前端构建验证
-
-```bash
-cd frontend
-npm run build
-```
-
----
-
-## 18. 常见问题
+## 17. 常见问题
 
 ### 17.1 `2525` 连不上
 
@@ -797,7 +768,7 @@ test@example.com
 
 ---
 
-## 19. 成功判定标准
+## 18. 成功判定标准
 
 满足以下条件，可认为项目部署或本地验证成功：
 
@@ -810,15 +781,14 @@ test@example.com
 
 ---
 
-## 20. 补充文档
+## 19. 补充文档
 
-- `收件测试操作说明.md`：本地 SMTP 收件验证详细步骤
 - `backend/.env.example`：后端环境变量示例
 - `backend/src/smtp-utils.js`：SMTP 收件校验与日志辅助逻辑
 
 ---
 
-## 21. 一句话总结
+## 20. 一句话总结
 
 这个项目最重要的验证思路不是“调用某个发信接口”，而是：
 

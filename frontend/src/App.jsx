@@ -156,6 +156,45 @@ const API_ENDPOINTS = [
   },
 ];
 
+function WorkspaceBrand() {
+  return (
+    <div className="brand-block">
+      <div className="brand-surface">
+        <Space direction="vertical" size={14} style={{ width: '100%' }} align="center">
+          <Avatar size={56} icon={<ThunderboltOutlined />} className="app-brand-logo" />
+          <div className="brand-copy">
+            <Title level={4} className="app-brand-title" style={{ margin: 0 }}>
+              域名邮箱
+            </Title>
+            <Text type="secondary">DoMail 管理工作台</Text>
+          </div>
+        </Space>
+      </div>
+    </div>
+  );
+}
+
+function SectionHero({ title, description, extra = null, eyebrow = 'DoMail Workspace' }) {
+  return (
+    <Card className="section-intro-card page-toolbar-card">
+      <Row justify="space-between" align="middle" gutter={[16, 16]}>
+        <Col flex="auto">
+          <Space direction="vertical" size={4}>
+            <Text type="secondary" className="section-eyebrow">
+              {eyebrow}
+            </Text>
+            <Title level={4} style={{ margin: 0 }}>
+              {title}
+            </Title>
+            <Text type="secondary">{description}</Text>
+          </Space>
+        </Col>
+        {extra ? <Col>{extra}</Col> : null}
+      </Row>
+    </Card>
+  );
+}
+
 export default function App({ adminProfile = null, onLogout = null }) {
   const { message } = AntdApp.useApp();
   const [section, setSection] = useState('overview');
@@ -717,23 +756,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   return (
     <Layout className="app-shell app-shell-responsive">
       <Sider width={320} theme="light" className="app-sider">
-        <div className="brand-block">
-          <div className="brand-surface">
-            <Space direction="vertical" size={12} style={{ width: '100%' }} align="center">
-              <Avatar
-                size={48}
-                icon={<ThunderboltOutlined />}
-                style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
-              />
-              <div className="brand-copy">
-                <Title level={4} style={{ margin: 0 }}>
-                  域名邮箱
-                </Title>
-                <Text type="secondary">统一管理收件工作台</Text>
-              </div>
-            </Space>
-          </div>
-        </div>
+        <WorkspaceBrand />
 
         <div className="side-panel side-panel-navigation">
           <Segmented
@@ -754,6 +777,9 @@ export default function App({ adminProfile = null, onLogout = null }) {
             <Col flex="auto">
               <div className="header-title-wrap">
                 <Space direction="vertical" size={4}>
+                  <Text type="secondary" className="section-eyebrow">
+                    DoMail Workspace
+                  </Text>
                   <Title level={3} style={{ margin: 0 }}>
                     {currentSectionMeta.title}
                   </Title>
@@ -830,31 +856,21 @@ export default function App({ adminProfile = null, onLogout = null }) {
             )}
 
             {section === 'mailboxes' && (
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Card className="section-intro-card">
-                  <Row justify="space-between" align="middle" gutter={[16, 16]}>
-                    <Col flex="auto">
-                      <Space direction="vertical" size={4}>
-                        <Title level={4} style={{ margin: 0 }}>
-                          邮箱管理
-                        </Title>
-                        <Text type="secondary">
-                          为域名生成收件地址，支持手动前缀与随机前缀两种方式。
-                        </Text>
-                      </Space>
-                    </Col>
-                    <Col>
-                      <Space wrap>
-                        <Button onClick={() => openMailboxModal({ random: true })} disabled={!hasDomains}>
-                          随机生成邮箱
-                        </Button>
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => openMailboxModal({ random: false })} disabled={!hasDomains}>
-                          创建邮箱
-                        </Button>
-                      </Space>
-                    </Col>
-                  </Row>
-                </Card>
+              <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
+                <SectionHero
+                  title="邮箱管理"
+                  description="为域名生成收件地址，支持手动前缀与随机前缀两种方式。"
+                  extra={(
+                    <Space wrap>
+                      <Button onClick={() => openMailboxModal({ random: true })} disabled={!hasDomains}>
+                        随机生成邮箱
+                      </Button>
+                      <Button type="primary" icon={<PlusOutlined />} onClick={() => openMailboxModal({ random: false })} disabled={!hasDomains}>
+                        创建邮箱
+                      </Button>
+                    </Space>
+                  )}
+                />
 
                 <Card>
                   <Table
@@ -869,38 +885,30 @@ export default function App({ adminProfile = null, onLogout = null }) {
             )}
 
             {section === 'messages' && (
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Card className="section-intro-card">
-                  <Row justify="space-between" align="middle" gutter={[16, 16]}>
-                    <Col flex="auto">
-                      <Space direction="vertical" size={4}>
-                        <Title level={4} style={{ margin: 0 }}>
-                          {messageDetail ? '邮件详情' : '邮件收件区'}
-                        </Title>
-                        <Text type="secondary">
-                          {messageDetail
-                            ? '聚焦查看当前邮件内容，处理完成后可返回邮件列表继续浏览。'
-                            : '选择邮箱后集中查看最新邮件，常用操作都放在当前页完成。'}
-                        </Text>
-                      </Space>
-                    </Col>
-                    <Col>
-                      <Space wrap>
-                        <Select
-                          aria-label="选择邮箱"
-                          value={selectedMailboxId}
-                          onChange={(value) => loadMessages(value, { keepSection: true })}
-                          className="mailbox-selector"
-                          placeholder="选择邮箱"
-                          options={mailboxes.map((item) => ({
-                            label: item.address,
-                            value: item.id,
-                          }))}
-                        />
-                      </Space>
-                    </Col>
-                  </Row>
-                </Card>
+              <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
+                <SectionHero
+                  title={messageDetail ? '邮件详情' : '邮件收件区'}
+                  description={
+                    messageDetail
+                      ? '聚焦查看当前邮件内容，处理完成后可返回邮件列表继续浏览。'
+                      : '选择邮箱后集中查看最新邮件，常用操作都放在当前页完成。'
+                  }
+                  extra={(
+                    <Space wrap>
+                      <Select
+                        aria-label="选择邮箱"
+                        value={selectedMailboxId}
+                        onChange={(value) => loadMessages(value, { keepSection: true })}
+                        className="mailbox-selector"
+                        placeholder="选择邮箱"
+                        options={mailboxes.map((item) => ({
+                          label: item.address,
+                          value: item.id,
+                        }))}
+                      />
+                    </Space>
+                  )}
+                />
 
                 {messageDetail ? (
                   <div className="message-detail-layout">
@@ -1041,7 +1049,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
             )}
 
             {section === 'api' && (
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
                 <Card className="api-hero-card">
                   <div className="api-hero-layout">
                     <div className="api-hero-main">

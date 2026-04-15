@@ -45,12 +45,16 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onCreateMailbox,
         const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
 
         return (
-          <Space direction="vertical" size={8}>
-            <Space wrap>
-              <Text strong>{value}</Text>
-              <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
+          <Space direction="vertical" size={8} className="domain-table-domain-cell">
+            <Space wrap className="domain-table-domain-head">
+              <Text strong className="domain-table-domain-name">
+                {value}
+              </Text>
+              <Tag color={statusMeta.color} className="domain-table-status-tag">
+                {statusMeta.label}
+              </Tag>
             </Space>
-            <Text type="secondary">
+            <Text type="secondary" className="domain-table-domain-note">
               {record.note || `最小记录 ${record.dnsRecords?.length || 0} 条`}
             </Text>
           </Space>
@@ -65,9 +69,13 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onCreateMailbox,
         const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
 
         return (
-          <div className="domain-table-cell-stack">
-            <Text strong>{statusMeta.label}</Text>
-            <Text type="secondary">{statusMeta.nextStep}</Text>
+          <div className="domain-table-cell-stack domain-table-status-cell">
+            <Text strong className="domain-table-status-title">
+              {statusMeta.label}
+            </Text>
+            <Text type="secondary" className="domain-table-status-next">
+              {statusMeta.nextStep}
+            </Text>
           </div>
         );
       },
@@ -77,7 +85,9 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onCreateMailbox,
       key: 'updatedAt',
       width: 180,
       render: (_, record) => (
-        <Text type="secondary">{formatDateTime(record.updatedAt || record.createdAt)}</Text>
+        <Text type="secondary" className="domain-table-updated-at">
+          {formatDateTime(record.updatedAt || record.createdAt)}
+        </Text>
       ),
     },
     {
@@ -86,17 +96,23 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onCreateMailbox,
       width: 240,
       render: (_, record) => (
         <div className="domain-action-group">
-          <Button type="primary" ghost icon={<ThunderboltOutlined />} onClick={() => onDetectDns(record.id)}>
+          <Button
+            type="primary"
+            ghost
+            icon={<ThunderboltOutlined />}
+            className="domain-action-button-primary"
+            onClick={() => onDetectDns(record.id)}
+          >
             检测 DNS
           </Button>
-          <Button type="link" icon={<EyeOutlined />} onClick={() => onOpenDetail(record.id)}>
+          <Button type="link" icon={<EyeOutlined />} className="domain-action-button-link" onClick={() => onOpenDetail(record.id)}>
             查看配置
           </Button>
-          <Button type="link" onClick={() => onCreateMailbox(record.id)}>
+          <Button type="link" className="domain-action-button-link" onClick={() => onCreateMailbox(record.id)}>
             创建邮箱
           </Button>
           <Popconfirm title="确认删除该域名？" onConfirm={() => onDeleteDomain(record.id)}>
-            <Button danger type="text" icon={<DeleteOutlined />}>
+            <Button danger type="text" icon={<DeleteOutlined />} className="domain-action-button-danger">
               删除
             </Button>
           </Popconfirm>
@@ -129,12 +145,12 @@ export default function DomainTableSection({
       <Card className="section-intro-card">
         <Row justify="space-between" align="middle" gutter={[16, 16]}>
           <Col flex="auto">
-            <Space direction="vertical" size={4}>
+            <Space direction="vertical" size={4} className="domain-table-section-copy">
               <Title level={4} style={{ margin: 0 }}>
                 域名管理
               </Title>
               <Text type="secondary">
-                只保留域名状态、最近更新时间和常用操作。
+                聚焦查看域名状态、下一步动作和常用操作。
               </Text>
             </Space>
           </Col>

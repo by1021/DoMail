@@ -16,18 +16,28 @@ export default function MessagePreviewCard({
       <Space direction="vertical" size={10} style={{ width: '100%' }}>
         <div className="message-preview-header">
           <div className="message-preview-title-group">
-            <Space wrap>
-              <Text strong>{item.subject || '(no subject)'}</Text>
-              {!item.isRead && <Tag color="blue">未读</Tag>}
-              {item.attachmentCount > 0 && <Tag color="purple">{item.attachmentCount} 个附件</Tag>}
-            </Space>
-            <Text type="secondary">发件人：{item.fromAddress || item.envelopeFrom || '-'}</Text>
+            <div className="message-preview-title-row">
+              <Text strong className="message-preview-subject">
+                {item.subject || '(no subject)'}
+              </Text>
+              <Space wrap size={[8, 8]} className="message-preview-tags">
+                {!item.isRead && <Tag color="blue">未读</Tag>}
+                {item.attachmentCount > 0 && <Tag color="purple">{item.attachmentCount} 个附件</Tag>}
+              </Space>
+            </div>
+            <Text type="secondary" className="message-preview-from">
+              发件人：{item.fromAddress || item.envelopeFrom || '-'}
+            </Text>
           </div>
-          <Text type="secondary">{formatDateTime(item.receivedAt)}</Text>
+          <Text type="secondary" className="message-preview-time">
+            {formatDateTime(item.receivedAt)}
+          </Text>
         </div>
 
         <div className="message-preview-meta">
-          <Text type="secondary">送达至：{item.envelopeTo || '-'}</Text>
+          <Text type="secondary" className="message-preview-delivery">
+            送达至：{item.envelopeTo || '-'}
+          </Text>
         </div>
 
         <Space wrap className="message-preview-actions">

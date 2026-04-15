@@ -21,6 +21,45 @@ export default function OverviewSection({
   summaryCards,
   formatDateTime,
 }) {
+  const currentPhase = !hasDomains
+    ? {
+        label: '第 1 步',
+        title: '先添加收件域名',
+        description: '先创建域名并查看最小 DNS 指引，完成后再继续创建邮箱。',
+        items: ['添加域名', '查看 DNS 指引', '完成基础配置'],
+      }
+    : !hasMailboxes
+      ? {
+          label: '第 2 步',
+          title: '开始创建邮箱',
+          description: '域名已就绪，建议先创建一个固定或随机邮箱，再进行投递验证。',
+          items: ['创建固定邮箱', '或生成随机邮箱', '准备测试收件'],
+        }
+      : {
+          label: '第 3 步',
+          title: '查看最近收件',
+          description: '邮箱已可用，下一步进入邮件列表查看最新收件与未读状态。',
+          items: ['进入邮件列表', '查看未读邮件', '按需清理邮件'],
+        };
+
+  const nextStepItems = !hasDomains
+    ? [
+        { title: '添加收件域名', detail: '先创建一个域名，系统会给出最小 DNS 指引。' },
+        { title: '核对 DNS 记录', detail: '优先完成最少必需记录，再继续创建邮箱。' },
+        { title: '创建首个邮箱', detail: '域名准备完成后，再创建固定或随机邮箱。' },
+      ]
+    : !hasMailboxes
+      ? [
+          { title: '创建邮箱地址', detail: '可选择固定前缀，也可直接生成随机邮箱。' },
+          { title: '发送测试邮件', detail: '创建完成后即可向邮箱投递，验证收件链路。' },
+          { title: '进入邮件列表', detail: '确认邮件投递后，在列表中查看最近收件结果。' },
+        ]
+      : [
+          { title: '查看最新收件', detail: '优先处理未读邮件，确认主题、发件人与送达时间。' },
+          { title: '按需清理邮件', detail: '无用测试邮件可直接删除，保持列表整洁。' },
+          { title: '持续验证链路', detail: '继续投递测试邮件，观察域名与邮箱的收件状态。' },
+        ];
+
   return (
     <Space direction="vertical" size={20} style={{ width: '100%' }}>
       <Card className="hero-card">
@@ -57,17 +96,22 @@ export default function OverviewSection({
             </Space>
           </Col>
           <Col xs={24} xl={9}>
-            <div className="hero-side-card">
+            <div className="hero-side-card hero-phase-card">
               <Space direction="vertical" size={14} style={{ width: '100%' }}>
-                <Text className="hero-side-label">推荐流程</Text>
+                <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                  <Text className="hero-side-label">当前阶段</Text>
+                  <Space align="center" wrap>
+                    <Tag color="blue" className="hero-phase-tag">
+                      {currentPhase.label}
+                    </Tag>
+                    <Text strong>{currentPhase.title}</Text>
+                  </Space>
+                  <Text type="secondary">{currentPhase.description}</Text>
+                </Space>
                 <List
                   split={false}
-                  dataSource={[
-                    '1. 添加域名并确认用途说明',
-                    '2. 为域名创建固定或随机邮箱',
-                    '3. 进入邮件列表查看收件结果',
-                  ]}
-                  renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
+                  dataSource={currentPhase.items}
+                  renderItem={(item) => <List.Item className="guide-item hero-phase-item">{item}</List.Item>}
                 />
               </Space>
             </div>
@@ -186,20 +230,17 @@ export default function OverviewSection({
           <Card title="下一步建议" extra={<Tag color="gold">Guide</Tag>}>
             <List
               split={false}
-              dataSource={
-                !hasDomains
-                  ? ['先添加收件域名', '创建后查看 DNS 指引', '完成 DNS 配置后再创建邮箱']
-                  : !hasMailboxes
-                    ? ['已存在域名，下一步创建邮箱', '可选择固定前缀或随机前缀', '创建完成后进入邮件列表查看收件']
-                    : ['进入邮件列表处理未读邮件', '按需设置自动清理规则', '持续查看最近收件状态']
-              }
+              dataSource={nextStepItems}
               renderItem={(item, index) => (
-                <List.Item className="guide-item">
-                  <Space align="start">
+                <List.Item className="guide-item guide-check-item">
+                  <Space align="start" size={12}>
                     <Avatar size={28} className="guide-avatar">
                       {index + 1}
                     </Avatar>
-                    <Text>{item}</Text>
+                    <div className="guide-check-copy">
+                      <Text strong>{item.title}</Text>
+                      <Text type="secondary">{item.detail}</Text>
+                    </div>
                   </Space>
                 </List.Item>
               )}

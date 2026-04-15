@@ -18,73 +18,78 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
       <div className="auth-shell-background" />
       <div className="auth-shell-content">
         <Card className="auth-card">
-          <Space direction="vertical" size={20} style={{ width: '100%' }}>
-          <Space direction="vertical" size={10} align="center" style={{ width: '100%' }}>
-            <div className="auth-logo">
-              <ThunderboltOutlined />
+          <Space direction="vertical" size={24} style={{ width: '100%' }}>
+            <Space direction="vertical" size={10} align="center" style={{ width: '100%' }}>
+              <div className="auth-logo">
+                <ThunderboltOutlined />
+              </div>
+              <div className="auth-title-block">
+                <Text type="secondary" className="section-eyebrow">
+                  DoMail Workspace
+                </Text>
+                <Title level={3} style={{ margin: 0 }}>
+                  管理员登录
+                </Title>
+                <Text type="secondary">登录后即可访问 DoMail 域名邮箱管理后台</Text>
+              </div>
+            </Space>
+
+            {errorMessage ? (
+              <Alert
+                type="error"
+                showIcon
+                message="登录失败"
+                description={errorMessage}
+                className="auth-alert"
+              />
+            ) : null}
+
+            <div className="auth-form-shell">
+              <Spin spinning={loading}>
+                <Form
+                  form={form}
+                  layout="vertical"
+                  className="auth-form"
+                  onFinish={onSubmit}
+                  initialValues={{
+                    username: '',
+                    password: '',
+                  }}
+                >
+                  <Form.Item
+                    label="管理员账号"
+                    name="username"
+                    rules={[{ required: true, message: '请输入管理员账号' }]}
+                  >
+                    <Input
+                      prefix={<UserOutlined />}
+                      placeholder="请输入管理员账号"
+                      autoComplete="username"
+                      size="large"
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="管理员密码"
+                    name="password"
+                    rules={[{ required: true, message: '请输入管理员密码' }]}
+                  >
+                    <Input.Password
+                      prefix={<LockOutlined />}
+                      placeholder="请输入管理员密码"
+                      autoComplete="current-password"
+                      size="large"
+                    />
+                  </Form.Item>
+
+                  <Form.Item style={{ marginBottom: 0 }}>
+                    <Button type="primary" htmlType="submit" loading={submitting} block size="large">
+                      登录管理后台
+                    </Button>
+                  </Form.Item>
+                </Form>
+              </Spin>
             </div>
-            <div className="auth-title-block">
-              <Title level={3} style={{ margin: 0 }}>
-                管理员登录
-              </Title>
-              <Text type="secondary">登录后即可访问 DoMail 域名邮箱管理后台</Text>
-            </div>
-          </Space>
-
-          {errorMessage ? (
-            <Alert
-              type="error"
-              showIcon
-              message="登录失败"
-              description={errorMessage}
-              className="auth-alert"
-            />
-          ) : null}
-
-          <Spin spinning={loading}>
-            <Form
-              form={form}
-              layout="vertical"
-              className="auth-form"
-              onFinish={onSubmit}
-              initialValues={{
-                username: '',
-                password: '',
-              }}
-            >
-              <Form.Item
-                label="管理员账号"
-                name="username"
-                rules={[{ required: true, message: '请输入管理员账号' }]}
-              >
-                <Input
-                  prefix={<UserOutlined />}
-                  placeholder="请输入管理员账号"
-                  autoComplete="username"
-                  size="large"
-                />
-              </Form.Item>
-
-              <Form.Item
-                label="管理员密码"
-                name="password"
-                rules={[{ required: true, message: '请输入管理员密码' }]}
-              >
-                <Input.Password
-                  prefix={<LockOutlined />}
-                  placeholder="请输入管理员密码"
-                  autoComplete="current-password"
-                  size="large"
-                />
-              </Form.Item>
-
-              <Form.Item style={{ marginBottom: 0 }}>
-                <Button type="primary" htmlType="submit" loading={submitting} block size="large">
-                  登录管理后台
-                </Button>
-              </Form.Item>
-            </Form>
-          </Spin>
           </Space>
         </Card>
       </div>
