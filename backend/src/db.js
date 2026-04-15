@@ -339,12 +339,25 @@ const deleteMailboxStatement = db.prepare(`
   WHERE id = ?
 `);
 
+const deleteMailboxByAddressStatement = db.prepare(`
+  DELETE FROM mailboxes
+  WHERE address = ?
+`);
+
 const updateMailboxRetentionStatement = db.prepare(`
   UPDATE mailboxes
   SET retention_value = @retention_value,
       retention_unit = @retention_unit,
       updated_at = @updated_at
   WHERE id = @id
+`);
+
+const updateMailboxRetentionByAddressStatement = db.prepare(`
+  UPDATE mailboxes
+  SET retention_value = @retention_value,
+      retention_unit = @retention_unit,
+      updated_at = @updated_at
+  WHERE address = @address
 `);
 
 const deleteMessageStatement = db.prepare(`
@@ -439,6 +452,25 @@ const listMessagesByMailboxStatement = db.prepare(`
     msg.is_read
   FROM messages msg
   WHERE msg.mailbox_id = ?
+  ORDER BY msg.received_at DESC
+`);
+
+const listMessagesByMailboxAddressStatement = db.prepare(`
+  SELECT
+    msg.id,
+    msg.message_id,
+    msg.envelope_from,
+    msg.envelope_to,
+    msg.from_name,
+    msg.from_address,
+    msg.subject,
+    msg.received_at,
+    msg.raw_size,
+    msg.attachment_count,
+    msg.is_read
+  FROM messages msg
+  INNER JOIN mailboxes mb ON mb.id = msg.mailbox_id
+  WHERE mb.address = ?
   ORDER BY msg.received_at DESC
 `);
 
@@ -685,6 +717,10 @@ function normalizeDnsGuidance(domain, options = {}) {
 
 function normalizeAddress(localPart, domain) {
   return `${localPart.trim().toLowerCase()}@${normalizeDomain(domain)}`;
+}
+
+function normalizeMailboxAddress(address) {
+  return String(address ?? '').trim().toLowerCase();
 }
 
 function normalizeRetentionPolicy(retention = {}) {
@@ -941,7 +977,10 @@ export function detectDomainDnsStatus(id) {
 }
 
 export function generateRandomLocalPart(length = 10) {
-  return nanoid(length);
+  const safeLength = Number.isInteger(length) && length >= 6 ? length : 10;
+  const timePart = Date.now().toString(36).slice(-4);
+  const randomLength = Math.max(2, safeLength - timePart.length);
+  return `m${timePart}${nanoid(randomLength)}`.slice(0, safeLength);
 }
 
 export function createMailbox({ domainId, localPart, source = 'manual' }) {
@@ -979,11 +1018,15 @@ export function getMailboxById(id) {
 }
 
 export function getMailboxByAddress(address) {
-  return mapMailbox(getMailboxByAddressStatement.get(address.trim().toLowerCase()));
+  return mapMailbox(getMailboxByAddressStatement.get(normalizeMailboxAddress(address)));
 }
 
 export function removeMailbox(id) {
   return deleteMailboxStatement.run(id).changes > 0;
+}
+
+export function removeMailboxByAddress(address) {
+  return deleteMailboxByAddressStatement.run(normalizeMailboxAddress(address)).changes > 0;
 }
 
 export function updateMailboxRetention(id, retention) {
@@ -1005,6 +1048,25 @@ export function updateMailboxRetention(id, retention) {
   return getMailboxById(id);
 }
 
+export function updateMailboxRetentionByAddress(address, retention) {
+  const mailbox = getMailboxByAddress(address);
+
+  if (!mailbox) {
+    throw new Error('MAILBOX_NOT_FOUND');
+  }
+
+  const normalized = normalizeRetentionPolicy(retention);
+
+  updateMailboxRetentionByAddressStatement.run({
+    address: mailbox.address,
+    retention_value: normalized.retentionValue,
+    retention_unit: normalized.retentionUnit,
+    updated_at: timestamp(),
+  });
+
+  return getMailboxByAddress(mailbox.address);
+}
+
 export function saveIncomingMessage(message, attachments = []) {
   return runInTransaction(() => {
     insertMessageStatement.run(message);
@@ -1019,6 +1081,22 @@ export function saveIncomingMessage(message, attachments = []) {
 
 export function listMessagesByMailbox(mailboxId) {
   return listMessagesByMailboxStatement.all(mailboxId).map((row) => ({
+    id: row.id,
+    messageId: row.message_id,
+    envelopeFrom: row.envelope_from,
+    envelopeTo: row.envelope_to,
+    fromName: row.from_name,
+    fromAddress: row.from_address,
+    subject: row.subject,
+    receivedAt: row.received_at,
+    rawSize: row.raw_size,
+    attachmentCount: row.attachment_count,
+    isRead: Boolean(row.is_read),
+  }));
+}
+
+export function listMessagesByMailboxAddress(address) {
+  return listMessagesByMailboxAddressStatement.all(normalizeMailboxAddress(address)).map((row) => ({
     id: row.id,
     messageId: row.message_id,
     envelopeFrom: row.envelope_from,

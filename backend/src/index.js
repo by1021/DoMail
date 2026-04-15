@@ -25,17 +25,17 @@ import {
   listApiTokens,
   listDomains,
   listMailboxes,
-  listMessagesByMailbox,
+  listMessagesByMailboxAddress,
   getMessageById,
   markMessageAsRead,
   purgeExpiredMessages,
   removeApiToken,
   removeDomain,
-  removeMailbox,
+  removeMailboxByAddress,
   removeMessage,
   saveIncomingMessage,
   touchApiTokenLastUsedAt,
-  updateMailboxRetention,
+  updateMailboxRetentionByAddress,
 } from './db.js';
 
 const dnsRecordSchema = z.object({
@@ -156,7 +156,7 @@ function sendNotFoundError(response, code, message) {
   });
 }
 
-function generateMessageId() {
+function generateStoredMessageId() {
   return `msg_${crypto.randomUUID()}`;
 }
 
@@ -298,11 +298,11 @@ async function persistIncomingMail({ raw, session }) {
     throw new Error('MAILBOX_NOT_FOUND');
   }
 
-  const messageId = generateMessageId();
+  const storedMessageId = generateStoredMessageId();
   const receivedAt = new Date().toISOString();
   const attachments = parsed.attachments.map((attachment) => ({
     id: generateAttachmentId(),
-    message_id: messageId,
+    message_id: storedMessageId,
     filename: attachment.filename ?? null,
     content_type: attachment.contentType ?? 'application/octet-stream',
     size: attachment.size ?? 0,
@@ -312,7 +312,7 @@ async function persistIncomingMail({ raw, session }) {
 
   return saveIncomingMessage(
     {
-      id: messageId,
+      id: storedMessageId,
       mailbox_id: mailbox.id,
       message_id: parsed.messageId ?? null,
       envelope_from: session.envelope.mailFrom?.address ?? null,
@@ -479,7 +479,8 @@ export function createApp() {
     if (
       (request.method === 'GET' &&
         (/^\/mailboxes$/.test(request.path) || /^\/mailboxes\/[^/]+\/messages$/.test(request.path) || /^\/messages\/[^/]+$/.test(request.path))) ||
-      ((request.method === 'POST' || request.method === 'DELETE') && /^\/mailboxes(?:\/[^/]+)?$/.test(request.path))
+      ((request.method === 'POST' || request.method === 'DELETE' || request.method === 'PATCH') &&
+        /^\/mailboxes(?:\/[^/]+)?(?:\/retention)?$/.test(request.path))
     ) {
       requireApiAccess(request, response, next);
       return;
@@ -607,22 +608,22 @@ export function createApp() {
     }
   });
 
-  app.delete('/api/mailboxes/:id', (request, response) => {
-    const deleted = removeMailbox(request.params.id);
+  app.delete('/api/mailboxes/:address', (request, response) => {
+    const deleted = removeMailboxByAddress(decodeURIComponent(request.params.address));
 
     response.json({
       ok: deleted,
     });
   });
 
-  app.patch('/api/mailboxes/:id/retention', (request, response) => {
+  app.patch('/api/mailboxes/:address/retention', (request, response) => {
     try {
       const payload = mailboxRetentionSchema.parse({
         retentionValue: request.body?.retentionValue ?? null,
         retentionUnit: request.body?.retentionUnit ?? null,
       });
 
-      const item = updateMailboxRetention(request.params.id, payload);
+      const item = updateMailboxRetentionByAddress(decodeURIComponent(request.params.address), payload);
 
       response.json({
         ok: true,
@@ -682,8 +683,9 @@ export function createApp() {
     });
   });
 
-  app.get('/api/mailboxes/:id/messages', (request, response) => {
-    const domainMailbox = listMailboxes().find((item) => item.id === request.params.id);
+  app.get('/api/mailboxes/:address/messages', (request, response) => {
+    const mailboxAddress = decodeURIComponent(request.params.address);
+    const domainMailbox = getMailboxByAddress(mailboxAddress);
 
     if (!domainMailbox) {
       sendNotFoundError(response, 'MAILBOX_NOT_FOUND', '邮箱不存在');
@@ -693,7 +695,7 @@ export function createApp() {
     const latestOnly = ['1', 'true', 'yes'].includes(
       String(request.query?.latest ?? '').trim().toLowerCase(),
     );
-    const items = listMessagesByMailbox(request.params.id);
+    const items = listMessagesByMailboxAddress(mailboxAddress);
 
     response.json({
       ok: true,
@@ -793,8 +795,8 @@ export function createSmtpServer() {
 
         logSmtpEvent('info', 'Incoming message stored', {
           ...sessionMeta,
-          messageId: savedMessage.id,
-          mailboxId: savedMessage.mailboxId,
+          storedMessageId: savedMessage.id,
+          mailboxAddress: savedMessage.address,
           rawSize: raw.length,
         });
 

@@ -252,9 +252,9 @@ curl -i http://127.0.0.1:3001/api/domains
 当前版本支持由管理员在后台创建 **API Token**，并在前端 [`API`](frontend/src/App.jsx) 页面查看以下核心接口的说明与示例用法，也可在外部脚本或终端中直接调用：
 
 - `POST /api/mailboxes`
-- `DELETE /api/mailboxes/:mailboxId`
-- `GET /api/mailboxes/:mailboxId/messages`
-- `GET /api/mailboxes/:mailboxId/messages?latest=1`
+- `DELETE /api/mailboxes/:address`
+- `GET /api/mailboxes/:address/messages`
+- `GET /api/mailboxes/:address/messages?latest=1`
 - `GET /api/messages/:messageId`
 
 不在上面这组范围内的接口，仍然要求管理员 Session 访问。
@@ -275,16 +275,16 @@ curl -i http://127.0.0.1:3001/api/domains
 Authorization: Bearer <token>
 ```
 
-#### `domainId` / `mailboxId` / `messageId` 获取方式
+#### `domainId` / `address` / `messageId` 获取方式
 
 - `domainId`：先调用 `GET /api/domains`，从域名对象中取 `id`
-- `mailboxId`：先调用 `GET /api/mailboxes`，从邮箱对象中取 `id`
-- `messageId`：先调用 `GET /api/mailboxes/:mailboxId/messages`，从邮件对象中取 `id`
+- `address`：先调用 `GET /api/mailboxes`，从邮箱对象中取 `address`
+- `messageId`：先调用 `GET /api/mailboxes/:address/messages`，从邮件对象中取 `id`
 
 其中：
 
-- 邮箱地址（如 `test@example.com`）用于人工识别目标邮箱
-- 真正用于 API 调用的是对象里的 `id` 字段
+- 邮箱地址（如 `test@example.com`）既用于人工识别目标邮箱，也直接用于邮件列表接口
+- 因为邮箱地址包含 `@` 等特殊字符，放入 URL 路径前应先做 URL 编码
 
 #### Token 可调用接口示例
 
@@ -316,21 +316,21 @@ curl -X POST http://127.0.0.1:3001/api/mailboxes \
 删除邮箱：
 
 ```bash
-curl -X DELETE http://127.0.0.1:3001/api/mailboxes/<mailboxId> \
+curl -X DELETE http://127.0.0.1:3001/api/mailboxes/<encodedAddress> \
   -H "Authorization: Bearer <token>"
 ```
 
 查询某个邮箱的邮件列表：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages \
+curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages \
   -H "Authorization: Bearer <token>"
 ```
 
 查询最新邮件：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages?latest=1 \
+curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages?latest=1 \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -497,36 +497,36 @@ QUIT
 curl http://127.0.0.1:3001/api/mailboxes
 ```
 
-从结果中找到目标邮箱的 `id`，这个值就是后续邮件查询接口需要使用的 `mailboxId`。
+从结果中找到目标邮箱的 `address`，后续邮件查询接口直接使用这个邮箱地址；由于它会放进 URL 路径，调用前请先做 URL 编码。
 
 ### 11.2 查询某个邮箱的邮件列表
 
-这里的 `<mailboxId>` 就是上一步邮箱列表结果中的 `id` 字段，不是邮箱地址本身。
+这里的 `<encodedAddress>` 是邮箱地址经过 URL 编码后的结果，例如 `test@example.com` 编码后可写成 `test%40example.com`。
 
 管理员已登录时：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages
+curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages
 ```
 
 使用 Bearer Token 时：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages \
+curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages \
   -H "Authorization: Bearer <token>"
 ```
 
 例如：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/123/messages \
+curl http://127.0.0.1:3001/api/mailboxes/test%40example.com/messages \
   -H "Authorization: Bearer dm_xxx"
 ```
 
 ### 11.3 查询某个邮箱的最新邮件
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages?latest=1 \
+curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages?latest=1 \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -585,7 +585,7 @@ curl http://127.0.0.1:3001/api/messages/456 \
 3. 创建域名
 4. 创建邮箱
 5. 向 `127.0.0.1:2525` 发测试邮件
-6. 查询 `/api/mailboxes/:id/messages`
+6. 查询 `/api/mailboxes/:address/messages`
 7. 查询 `/api/messages/:id`
 8. 最后通过前端页面确认展示效果
 
@@ -631,7 +631,7 @@ SMTP receiver listening on 0.0.0.0:2525
 2. 在系统中创建目标域名
 3. 在该域名下创建目标邮箱
 4. 先从服务器本机向 `127.0.0.1:2525` 投递
-5. 再检查 `/api/mailboxes/:id/messages` 是否能查到邮件
+5. 再检查 `/api/mailboxes/:address/messages` 是否能查到邮件
 6. 本机收件正常后，再做公网 MX 投递验证
 
 ---
@@ -781,7 +781,7 @@ test@example.com
 
 - 是否已创建对应邮箱
 - 收件地址是否与系统邮箱完全一致
-- 当前查看的 `mailboxId` 是否正确
+- 当前查看接口里使用的邮箱地址是否正确，且是否已做 URL 编码
 - 是否查的是错误数据库文件
 
 ### 17.4 页面能打开但 API 报错

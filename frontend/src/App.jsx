@@ -144,7 +144,7 @@ const API_ENDPOINTS = [
     usage: [
       '使用 Bearer Token 认证即可查询所有邮箱。',
       '返回的 items 数组包含每个邮箱的详细信息。',
-      '从返回结果中获取 mailboxId 用于后续查询邮件列表。',
+      '从返回结果中获取邮箱 address，用于后续查询邮件列表。',
     ],
     example: `curl http://127.0.0.1:3001/api/mailboxes \\
   -H "Authorization: Bearer <token>"`,
@@ -167,37 +167,37 @@ const API_ENDPOINTS = [
   {
     key: 'delete-mailbox',
     title: '删除邮箱',
-    endpoint: 'DELETE /api/mailboxes/:mailboxId',
+    endpoint: 'DELETE /api/mailboxes/:address',
     summary: '通过 Bearer Token 删除指定邮箱。',
     usage: [
-      '先从邮箱列表中确认目标 mailboxId。',
+      '直接使用完整邮箱地址作为路径参数，调用前请做 URL 编码。',
       '删除后该邮箱后续将不再接收邮件。',
     ],
-    example: `curl -X DELETE http://127.0.0.1:3001/api/mailboxes/<mailboxId> \\
+    example: `curl -X DELETE http://127.0.0.1:3001/api/mailboxes/<encodedAddress> \\
   -H "Authorization: Bearer <token>"`,
   },
   {
     key: 'messages',
     title: '邮件列表',
-    endpoint: 'GET /api/mailboxes/:mailboxId/messages',
-    summary: '按邮箱获取完整邮件列表。',
+    endpoint: 'GET /api/mailboxes/:address/messages',
+    summary: '按邮箱地址获取完整邮件列表。',
     usage: [
-      'mailboxId 需先通过邮箱列表接口获取。',
+      '直接使用完整邮箱地址作为路径参数，调用前请做 URL 编码。',
       '返回 items 数组，可继续提取 messageId 查看详情。',
     ],
-    example: `curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages \\
+    example: `curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages \\
   -H "Authorization: Bearer <token>"`,
   },
   {
     key: 'latest',
     title: '最新邮件',
-    endpoint: 'GET /api/mailboxes/:mailboxId/messages?latest=1',
+    endpoint: 'GET /api/mailboxes/:address/messages?latest=1',
     summary: '只返回最新一封邮件，适合轮询或快速检查。',
     usage: [
-      '在邮件列表接口基础上增加 latest=1 查询参数。',
+      '在按邮箱地址查询的基础上增加 latest=1 查询参数。',
       '返回的 items 最多只有一条记录。',
     ],
-    example: `curl http://127.0.0.1:3001/api/mailboxes/<mailboxId>/messages?latest=1 \\
+    example: `curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages?latest=1 \\
   -H "Authorization: Bearer <token>"`,
   },
   {
@@ -260,7 +260,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [health, setHealth] = useState(null);
   const [domains, setDomains] = useState([]);
   const [mailboxes, setMailboxes] = useState([]);
-  const [selectedMailboxId, setSelectedMailboxId] = useState(null);
+  const [selectedMailboxAddress, setSelectedMailboxAddress] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageDetail, setMessageDetail] = useState(null);
   const [domainModalOpen, setDomainModalOpen] = useState(false);
@@ -341,15 +341,15 @@ export default function App({ adminProfile = null, onLogout = null }) {
     );
   }, [messages, normalizedSearchText]);
 
-  const selectedMailbox = mailboxes.find((item) => item.id === selectedMailboxId) || null;
+  const selectedMailbox = mailboxes.find((item) => item.address === selectedMailboxAddress) || null;
 
   const loadMessages = useCallback(
-    async (mailboxId, options = {}) => {
+    async (mailboxAddress, options = {}) => {
       const { keepSection = false, silent = false } = options;
 
-      if (!mailboxId) {
+      if (!mailboxAddress) {
         setMessages([]);
-        setSelectedMailboxId(null);
+        setSelectedMailboxAddress(null);
         return;
       }
 
@@ -357,8 +357,8 @@ export default function App({ adminProfile = null, onLogout = null }) {
         if (!silent) {
           setLoading(true);
         }
-        const response = await getMailboxMessages(mailboxId);
-        setSelectedMailboxId(mailboxId);
+        const response = await getMailboxMessages(mailboxAddress);
+        setSelectedMailboxAddress(mailboxAddress);
         setMessages(response.items ?? []);
         if (!keepSection) {
           setSection('messages');
@@ -411,21 +411,21 @@ export default function App({ adminProfile = null, onLogout = null }) {
       setMailboxes(nextMailboxes);
       setApiTokens(nextApiTokens);
 
-      const nextMailboxId =
-        selectedMailboxId && nextMailboxes.some((item) => item.id === selectedMailboxId)
-          ? selectedMailboxId
-          : nextMailboxes[0]?.id;
+      const nextMailboxAddress =
+        selectedMailboxAddress && nextMailboxes.some((item) => item.address === selectedMailboxAddress)
+          ? selectedMailboxAddress
+          : nextMailboxes[0]?.address;
 
-      if (nextMailboxId) {
-        const messageResponse = await getMailboxMessages(nextMailboxId);
-        setSelectedMailboxId(nextMailboxId);
+      if (nextMailboxAddress) {
+        const messageResponse = await getMailboxMessages(nextMailboxAddress);
+        setSelectedMailboxAddress(nextMailboxAddress);
         setMessages(messageResponse.items ?? []);
       } else {
-        setSelectedMailboxId(null);
+        setSelectedMailboxAddress(null);
         setMessages([]);
       }
 
-      const selectedMailboxRecord = nextMailboxes.find((item) => item.id === nextMailboxId);
+      const selectedMailboxRecord = nextMailboxes.find((item) => item.address === nextMailboxAddress);
 
       retentionForm.setFieldsValue({
         retentionValue: selectedMailboxRecord?.retentionValue ?? null,
@@ -443,17 +443,17 @@ export default function App({ adminProfile = null, onLogout = null }) {
   }, []);
 
   useEffect(() => {
-    if (!selectedMailboxId) {
+    if (!selectedMailboxAddress) {
       return undefined;
     }
 
-    loadMessages(selectedMailboxId, {
+    loadMessages(selectedMailboxAddress, {
       keepSection: true,
       silent: true,
     });
 
     const pollTimer = window.setInterval(() => {
-      loadMessages(selectedMailboxId, {
+      loadMessages(selectedMailboxAddress, {
         keepSection: true,
         silent: true,
       });
@@ -462,7 +462,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
     return () => {
       window.clearInterval(pollTimer);
     };
-  }, [loadMessages, selectedMailboxId, section]);
+  }, [loadMessages, selectedMailboxAddress, section]);
 
   useEffect(() => {
     retentionForm.setFieldsValue({
@@ -587,9 +587,9 @@ export default function App({ adminProfile = null, onLogout = null }) {
     }
   }
 
-  async function handleDeleteMailbox(id) {
+  async function handleDeleteMailbox(address) {
     try {
-      await deleteMailbox(id);
+      await deleteMailbox(address);
       message.success('邮箱已删除');
       await loadData();
     } catch (error) {
@@ -633,8 +633,8 @@ export default function App({ adminProfile = null, onLogout = null }) {
         setMessageDetail(null);
       }
 
-      if (selectedMailboxId) {
-        await loadMessages(selectedMailboxId, { keepSection: true });
+      if (selectedMailboxAddress) {
+        await loadMessages(selectedMailboxAddress, { keepSection: true });
       } else {
         await loadData();
       }
@@ -648,7 +648,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   }
 
   async function handleUpdateRetention(values) {
-    if (!selectedMailboxId) {
+    if (!selectedMailboxAddress) {
       message.warning('请先选择邮箱');
       return;
     }
@@ -659,7 +659,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
         retentionUnit: values.retentionValue ? values.retentionUnit : null,
       };
 
-      await updateMailboxRetention(selectedMailboxId, payload);
+      await updateMailboxRetention(selectedMailboxAddress, payload);
       message.success(payload.retentionValue ? '自动清理设置已更新' : '已关闭自动清理');
       await loadData();
     } catch (error) {
@@ -741,10 +741,10 @@ export default function App({ adminProfile = null, onLogout = null }) {
       width: 170,
       render: (_, record) => (
         <Space>
-          <Button type="link" onClick={() => loadMessages(record.id, { keepSection: false })}>
+          <Button type="link" onClick={() => loadMessages(record.address, { keepSection: false })}>
             查看邮件
           </Button>
-          <Popconfirm title="确认删除该邮箱？" onConfirm={() => handleDeleteMailbox(record.id)}>
+          <Popconfirm title="确认删除该邮箱？" onConfirm={() => handleDeleteMailbox(record.address)}>
             <Button danger type="text" icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -957,13 +957,13 @@ export default function App({ adminProfile = null, onLogout = null }) {
                     <Space wrap>
                       <Select
                         aria-label="选择邮箱"
-                        value={selectedMailboxId}
+                        value={selectedMailboxAddress}
                         onChange={(value) => loadMessages(value, { keepSection: true })}
                         className="mailbox-selector"
                         placeholder="选择邮箱"
                         options={mailboxes.map((item) => ({
                           label: item.address,
-                          value: item.id,
+                          value: item.address,
                         }))}
                       />
                     </Space>
@@ -1175,7 +1175,7 @@ Authorization: Bearer {'<token>'}
                             dataSource={[
                               '先登录后台并创建一个 API Token。',
                               'domainId 需从域名管理接口获取。',
-                              'mailboxId 可通过"查询邮箱列表"接口获取。',
+                              '邮箱地址可通过"查询邮箱列表"接口获取，并在路径中做 URL 编码。',
                               'messageId 需从邮件列表接口返回结果中获取。',
                               '页面仅提供说明和示例，实际调用请在终端、脚本或你的客户端中完成。',
                             ]}

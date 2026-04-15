@@ -61,13 +61,15 @@ export async function createMailbox(payload) {
   return data;
 }
 
-export async function deleteMailbox(id) {
-  const { data } = await api.delete(`/mailboxes/${id}`);
+export async function deleteMailbox(address) {
+  const encodedAddress = encodeURIComponent(address);
+  const { data } = await api.delete(`/mailboxes/${encodedAddress}`);
   return data;
 }
 
-export async function getMailboxMessages(mailboxId) {
-  const { data } = await api.get(`/mailboxes/${mailboxId}/messages`);
+export async function getMailboxMessages(address) {
+  const encodedAddress = encodeURIComponent(address);
+  const { data } = await api.get(`/mailboxes/${encodedAddress}/messages`);
   return data;
 }
 
@@ -86,8 +88,9 @@ export async function deleteMessage(messageId) {
   return data;
 }
 
-export async function updateMailboxRetention(mailboxId, payload) {
-  const { data } = await api.patch(`/mailboxes/${mailboxId}/retention`, payload);
+export async function updateMailboxRetention(address, payload) {
+  const encodedAddress = encodeURIComponent(address);
+  const { data } = await api.patch(`/mailboxes/${encodedAddress}/retention`, payload);
   return data;
 }
 
