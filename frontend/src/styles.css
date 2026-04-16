@@ -500,24 +500,24 @@ body {
   position: absolute;
   inset: 24px;
   border-radius: 32px;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.38);
   border: 1px solid rgba(148, 163, 184, 0.1);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
 }
 
 .auth-shell-background {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.16), transparent 28%),
-    linear-gradient(180deg, #eef5ff 0%, #f7fbff 52%, #eef3f9 100%);
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.1), transparent 28%),
+    linear-gradient(180deg, #f3f7fc 0%, #f8fbff 50%, #f1f5f9 100%);
 }
 
 .auth-shell-content {
   position: relative;
   z-index: 1;
-  width: min(100%, 520px);
+  width: min(100%, 480px);
 }
 
 .auth-card.ant-card {
@@ -525,12 +525,13 @@ body {
   z-index: 1;
   width: 100%;
   overflow: hidden;
-  border-radius: 32px;
-  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.14);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.1);
 }
 
 .auth-card .ant-card-body {
-  padding: 28px;
+  padding: 32px;
 }
 
 .auth-form {
@@ -550,15 +551,41 @@ body {
   box-shadow: 0 18px 36px rgba(37, 99, 235, 0.24);
 }
 
+.auth-hero {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+}
+
 .auth-title-block {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   text-align: center;
   justify-items: center;
 }
 
 .auth-title-block .section-eyebrow {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+.auth-subtitle {
+  max-width: 320px;
+  line-height: 1.7;
+}
+
+.auth-feature-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.auth-feature-item {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(248, 251, 255, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .auth-alert.ant-alert {
@@ -566,11 +593,18 @@ body {
 }
 
 .auth-form-shell {
-  padding: 18px;
+  padding: 20px;
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(248, 251, 255, 0.88) 0%, rgba(255, 255, 255, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 251, 255, 0.98) 100%);
   border: 1px solid rgba(148, 163, 184, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 16px 36px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.auth-form-head {
+  display: grid;
+  gap: 4px;
 }
 
 .auth-form-caption {
@@ -1172,61 +1206,99 @@ body {
 }
 
 .domain-table-domain-head {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .domain-table-domain-name.ant-typography {
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .domain-table-status-tag.ant-tag {
   margin-inline-end: 0;
+  padding-inline: 10px;
+  border-radius: 999px;
   font-weight: 600;
 }
 
 .domain-table-domain-note.ant-typography,
-.domain-table-updated-at.ant-typography {
+.domain-table-updated-meta.ant-typography {
   color: #64748b;
+  line-height: 1.6;
 }
 
 .domain-table-status-cell {
-  max-width: 280px;
+  max-width: 320px;
 }
 
 .domain-table-status-title.ant-typography {
   color: #0f172a;
+  line-height: 1.6;
 }
 
 .domain-table-status-next.ant-typography {
   line-height: 1.6;
 }
 
+.domain-table-updated-cell {
+  min-height: 52px;
+}
+
+.domain-table-updated-at.ant-typography {
+  color: #0f172a;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .domain-action-group {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 10px;
+  flex-wrap: nowrap;
+  gap: 10px;
   align-items: center;
+  white-space: nowrap;
 }
 
-.domain-action-button-primary.ant-btn {
-  border-radius: 999px;
+.domain-action-group-inline {
+  justify-content: flex-start;
+}
+
+.domain-action-button.ant-btn {
+  height: 36px;
+  padding-inline: 14px;
+  border-radius: 12px;
   font-weight: 600;
+  border-color: rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
 }
 
-.domain-action-button-link.ant-btn {
-  padding-inline: 0;
+.domain-action-button.ant-btn:hover,
+.domain-action-button.ant-btn:focus {
   color: #1677ff;
-  font-weight: 500;
+  border-color: rgba(22, 119, 255, 0.34);
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
 }
 
-.domain-action-button-danger.ant-btn {
-  padding-inline: 0;
+.domain-action-button-accent.ant-btn {
+  color: #1677ff;
+  border-color: rgba(22, 119, 255, 0.26);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(248, 251, 255, 1) 100%);
 }
 
-.domain-action-group .ant-btn-link,
-.domain-action-group .ant-btn-text {
-  padding-inline: 0;
+.domain-action-button-accent.ant-btn:hover,
+.domain-action-button-accent.ant-btn:focus {
+  color: #0958d9;
+  border-color: rgba(9, 88, 217, 0.34);
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.domain-action-button-danger.ant-btn,
+.domain-action-button-danger.ant-btn:hover,
+.domain-action-button-danger.ant-btn:focus {
+  color: #dc2626;
+  border-color: rgba(248, 113, 113, 0.28);
+  background: linear-gradient(180deg, #ffffff 0%, #fff5f5 100%);
 }
 
 .domain-detail-summary-grid {
@@ -1559,6 +1631,10 @@ body {
     padding: 22px 18px;
   }
 
+  .auth-feature-list {
+    grid-template-columns: 1fr;
+  }
+
   .section-intro-card .ant-card-body,
   .domain-table-card .ant-card-body,
   .message-detail-panel .ant-card-body,
@@ -1636,15 +1712,23 @@ body {
     width: 100%;
   }
 
-  .domain-action-group,
   .domain-detail-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .domain-action-group .ant-btn {
+  .domain-action-group {
+    flex-wrap: wrap;
+  }
+
+  .domain-action-group .ant-btn,
+  .domain-detail-toolbar .ant-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .domain-table-status-cell {
+    max-width: none;
   }
 
   .domain-detail-summary-grid {
@@ -1694,6 +1778,11 @@ body {
   .domain-table-toolbar,
   .domain-table-toolbar-actions {
     gap: 10px;
+  }
+
+  .domain-action-group {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .brand-block {

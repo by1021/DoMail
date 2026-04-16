@@ -521,10 +521,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
       setSubmitting(true);
       const createdResponse = await createDomain({
         domain: values.domain,
-        smtpHost: values.smtpHost || null,
-        smtpPort: values.smtpPort ? Number(values.smtpPort) : null,
         note: values.note || '',
-        setupNote: values.setupNote || '',
       });
       const createdDomain = createdResponse?.item ?? null;
 
@@ -807,7 +804,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
   const domainOptions = domains.map((item) => ({
     label: item.domain,
-    value: item.id,
+    value: item.domain,
   }));
 
   const apiTokenColumns = [
@@ -860,6 +857,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
   function openMailboxModal(defaults = {}) {
     mailboxForm.setFieldsValue({
+      domain: defaults.domain ?? domains[0]?.domain,
       random: false,
       ...defaults,
     });
@@ -918,9 +916,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
                 onSearchChange={(value) => updateSectionSearch('domains', value)}
                 onCreateDomain={() => setDomainModalOpen(true)}
                 onDeleteDomain={handleDeleteDomain}
-                onDetectDns={handleDetectDomainDns}
                 onOpenDetail={handleOpenDomainDetail}
-                onCreateMailbox={() => openMailboxModal({ random: false })}
               />
             )}
 

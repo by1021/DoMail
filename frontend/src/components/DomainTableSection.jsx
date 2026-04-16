@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Card, Input, Popconfirm, Row, Col, Space, Table, Tag, Typography } from 'antd';
-import { DeleteOutlined, EyeOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Button, Card, Input, Popconfirm, Space, Table, Tag, Typography } from 'antd';
+import { DeleteOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -48,19 +48,19 @@ function getDomainStatusMeta(record, dnsStatus) {
   };
 }
 
-function createDomainColumns({ domainDnsStatus, formatDateTime, onCreateMailbox, onDetectDns, onOpenDetail, onDeleteDomain }) {
+function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, onDeleteDomain }) {
   return [
     {
       title: '域名',
       dataIndex: 'domain',
       key: 'domain',
-      width: 220,
+      width: 260,
       render: (value, record) => {
         const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
 
         return (
-          <Space direction="vertical" size={8} className="domain-table-domain-cell">
-            <Space wrap className="domain-table-domain-head">
+          <div className="domain-table-cell-stack domain-table-domain-cell">
+            <Space wrap size={[8, 8]} className="domain-table-domain-head">
               <Text strong className="domain-table-domain-name">
                 {value}
               </Text>
@@ -71,21 +71,21 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onCreateMailbox,
             <Text type="secondary" className="domain-table-domain-note">
               {record.note || `最小记录 ${record.dnsRecords?.length || 0} 条`}
             </Text>
-          </Space>
+          </div>
         );
       },
     },
     {
       title: '状态',
       key: 'status',
-      width: 260,
+      width: 320,
       render: (_, record) => {
         const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
 
         return (
           <div className="domain-table-cell-stack domain-table-status-cell">
             <Text strong className="domain-table-status-title">
-              {statusMeta.label}
+              {statusMeta.summary}
             </Text>
             <Text type="secondary" className="domain-table-status-next">
               {statusMeta.nextStep}
@@ -99,34 +99,32 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onCreateMailbox,
       key: 'updatedAt',
       width: 180,
       render: (_, record) => (
-        <Text type="secondary" className="domain-table-updated-at">
-          {formatDateTime(record.updatedAt || record.createdAt)}
-        </Text>
+        <div className="domain-table-cell-stack domain-table-updated-cell">
+          <Text className="domain-table-updated-at">
+            {formatDateTime(record.updatedAt || record.createdAt)}
+          </Text>
+          <Text type="secondary" className="domain-table-updated-meta">
+            {record.updatedAt ? '最近更新' : '创建时间'}
+          </Text>
+        </div>
       ),
     },
     {
       title: '操作',
       key: 'actions',
-      width: 240,
+      width: 220,
       render: (_, record) => (
-        <div className="domain-action-group">
+        <div className="domain-action-group domain-action-group-inline">
           <Button
-            type="primary"
-            ghost
-            icon={<ThunderboltOutlined />}
-            className="domain-action-button-primary"
-            onClick={() => onDetectDns(record.id)}
+            type="default"
+            icon={<EyeOutlined />}
+            className="domain-action-button domain-action-button-accent"
+            onClick={() => onOpenDetail(record.id)}
           >
-            检测 DNS
-          </Button>
-          <Button type="link" icon={<EyeOutlined />} className="domain-action-button-link" onClick={() => onOpenDetail(record.id)}>
-            查看配置
-          </Button>
-          <Button type="link" className="domain-action-button-link" onClick={() => onCreateMailbox(record.id)}>
-            创建邮箱
+            查看详情
           </Button>
           <Popconfirm title="确认删除该域名？" onConfirm={() => onDeleteDomain(record.id)}>
-            <Button danger type="text" icon={<DeleteOutlined />} className="domain-action-button-danger">
+            <Button danger type="default" icon={<DeleteOutlined />} className="domain-action-button domain-action-button-danger">
               删除
             </Button>
           </Popconfirm>
@@ -143,16 +141,12 @@ export default function DomainTableSection({
   searchText,
   onSearchChange,
   onCreateDomain,
-  onCreateMailbox,
   onDeleteDomain,
-  onDetectDns,
   onOpenDetail,
 }) {
   const columns = createDomainColumns({
     domainDnsStatus,
     formatDateTime,
-    onCreateMailbox,
-    onDetectDns,
     onOpenDetail,
     onDeleteDomain,
   });

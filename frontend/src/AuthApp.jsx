@@ -18,21 +18,23 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
       <div className="auth-shell-background" />
       <div className="auth-shell-content">
         <Card className="auth-card">
-          <Space direction="vertical" size={20} style={{ width: '100%' }}>
-            <Space direction="vertical" size={10} align="center" style={{ width: '100%' }}>
+          <Space direction="vertical" size={24} style={{ width: '100%' }}>
+            <div className="auth-hero">
               <div className="auth-logo">
                 <ThunderboltOutlined />
               </div>
               <div className="auth-title-block">
                 <Text type="secondary" className="section-eyebrow">
-                  DoMail Workspace
+                  DoMail Admin
                 </Text>
                 <Title level={3} style={{ margin: 0 }}>
-                  管理员登录
+                  管理后台登录
                 </Title>
-                <Text type="secondary">输入管理员账号和密码后进入后台</Text>
+                <Text type="secondary" className="auth-subtitle">
+                  输入管理员账号和密码后即可进入后台。
+                </Text>
               </div>
-            </Space>
+            </div>
 
             {errorMessage ? (
               <Alert
@@ -45,9 +47,9 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
             ) : null}
 
             <div className="auth-form-shell">
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <Space direction="vertical" size={14} style={{ width: '100%' }}>
                 <Text type="secondary" className="auth-form-caption">
-                  仅需填写账号和密码。
+                  请填写管理员账号与密码。
                 </Text>
 
                 <Spin spinning={loading}>

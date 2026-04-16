@@ -25,7 +25,7 @@ export default function MailboxCreateModal({
   form,
   open,
   submitting,
-  domainOptions: _domainOptions,
+  domainOptions = [],
   onCancel,
   onSubmit,
 }) {
@@ -50,7 +50,7 @@ export default function MailboxCreateModal({
           <Space direction="vertical" size={6} style={{ width: '100%' }}>
             <Text strong>创建流程</Text>
             <Paragraph type="secondary" style={{ margin: 0 }}>
-              直接输入已创建的域名，再决定使用自定义前缀还是随机前缀。创建完成后即可去收件列表查看邮件。
+              先选择一个已添加的域名，再决定使用自定义前缀还是随机前缀。创建完成后即可去收件列表查看邮件。
             </Paragraph>
           </Space>
         </div>
@@ -58,9 +58,14 @@ export default function MailboxCreateModal({
         <Form.Item
           label="所属域名"
           name="domain"
-          rules={[{ required: true, message: '请输入域名' }]}
+          rules={[{ required: true, message: '请选择域名' }]}
         >
-          <Input placeholder="例如：example.com" />
+          <Select
+            placeholder="请选择已添加的域名"
+            options={domainOptions}
+            showSearch
+            optionFilterProp="label"
+          />
         </Form.Item>
 
         <Form.Item label="生成方式" name="random">
