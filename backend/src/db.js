@@ -854,6 +854,41 @@ function mapApiToken(row) {
   };
 }
 
+function mapRows(rows, mapper) {
+  return rows.map(mapper);
+}
+
+function mapOptionalRow(row, mapper) {
+  return row ? mapper(row) : null;
+}
+
+function mapMessageListItem(row) {
+  return {
+    id: row.id,
+    messageId: row.message_id,
+    envelopeFrom: row.envelope_from,
+    envelopeTo: row.envelope_to,
+    fromName: row.from_name,
+    fromAddress: row.from_address,
+    subject: row.subject,
+    receivedAt: row.received_at,
+    rawSize: row.raw_size,
+    attachmentCount: row.attachment_count,
+    isRead: Boolean(row.is_read),
+  };
+}
+
+function mapAttachment(row) {
+  return {
+    id: row.id,
+    filename: row.filename,
+    contentType: row.content_type,
+    size: row.size,
+    contentId: row.content_id,
+    checksum: row.checksum,
+  };
+}
+
 function runInTransaction(callback) {
   db.exec('BEGIN');
 
@@ -909,15 +944,15 @@ export function createDomain({
 }
 
 export function listDomains() {
-  return listDomainsStatement.all().map(mapDomain);
+  return mapRows(listDomainsStatement.all(), mapDomain);
 }
 
 export function getDomainById(id) {
-  return mapDomain(getDomainByIdStatement.get(id));
+  return mapOptionalRow(getDomainByIdStatement.get(id), mapDomain);
 }
 
 export function getDomainByName(domain) {
-  return mapDomain(getDomainByNameStatement.get(normalizeDomain(domain)));
+  return mapOptionalRow(getDomainByNameStatement.get(normalizeDomain(domain)), mapDomain);
 }
 
 export function removeDomain(id) {
@@ -1072,15 +1107,15 @@ export function createMailbox({ domain, localPart, source = 'manual' }) {
 }
 
 export function listMailboxes() {
-  return listMailboxesStatement.all().map(mapMailbox);
+  return mapRows(listMailboxesStatement.all(), mapMailbox);
 }
 
 export function getMailboxById(id) {
-  return mapMailbox(getMailboxByIdStatement.get(id));
+  return mapOptionalRow(getMailboxByIdStatement.get(id), mapMailbox);
 }
 
 export function getMailboxByAddress(address) {
-  return mapMailbox(getMailboxByAddressStatement.get(normalizeMailboxAddress(address)));
+  return mapOptionalRow(getMailboxByAddressStatement.get(normalizeMailboxAddress(address)), mapMailbox);
 }
 
 export function removeMailbox(id) {
@@ -1142,39 +1177,18 @@ export function saveIncomingMessage(message, attachments = []) {
 }
 
 export function listMessagesByMailbox(mailboxId) {
-  return listMessagesByMailboxStatement.all(mailboxId).map((row) => ({
-    id: row.id,
-    messageId: row.message_id,
-    envelopeFrom: row.envelope_from,
-    envelopeTo: row.envelope_to,
-    fromName: row.from_name,
-    fromAddress: row.from_address,
-    subject: row.subject,
-    receivedAt: row.received_at,
-    rawSize: row.raw_size,
-    attachmentCount: row.attachment_count,
-    isRead: Boolean(row.is_read),
-  }));
+  return mapRows(listMessagesByMailboxStatement.all(mailboxId), mapMessageListItem);
 }
 
 export function listMessagesByMailboxAddress(address) {
-  return listMessagesByMailboxAddressStatement.all(normalizeMailboxAddress(address)).map((row) => ({
-    id: row.id,
-    messageId: row.message_id,
-    envelopeFrom: row.envelope_from,
-    envelopeTo: row.envelope_to,
-    fromName: row.from_name,
-    fromAddress: row.from_address,
-    subject: row.subject,
-    receivedAt: row.received_at,
-    rawSize: row.raw_size,
-    attachmentCount: row.attachment_count,
-    isRead: Boolean(row.is_read),
-  }));
+  return mapRows(
+    listMessagesByMailboxAddressStatement.all(normalizeMailboxAddress(address)),
+    mapMessageListItem,
+  );
 }
 
 export function getMessageById(id) {
-  const message = mapMessage(getMessageByIdStatement.get(id));
+  const message = mapOptionalRow(getMessageByIdStatement.get(id), mapMessage);
 
   if (!message) {
     return null;
@@ -1182,14 +1196,7 @@ export function getMessageById(id) {
 
   return {
     ...message,
-    attachments: listAttachmentsByMessageStatement.all(id).map((item) => ({
-      id: item.id,
-      filename: item.filename,
-      contentType: item.content_type,
-      size: item.size,
-      contentId: item.content_id,
-      checksum: item.checksum,
-    })),
+    attachments: mapRows(listAttachmentsByMessageStatement.all(id), mapAttachment),
   };
 }
 
@@ -1218,11 +1225,11 @@ export function createApiToken({ id, name, tokenHash, tokenPrefix }) {
 }
 
 export function listApiTokens() {
-  return listApiTokensStatement.all().map(mapApiToken);
+  return mapRows(listApiTokensStatement.all(), mapApiToken);
 }
 
 export function getApiTokenByHash(tokenHash) {
-  return mapApiToken(getApiTokenByHashStatement.get(tokenHash));
+  return mapOptionalRow(getApiTokenByHashStatement.get(tokenHash), mapApiToken);
 }
 
 export function touchApiTokenLastUsedAt(id) {

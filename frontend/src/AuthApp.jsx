@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { App as AntdApp, Alert, Button, Card, Form, Input, Space, Spin, Typography } from 'antd';
 import { LockOutlined, ThunderboltOutlined, UserOutlined } from '@ant-design/icons';
 import App from './App.jsx';
-import { extractErrorMessage, getAdminSession, loginAdmin, logoutAdmin } from './api.js';
+import {
+  extractErrorMessage,
+  getAdminSession,
+  isUnauthorizedError,
+  loginAdmin,
+  logoutAdmin,
+} from './api.js';
 
 const { Title, Text } = Typography;
-
-function isUnauthorizedError(error) {
-  return error?.response?.status === 401;
-}
 
 function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
   const [form] = Form.useForm();

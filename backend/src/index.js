@@ -86,6 +86,29 @@ let runningHttpServer = null;
 let runningSmtpServer = null;
 let cleanupTimer = null;
 
+const healthStatsStatements = {
+  domains: db.prepare('SELECT COUNT(1) AS count FROM domains'),
+  mailboxes: db.prepare('SELECT COUNT(1) AS count FROM mailboxes'),
+  messages: db.prepare('SELECT COUNT(1) AS count FROM messages'),
+};
+
+const publicApiPaths = new Set([
+  '/health',
+  '/auth/login',
+  '/auth/logout',
+  '/auth/session',
+]);
+
+const apiTokenProtectedGetPaths = [
+  /^\/mailboxes$/,
+  /^\/mailboxes\/[^/]+\/messages$/,
+  /^\/messages\/[^/]+$/,
+];
+
+const apiTokenProtectedWritePaths = [
+  /^\/mailboxes(?:\/[^/]+)?(?:\/retention)?$/,
+];
+
 function buildError(status, code, message) {
   return { status, code, message };
 }
@@ -114,45 +137,40 @@ function normalizeError(error) {
   return buildError(500, 'INTERNAL_ERROR', '服务器内部错误');
 }
 
+function sendErrorResponse(response, status, error) {
+  response.status(status).json({
+    ok: false,
+    error,
+  });
+}
+
 function sendError(response, error) {
   const normalized = normalizeError(error);
-  response.status(normalized.status).json({
-    ok: false,
-    error: {
-      code: normalized.code,
-      message: normalized.message,
-    },
+  sendErrorResponse(response, normalized.status, {
+    code: normalized.code,
+    message: normalized.message,
   });
 }
 
 function sendAuthError(response, code = 'AUTH_REQUIRED', message = '请先登录管理账号') {
-  response.status(401).json({
-    ok: false,
-    error: {
-      code,
-      message,
-    },
+  sendErrorResponse(response, 401, {
+    code,
+    message,
   });
 }
 
 function sendValidationError(response, error, message) {
-  response.status(400).json({
-    ok: false,
-    error: {
-      code: 'VALIDATION_ERROR',
-      message,
-      details: error.flatten(),
-    },
+  sendErrorResponse(response, 400, {
+    code: 'VALIDATION_ERROR',
+    message,
+    details: error.flatten(),
   });
 }
 
 function sendNotFoundError(response, code, message) {
-  response.status(404).json({
-    ok: false,
-    error: {
-      code,
-      message,
-    },
+  sendErrorResponse(response, 404, {
+    code,
+    message,
   });
 }
 
@@ -369,6 +387,34 @@ function requireApiAccess(request, response, next) {
   next();
 }
 
+function getHealthStats() {
+  return {
+    domains: healthStatsStatements.domains.get().count,
+    mailboxes: healthStatsStatements.mailboxes.get().count,
+    messages: healthStatsStatements.messages.get().count,
+  };
+}
+
+function matchesAnyPath(path, matchers) {
+  return matchers.some((pattern) => pattern.test(path));
+}
+
+function shouldAllowPublicApi(path) {
+  return publicApiPaths.has(path);
+}
+
+function shouldUseApiTokenAccess(method, path) {
+  if (method === 'GET') {
+    return matchesAnyPath(path, apiTokenProtectedGetPaths);
+  }
+
+  if (['POST', 'DELETE', 'PATCH'].includes(method)) {
+    return matchesAnyPath(path, apiTokenProtectedWritePaths);
+  }
+
+  return false;
+}
+
 export function createApp() {
   const authConfig = getAuthConfig();
   const app = express();
@@ -384,19 +430,10 @@ export function createApp() {
   app.use(createSessionMiddleware(authConfig));
 
   app.get('/api/health', (_request, response) => {
-    const domainStatsStatement = db.prepare('SELECT COUNT(1) AS count FROM domains');
-    const mailboxStatsStatement = db.prepare('SELECT COUNT(1) AS count FROM mailboxes');
-    const messageStatsStatement = db.prepare('SELECT COUNT(1) AS count FROM messages');
-    const stats = {
-      domains: domainStatsStatement.get().count,
-      mailboxes: mailboxStatsStatement.get().count,
-      messages: messageStatsStatement.get().count,
-    };
-
     response.json({
       ok: true,
       service: 'domain-mail-backend',
-      stats,
+      stats: getHealthStats(),
       timestamp: new Date().toISOString(),
     });
   });
@@ -466,22 +503,12 @@ export function createApp() {
   });
 
   app.use('/api', (request, response, next) => {
-    if (
-      request.path === '/health' ||
-      request.path === '/auth/login' ||
-      request.path === '/auth/logout' ||
-      request.path === '/auth/session'
-    ) {
+    if (shouldAllowPublicApi(request.path)) {
       next();
       return;
     }
 
-    if (
-      (request.method === 'GET' &&
-        (/^\/mailboxes$/.test(request.path) || /^\/mailboxes\/[^/]+\/messages$/.test(request.path) || /^\/messages\/[^/]+$/.test(request.path))) ||
-      ((request.method === 'POST' || request.method === 'DELETE' || request.method === 'PATCH') &&
-        /^\/mailboxes(?:\/[^/]+)?(?:\/retention)?$/.test(request.path))
-    ) {
+    if (shouldUseApiTokenAccess(request.method, request.path)) {
       requireApiAccess(request, response, next);
       return;
     }

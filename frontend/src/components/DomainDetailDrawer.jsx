@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, Card, Drawer, Empty, Space, Tag, Typography } from 'antd';
 import { ThunderboltOutlined } from '@ant-design/icons';
+import { getDomainStatusMeta } from '../app-view-helpers.js';
 
 const { Title, Text } = Typography;
 
@@ -36,6 +37,10 @@ export default function DomainDetailDrawer({
   onCreateMailbox,
   formatDateTime,
 }) {
+  const statusMeta = domainDetail
+    ? getDomainStatusMeta(domainDetail, domainDetail.dnsCheck)
+    : null;
+
   return (
     <Drawer
       title="域名设置详情"
@@ -53,20 +58,8 @@ export default function DomainDetailDrawer({
                   {domainDetail.domain}
                 </Title>
                 <Tag color="blue">DNS 配置</Tag>
-                <Tag
-                  color={
-                    domainDetail.dnsCheck?.status === 'ready' || domainDetail.isActive
-                      ? 'success'
-                      : domainDetail.dnsCheck?.status === 'mismatch'
-                        ? 'warning'
-                        : 'default'
-                  }
-                >
-                  {domainDetail.dnsCheck?.status === 'ready' || domainDetail.isActive
-                    ? '已可继续创建邮箱'
-                    : domainDetail.dnsCheck?.status === 'mismatch'
-                      ? 'MX 与系统要求不一致'
-                      : '待完成 DNS 配置'}
+                <Tag color={statusMeta.color}>
+                  {statusMeta.drawerStatusText}
                 </Tag>
               </Space>
 
@@ -75,13 +68,7 @@ export default function DomainDetailDrawer({
               <div className="domain-detail-summary-grid">
                 <div className="domain-detail-summary-item">
                   <Text type="secondary">当前状态</Text>
-                  <Text strong>
-                    {domainDetail.dnsCheck?.status === 'ready' || domainDetail.isActive
-                      ? '已可收件'
-                      : domainDetail.dnsCheck?.status === 'mismatch'
-                        ? 'MX 不一致'
-                        : '待补充 DNS 记录'}
-                  </Text>
+                  <Text strong>{statusMeta.label}</Text>
                 </div>
                 <div className="domain-detail-summary-item">
                   <Text type="secondary">最小记录</Text>
@@ -126,15 +113,17 @@ export default function DomainDetailDrawer({
           <Card title="补充说明">
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
               <Text type="secondary">
-                {domainDetail.dnsCheck?.summary || domainDetail.setupNote || '请先确认当前域名的 DNS 托管商，再把邮件记录按你的收件服务实际配置补充到对应面板。'}
+                {domainDetail.dnsCheck?.summary || domainDetail.setupNote || statusMeta.summary}
               </Text>
               {domainDetail.dnsCheck?.actualMxSummary ? (
                 <Text type="secondary">
                   当前检测到的 MX：{domainDetail.dnsCheck.actualMxSummary}
                 </Text>
-              ) : null}
+              ) : (
+                <Text type="secondary">{statusMeta.detail}</Text>
+              )}
               <Text type="secondary">
-                {domainDetail.dnsCheck?.nextStep || '完成 MX 配置后重新检测 DNS，确认当前设置与系统要求一致。'}
+                {domainDetail.dnsCheck?.nextStep || statusMeta.nextStep}
               </Text>
             </Space>
           </Card>
