@@ -1124,9 +1124,51 @@ body {
 }
 
 .domain-table-domain-cell,
-.domain-table-cell-stack {
+.domain-table-cell-stack,
+.mailbox-table-cell-stack {
   display: grid;
+  align-content: start;
+  justify-items: start;
   gap: 6px;
+  min-width: 0;
+}
+
+.mailbox-table-primary-text.ant-typography {
+  line-height: 1.4;
+}
+
+.mailbox-table-secondary-text.ant-typography {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.mailbox-table-single-line {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.mailbox-table-inline-tag.ant-tag {
+  margin-inline-end: 0;
+}
+
+.mailbox-action-group.ant-space {
+  align-items: center;
+}
+
+.mailbox-action-group.ant-space .ant-space-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.mailbox-action-link.ant-btn,
+.mailbox-action-danger.ant-btn {
+  padding-inline: 0;
+}
+
+.mailbox-table-card .ant-table-cell,
+.mailbox-table .ant-table-cell {
+  vertical-align: top;
 }
 
 .domain-table-domain-head {
@@ -1293,6 +1335,10 @@ body {
 
 .ant-table-wrapper .ant-table-tbody > tr > td {
   vertical-align: top;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr > td .ant-space {
+  align-items: flex-start;
 }
 
 .ant-empty {

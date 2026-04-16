@@ -749,9 +749,9 @@ export default function App({ adminProfile = null, onLogout = null }) {
       dataIndex: 'address',
       key: 'address',
       render: (value, record) => (
-        <Space direction="vertical" size={2}>
-          <Text strong>{value}</Text>
-          <Text type="secondary">域名：{record.domain}</Text>
+        <Space direction="vertical" size={2} className="mailbox-table-cell-stack">
+          <Text strong className="mailbox-table-primary-text">{value}</Text>
+          <Text type="secondary" className="mailbox-table-secondary-text">域名：{record.domain}</Text>
         </Space>
       ),
     },
@@ -760,16 +760,20 @@ export default function App({ adminProfile = null, onLogout = null }) {
       dataIndex: 'source',
       key: 'source',
       width: 100,
-      render: (value) => <Tag color={value === 'random' ? 'blue' : 'purple'}>{value}</Tag>,
+      render: (value) => (
+        <div className="mailbox-table-single-line">
+          <Tag color={value === 'random' ? 'blue' : 'purple'} className="mailbox-table-inline-tag">{value}</Tag>
+        </div>
+      ),
     },
     {
       title: '最近收件',
       dataIndex: 'latestReceivedAt',
       key: 'latestReceivedAt',
       render: (value) => (
-        <Space direction="vertical" size={2}>
-          <Text>{formatDateTime(value)}</Text>
-          <Text type="secondary">{formatRelativeTime(value)}</Text>
+        <Space direction="vertical" size={2} className="mailbox-table-cell-stack">
+          <Text className="mailbox-table-primary-text">{formatDateTime(value)}</Text>
+          <Text type="secondary" className="mailbox-table-secondary-text">{formatRelativeTime(value)}</Text>
         </Space>
       ),
     },
@@ -778,19 +782,23 @@ export default function App({ adminProfile = null, onLogout = null }) {
       dataIndex: 'messageCount',
       key: 'messageCount',
       width: 90,
-      render: (value) => <Badge count={value} showZero color="#1677ff" />,
+      render: (value) => (
+        <div className="mailbox-table-single-line">
+          <Badge count={value} showZero color="#1677ff" />
+        </div>
+      ),
     },
     {
       title: '操作',
       key: 'actions',
       width: 170,
       render: (_, record) => (
-        <Space>
-          <Button type="link" onClick={() => loadMessages(record.address, { keepSection: false })}>
+        <Space className="mailbox-action-group" size={[12, 8]} wrap>
+          <Button type="link" className="mailbox-action-link" onClick={() => loadMessages(record.address, { keepSection: false })}>
             查看邮件
           </Button>
           <Popconfirm title="确认删除该邮箱？" onConfirm={() => handleDeleteMailbox(record.address)}>
-            <Button danger type="text" icon={<DeleteOutlined />} />
+            <Button danger type="text" icon={<DeleteOutlined />} className="mailbox-action-danger" />
           </Popconfirm>
         </Space>
       ),
@@ -936,8 +944,9 @@ export default function App({ adminProfile = null, onLogout = null }) {
                   )}
                 />
 
-                <Card>
+                <Card className="mailbox-table-card">
                   <Table
+                    className="mailbox-table"
                     rowKey="id"
                     columns={mailboxColumns}
                     dataSource={filteredMailboxes}
