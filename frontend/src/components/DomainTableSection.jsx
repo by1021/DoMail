@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, Popconfirm, Row, Col, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Input, Popconfirm, Row, Col, Space, Table, Tag, Typography } from 'antd';
 import { DeleteOutlined, EyeOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -11,7 +11,19 @@ function getDomainStatusMeta(record, dnsStatus) {
       color: 'success',
       summary: dnsStatus.summary || '最小收件记录已齐全，域名已可用于收件。',
       nextStep: dnsStatus.nextStep || '现在可以创建邮箱并发送测试邮件。',
-      detail: '检测已确认最小记录可用。',
+      detail: '检测已确认 MX 记录与系统要求一致。',
+    };
+  }
+
+  if (dnsStatus?.status === 'mismatch') {
+    return {
+      label: 'MX 不一致',
+      color: 'warning',
+      summary: dnsStatus.summary || '已检测到 MX 记录，但当前配置与系统要求不一致。',
+      nextStep: dnsStatus.nextStep || '请调整 MX 指向后重新检测 DNS。',
+      detail: dnsStatus.actualMxSummary
+        ? `当前解析到：${dnsStatus.actualMxSummary}`
+        : '请核对当前域名的 MX 指向是否正确。',
     };
   }
 
@@ -30,7 +42,9 @@ function getDomainStatusMeta(record, dnsStatus) {
     color: 'default',
     summary: dnsStatus?.summary || '域名已添加，但还需要先核对并补充最小 DNS 记录。',
     nextStep: dnsStatus?.nextStep || '先检测 DNS，再按建议补充记录',
-    detail: `最少 ${record.dnsRecords?.length || 0} 条必需记录，建议先完成后再创建邮箱。`,
+    detail: dnsStatus?.actualMxSummary
+      ? `当前解析到：${dnsStatus.actualMxSummary}`
+      : `最少 ${record.dnsRecords?.length || 0} 条必需记录，建议先完成后再创建邮箱。`,
   };
 }
 
@@ -126,6 +140,8 @@ export default function DomainTableSection({
   domains,
   domainDnsStatus,
   formatDateTime,
+  searchText,
+  onSearchChange,
   onCreateDomain,
   onCreateMailbox,
   onDeleteDomain,
@@ -141,25 +157,32 @@ export default function DomainTableSection({
     onDeleteDomain,
   });
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }} className="domain-table-section">
-      <Card className="section-intro-card">
-        <Row justify="space-between" align="middle" gutter={[16, 16]}>
-          <Col flex="auto">
-            <Space direction="vertical" size={4} className="domain-table-section-copy">
-              <Title level={4} style={{ margin: 0 }}>
-                域名管理
-              </Title>
-              <Text type="secondary">
-                聚焦查看域名状态、下一步动作和常用操作。
-              </Text>
-            </Space>
-          </Col>
-          <Col>
+    <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section domain-table-section">
+      <Card className="section-intro-card page-toolbar-card">
+        <div className="domain-table-toolbar">
+          <div className="domain-table-toolbar-copy">
+            <Title level={4} style={{ margin: 0 }}>
+              域名管理
+            </Title>
+            <Text type="secondary">
+              聚焦查看域名状态、下一步动作和常用操作。
+            </Text>
+          </div>
+
+          <div className="domain-table-toolbar-actions">
+            <Input
+              aria-label="域名搜索"
+              placeholder="搜索域名或备注"
+              allowClear
+              value={searchText}
+              onChange={(event) => onSearchChange(event.target.value)}
+              className="domain-table-search"
+            />
             <Button type="primary" icon={<PlusOutlined />} onClick={onCreateDomain}>
               添加域名
             </Button>
-          </Col>
-        </Row>
+          </div>
+        </div>
       </Card>
 
       <Card className="domain-table-card">

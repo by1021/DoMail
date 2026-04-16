@@ -20,6 +20,9 @@ function renderDnsRecordItem(record, index) {
       <Text code className="dns-record-value">
         {record.expectedValue || record.value}
       </Text>
+      {record.actualValue ? (
+        <Text type="secondary">当前解析：{record.actualValue}</Text>
+      ) : null}
       <Text type="secondary">{record.note || '无备注'}</Text>
     </div>
   );
@@ -50,8 +53,20 @@ export default function DomainDetailDrawer({
                   {domainDetail.domain}
                 </Title>
                 <Tag color="blue">DNS 配置</Tag>
-                <Tag color={domainDetail.dnsCheck?.status === 'ready' || domainDetail.isActive ? 'success' : 'default'}>
-                  {domainDetail.dnsCheck?.status === 'ready' || domainDetail.isActive ? '已可继续创建邮箱' : '待完成 DNS 配置'}
+                <Tag
+                  color={
+                    domainDetail.dnsCheck?.status === 'ready' || domainDetail.isActive
+                      ? 'success'
+                      : domainDetail.dnsCheck?.status === 'mismatch'
+                        ? 'warning'
+                        : 'default'
+                  }
+                >
+                  {domainDetail.dnsCheck?.status === 'ready' || domainDetail.isActive
+                    ? '已可继续创建邮箱'
+                    : domainDetail.dnsCheck?.status === 'mismatch'
+                      ? 'MX 与系统要求不一致'
+                      : '待完成 DNS 配置'}
                 </Tag>
               </Space>
 
@@ -60,7 +75,13 @@ export default function DomainDetailDrawer({
               <div className="domain-detail-summary-grid">
                 <div className="domain-detail-summary-item">
                   <Text type="secondary">当前状态</Text>
-                  <Text strong>{domainDetail.dnsCheck?.status === 'ready' || domainDetail.isActive ? '已可收件' : '待补充 DNS 记录'}</Text>
+                  <Text strong>
+                    {domainDetail.dnsCheck?.status === 'ready' || domainDetail.isActive
+                      ? '已可收件'
+                      : domainDetail.dnsCheck?.status === 'mismatch'
+                        ? 'MX 不一致'
+                        : '待补充 DNS 记录'}
+                  </Text>
                 </div>
                 <div className="domain-detail-summary-item">
                   <Text type="secondary">最小记录</Text>
@@ -103,9 +124,19 @@ export default function DomainDetailDrawer({
           </Card>
 
           <Card title="补充说明">
-            <Text type="secondary">
-              {domainDetail.setupNote || '请先确认当前域名的 DNS 托管商，再把邮件记录按你的收件服务实际配置补充到对应面板。'}
-            </Text>
+            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <Text type="secondary">
+                {domainDetail.dnsCheck?.summary || domainDetail.setupNote || '请先确认当前域名的 DNS 托管商，再把邮件记录按你的收件服务实际配置补充到对应面板。'}
+              </Text>
+              {domainDetail.dnsCheck?.actualMxSummary ? (
+                <Text type="secondary">
+                  当前检测到的 MX：{domainDetail.dnsCheck.actualMxSummary}
+                </Text>
+              ) : null}
+              <Text type="secondary">
+                {domainDetail.dnsCheck?.nextStep || '完成 MX 配置后重新检测 DNS，确认当前设置与系统要求一致。'}
+              </Text>
+            </Space>
           </Card>
         </Space>
       ) : (

@@ -545,9 +545,9 @@ export function createApp() {
     });
   });
 
-  app.post('/api/domains/:id/detect-dns', (request, response) => {
+  app.post('/api/domains/:id/detect-dns', async (request, response) => {
     try {
-      const item = detectDomainDnsStatus(request.params.id);
+      const item = await detectDomainDnsStatus(request.params.id);
 
       response.json({
         ok: true,

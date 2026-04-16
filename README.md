@@ -84,6 +84,7 @@
 HTTP_PORT=3001
 SMTP_PORT=2525
 SMTP_HOST=0.0.0.0
+MAIL_MX_HOST=mx.example.com
 CORS_ORIGIN=https://mail.example.com
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=change-this-password
@@ -96,6 +97,7 @@ SESSION_MAX_AGE_MS=43200000
 - HTTP API 默认监听 `3001`
 - SMTP 默认监听 `2525`
 - SMTP 默认监听地址 `0.0.0.0`
+- 域名默认 MX 指引优先来自 `MAIL_MX_HOST`
 - 管理后台登录账号来自 `ADMIN_USERNAME` / `ADMIN_PASSWORD`
 - 管理会话通过 `SESSION_SECRET` 签名，默认有效期 12 小时（`43200000ms`）
 
@@ -104,7 +106,9 @@ SESSION_MAX_AGE_MS=43200000
 前端默认 API 地址见 [`frontend/src/api.js`](frontend/src/api.js)：
 
 - 默认使用相对路径 `/api`
-- 生产环境或特殊部署场景可通过 `VITE_API_BASE_URL` 覆盖
+- 开发环境通常由 [`frontend/vite.config.js`](frontend/vite.config.js) 的代理把 `/api` 转发到本机后端
+- 生产环境建议继续使用同源 `/api`
+- 如果前后端不在同一域名下，可通过 `VITE_API_BASE_URL` 显式覆盖为完整地址，例如 `https://api.example.com/api`
 
 ---
 
@@ -195,7 +199,7 @@ cd frontend
 npm run dev
 ```
 
-前端会通过 `frontend/src/api.js` 中的默认配置请求 `http://localhost:3001`。
+前端开发环境默认请求相对路径 `/api`，再由 [`frontend/vite.config.js`](frontend/vite.config.js) 代理到本机后端 `http://127.0.0.1:3001`。
 
 启动前端后，页面会先进入管理员登录页；只有登录成功后才会加载域名、邮箱和邮件管理数据。
 
@@ -218,13 +222,13 @@ npm run dev
 查询当前登录态：
 
 ```bash
-curl -i http://127.0.0.1:3001/api/auth/session
+curl -i <API_BASE_URL>/auth/session
 ```
 
 管理员登录：
 
 ```bash
-curl -i -X POST http://127.0.0.1:3001/api/auth/login \
+curl -i -X POST <API_BASE_URL>/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"your-password"}'
 ```
@@ -232,7 +236,7 @@ curl -i -X POST http://127.0.0.1:3001/api/auth/login \
 退出登录：
 
 ```bash
-curl -i -X POST http://127.0.0.1:3001/api/auth/logout
+curl -i -X POST <API_BASE_URL>/auth/logout
 ```
 
 ### 7.3 受保护接口
@@ -242,7 +246,7 @@ curl -i -X POST http://127.0.0.1:3001/api/auth/logout
 如果未登录直接访问，例如：
 
 ```bash
-curl -i http://127.0.0.1:3001/api/domains
+curl -i <API_BASE_URL>/domains
 ```
 
 预期会得到 `401`，表示需要先登录管理员账号。
@@ -288,17 +292,23 @@ Authorization: Bearer <token>
 
 #### Token 可调用接口示例
 
+下面示例统一使用 `<API_BASE_URL>` 占位：
+
+- 本地开发可写成 `http://127.0.0.1:3001/api`
+- 生产环境同域部署建议写成 `https://你的域名/api`
+- 如果你就在站点所在服务器或浏览器同源环境中调用，也可以直接理解为 `/api`
+
 查询邮箱列表：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes \
+curl <API_BASE_URL>/mailboxes \
   -H "Authorization: Bearer <token>"
 ```
 
 创建邮箱：
 
 ```bash
-curl -X POST http://127.0.0.1:3001/api/mailboxes \
+curl -X POST <API_BASE_URL>/mailboxes \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{"domainId":"<domainId>","localPart":"test","random":false}'
@@ -307,7 +317,7 @@ curl -X POST http://127.0.0.1:3001/api/mailboxes \
 随机创建邮箱：
 
 ```bash
-curl -X POST http://127.0.0.1:3001/api/mailboxes \
+curl -X POST <API_BASE_URL>/mailboxes \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{"domainId":"<domainId>","random":true}'
@@ -316,28 +326,28 @@ curl -X POST http://127.0.0.1:3001/api/mailboxes \
 删除邮箱：
 
 ```bash
-curl -X DELETE http://127.0.0.1:3001/api/mailboxes/<encodedAddress> \
+curl -X DELETE <API_BASE_URL>/mailboxes/<encodedAddress> \
   -H "Authorization: Bearer <token>"
 ```
 
 查询某个邮箱的邮件列表：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages \
+curl <API_BASE_URL>/mailboxes/<encodedAddress>/messages \
   -H "Authorization: Bearer <token>"
 ```
 
 查询最新邮件：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages?latest=1 \
+curl <API_BASE_URL>/mailboxes/<encodedAddress>/messages?latest=1 \
   -H "Authorization: Bearer <token>"
 ```
 
 查询单封邮件详情：
 
 ```bash
-curl http://127.0.0.1:3001/api/messages/<messageId> \
+curl <API_BASE_URL>/messages/<messageId> \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -360,7 +370,7 @@ curl http://127.0.0.1:3001/api/messages/<messageId> \
 先确认后端 HTTP 已正常启动：
 
 ```bash
-curl http://127.0.0.1:3001/api/health
+curl <API_BASE_URL>/health
 ```
 
 预期返回：
@@ -382,7 +392,7 @@ curl http://127.0.0.1:3001/api/health
 ### 8.1 查询现有域名
 
 ```bash
-curl http://127.0.0.1:3001/api/domains
+curl <API_BASE_URL>/domains
 ```
 
 ### 8.2 创建域名
@@ -390,7 +400,7 @@ curl http://127.0.0.1:3001/api/domains
 Windows `cmd` 示例：
 
 ```bat
-curl -X POST http://127.0.0.1:3001/api/domains ^
+curl -X POST <API_BASE_URL>/domains ^
   -H "Content-Type: application/json" ^
   -d "{\"domain\":\"example.com\",\"note\":\"主收件域名\"}"
 ```
@@ -398,7 +408,7 @@ curl -X POST http://127.0.0.1:3001/api/domains ^
 Linux / macOS 示例：
 
 ```bash
-curl -X POST http://127.0.0.1:3001/api/domains \
+curl -X POST <API_BASE_URL>/domains \
   -H "Content-Type: application/json" \
   -d '{"domain":"example.com","note":"主收件域名"}'
 ```
@@ -406,7 +416,7 @@ curl -X POST http://127.0.0.1:3001/api/domains \
 ### 8.3 查询现有邮箱
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes
+curl <API_BASE_URL>/mailboxes
 ```
 
 ### 8.4 创建邮箱
@@ -414,7 +424,7 @@ curl http://127.0.0.1:3001/api/mailboxes
 Windows `cmd` 示例：
 
 ```bat
-curl -X POST http://127.0.0.1:3001/api/mailboxes ^
+curl -X POST <API_BASE_URL>/mailboxes ^
   -H "Content-Type: application/json" ^
   -d "{\"domainId\":\"<domainId>\",\"localPart\":\"test\"}"
 ```
@@ -422,7 +432,7 @@ curl -X POST http://127.0.0.1:3001/api/mailboxes ^
 Linux / macOS 示例：
 
 ```bash
-curl -X POST http://127.0.0.1:3001/api/mailboxes \
+curl -X POST <API_BASE_URL>/mailboxes \
   -H "Content-Type: application/json" \
   -d '{"domainId":"<domainId>","localPart":"test"}'
 ```
@@ -494,7 +504,7 @@ QUIT
 ### 11.1 查询邮箱列表
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes
+curl <API_BASE_URL>/mailboxes
 ```
 
 从结果中找到目标邮箱的 `address`，后续邮件查询接口直接使用这个邮箱地址；由于它会放进 URL 路径，调用前请先做 URL 编码。
@@ -506,27 +516,27 @@ curl http://127.0.0.1:3001/api/mailboxes
 管理员已登录时：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages
+curl <API_BASE_URL>/mailboxes/<encodedAddress>/messages
 ```
 
 使用 Bearer Token 时：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages \
+curl <API_BASE_URL>/mailboxes/<encodedAddress>/messages \
   -H "Authorization: Bearer <token>"
 ```
 
 例如：
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/test%40example.com/messages \
+curl <API_BASE_URL>/mailboxes/test%40example.com/messages \
   -H "Authorization: Bearer dm_xxx"
 ```
 
 ### 11.3 查询某个邮箱的最新邮件
 
 ```bash
-curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages?latest=1 \
+curl <API_BASE_URL>/mailboxes/<encodedAddress>/messages?latest=1 \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -543,20 +553,20 @@ curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages?latest=1 \
 管理员已登录时：
 
 ```bash
-curl http://127.0.0.1:3001/api/messages/<messageId>
+curl <API_BASE_URL>/messages/<messageId>
 ```
 
 使用 Bearer Token 时：
 
 ```bash
-curl http://127.0.0.1:3001/api/messages/<messageId> \
+curl <API_BASE_URL>/messages/<messageId> \
   -H "Authorization: Bearer <token>"
 ```
 
 例如：
 
 ```bash
-curl http://127.0.0.1:3001/api/messages/456 \
+curl <API_BASE_URL>/messages/456 \
   -H "Authorization: Bearer dm_xxx"
 ```
 
@@ -666,6 +676,7 @@ cp /opt/domain-mail/backend/.env.example /opt/domain-mail/backend/.env
 HTTP_PORT=3001
 SMTP_PORT=2525
 SMTP_HOST=0.0.0.0
+MAIL_MX_HOST=mx.example.com
 CORS_ORIGIN=https://mail.example.com
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=change-this-password
@@ -675,10 +686,18 @@ SESSION_MAX_AGE_MS=43200000
 
 ### 14.4 构建前端
 
+如果前端与 API 通过同一域名的 Nginx 一起对外提供，推荐直接使用相对路径 `/api`：
+
 ```bash
 cd /opt/domain-mail/frontend
-printf "VITE_API_BASE_URL=https://mail.example.com\n" > .env.production
+printf "VITE_API_BASE_URL=/api\n" > .env.production
 npm run build
+```
+
+只有在前端需要跨域访问独立 API 域名时，才改成完整地址，例如：
+
+```bash
+printf "VITE_API_BASE_URL=https://api.example.com/api\n" > .env.production
 ```
 
 ---
@@ -719,8 +738,8 @@ npm run build
 
 1. 后端日志中是否出现 `SMTP receiver listening on 0.0.0.0:25`
 2. `backend/.env` 中是否已将 `SMTP_PORT` 改为 `25`
-3. 域名 DNS 的 A 记录是否指向 VPS 公网 IP
-4. 根域名或目标域名的 MX 记录是否已指向该 SMTP 主机
+3. 根域名或目标域名的 MX 记录是否已指向该 SMTP 主机
+4. DoMail 后台执行 DNS 检测时，是否已看到真实解析结果且与系统期望一致
 5. 系统防火墙是否放行 `25/tcp`
 6. 云平台安全组是否放行 `25/tcp`
 7. 云厂商是否封禁了 `25` 出入方向端口
@@ -731,10 +750,11 @@ npm run build
 最小 DNS 参考：
 
 ```text
-mail.example.com -> VPS 公网 IP
 example.com MX -> mail.example.com
 priority 10
 ```
+
+如果你配置了 `MAIL_MX_HOST`，系统生成的默认 DNS 指引和 DNS 检测都会围绕这个 MX 主机名进行校验。
 
 推荐验证顺序：
 
@@ -761,6 +781,7 @@ priority 10
 
 - 是否已创建目标域名
 - 域名是否启用
+- 域名的 MX 记录是否已正确配置，且在后台 DNS 检测中显示一致
 - 收件地址域名是否拼写正确
 
 例如创建的是：

@@ -24,7 +24,6 @@ import {
 } from 'antd';
 import {
   ApiOutlined,
-  AppstoreOutlined,
   DeleteOutlined,
   GlobalOutlined,
   InboxOutlined,
@@ -47,7 +46,6 @@ import {
   getApiTokens,
   getDomainDetail,
   getDomains,
-  getHealth,
   getMailboxMessages,
   getMailboxes,
   getMessageDetail,
@@ -58,12 +56,9 @@ import DomainTableSection from './components/DomainTableSection.jsx';
 import DomainCreateModal from './components/DomainCreateModal.jsx';
 import DomainDetailDrawer from './components/DomainDetailDrawer.jsx';
 import MailboxCreateModal from './components/MailboxCreateModal.jsx';
-import OverviewSection from './components/OverviewSection.jsx';
 import MessageDetailDrawer from './components/MessageDetailDrawer.jsx';
 import MessagePreviewCard from './components/MessagePreviewCard.jsx';
 import {
-  buildHealthItems,
-  buildSummaryCards,
   formatDateTime,
   formatRelativeTime,
   getRetentionLabel,
@@ -73,11 +68,6 @@ const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
 const SECTION_DEFINITIONS = [
-  {
-    icon: AppstoreOutlined,
-    text: '概览',
-    value: 'overview',
-  },
   {
     icon: GlobalOutlined,
     text: '域名',
@@ -113,27 +103,29 @@ function buildSectionOptions(activeSection) {
 }
 
 const SECTION_META = {
-  overview: {
-    title: '概览',
-    description: '查看整体收件状态与推荐操作',
-  },
   domains: {
     title: '域名',
-    description: '管理域名接入与 DNS 配置进度',
+    description: '查看域名接入与 DNS 进度',
+    searchPlaceholder: '搜索域名或备注',
   },
   mailboxes: {
     title: '邮箱',
-    description: '创建收件地址并查看邮箱容量',
+    description: '管理收件地址与保留策略',
+    searchPlaceholder: '搜索邮箱地址或域名',
   },
   messages: {
     title: '邮件',
-    description: '按邮箱查看邮件并快速处理未读内容',
+    description: '集中查看邮件与详情',
+    searchPlaceholder: '搜索主题、发件人、收件地址',
   },
   api: {
     title: 'API',
-    description: '创建 Bearer Token 并查询邮件列表与详情',
+    description: '管理 Token 与接口说明',
+    searchPlaceholder: '搜索 Token 或接口说明',
   },
 };
+
+const API_EXAMPLE_BASE_URL = `${typeof window !== 'undefined' ? window.location.origin : 'https://mail.example.com'}/api`;
 
 const API_ENDPOINTS = [
   {
@@ -146,7 +138,7 @@ const API_ENDPOINTS = [
       '返回的 items 数组包含每个邮箱的详细信息。',
       '从返回结果中获取邮箱 address，用于后续查询邮件列表。',
     ],
-    example: `curl http://127.0.0.1:3001/api/mailboxes \\
+    example: `curl ${API_EXAMPLE_BASE_URL}/mailboxes \\
   -H "Authorization: Bearer <token>"`,
   },
   {
@@ -159,7 +151,7 @@ const API_ENDPOINTS = [
       '请求体直接传入 domain；如需固定前缀再补充 localPart。',
       'random=true 时由系统自动生成前缀。',
     ],
-    example: `curl -X POST http://127.0.0.1:3001/api/mailboxes \\
+    example: `curl -X POST ${API_EXAMPLE_BASE_URL}/mailboxes \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer <token>" \\
   -d '{"domain":"example.com","localPart":"test","random":false}'`,
@@ -173,7 +165,7 @@ const API_ENDPOINTS = [
       '直接使用完整邮箱地址作为路径参数，调用前请做 URL 编码。',
       '删除后该邮箱后续将不再接收邮件。',
     ],
-    example: `curl -X DELETE http://127.0.0.1:3001/api/mailboxes/<encodedAddress> \\
+    example: `curl -X DELETE ${API_EXAMPLE_BASE_URL}/mailboxes/<encodedAddress> \\
   -H "Authorization: Bearer <token>"`,
   },
   {
@@ -185,7 +177,7 @@ const API_ENDPOINTS = [
       '直接使用完整邮箱地址作为路径参数，调用前请做 URL 编码。',
       '返回 items 数组，可继续提取 messageId 查看详情。',
     ],
-    example: `curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages \\
+    example: `curl ${API_EXAMPLE_BASE_URL}/mailboxes/<encodedAddress>/messages \\
   -H "Authorization: Bearer <token>"`,
   },
   {
@@ -197,7 +189,7 @@ const API_ENDPOINTS = [
       '在按邮箱地址查询的基础上增加 latest=1 查询参数。',
       '返回的 items 最多只有一条记录。',
     ],
-    example: `curl http://127.0.0.1:3001/api/mailboxes/<encodedAddress>/messages?latest=1 \\
+    example: `curl ${API_EXAMPLE_BASE_URL}/mailboxes/<encodedAddress>/messages?latest=1 \\
   -H "Authorization: Bearer <token>"`,
   },
   {
@@ -209,7 +201,7 @@ const API_ENDPOINTS = [
       'messageId 通常来自邮件列表返回结果。',
       '适合获取完整正文、头信息与附件元数据。',
     ],
-    example: `curl http://127.0.0.1:3001/api/messages/<messageId> \\
+    example: `curl ${API_EXAMPLE_BASE_URL}/messages/<messageId> \\
   -H "Authorization: Bearer <token>"`,
   },
 ];
@@ -232,32 +224,51 @@ function WorkspaceBrand() {
   );
 }
 
-function SectionHero({ title, description, extra = null, eyebrow = 'DoMail Workspace' }) {
+function SectionHero({
+  title,
+  description,
+  actions = null,
+  searchPlaceholder = '',
+  searchValue = '',
+  onSearchChange = null,
+}) {
   return (
     <Card className="section-intro-card page-toolbar-card">
-      <Row justify="space-between" align="middle" gutter={[16, 16]}>
-        <Col flex="auto">
+      <div className="section-hero-layout">
+        <div className="section-hero-main">
           <Space direction="vertical" size={4}>
-            <Text type="secondary" className="section-eyebrow">
-              {eyebrow}
-            </Text>
             <Title level={4} style={{ margin: 0 }}>
               {title}
             </Title>
-            <Text type="secondary">{description}</Text>
+            {description ? <Text type="secondary">{description}</Text> : null}
           </Space>
-        </Col>
-        {extra ? <Col>{extra}</Col> : null}
-      </Row>
+        </div>
+
+        {(onSearchChange || actions) ? (
+          <div className="section-hero-toolbar">
+            {onSearchChange ? (
+              <Input
+                aria-label={`${title}搜索`}
+                placeholder={searchPlaceholder}
+                prefix={<SearchOutlined />}
+                allowClear
+                className="section-hero-search"
+                value={searchValue}
+                onChange={(event) => onSearchChange(event.target.value)}
+              />
+            ) : null}
+            {actions ? <div className="section-hero-actions">{actions}</div> : null}
+          </div>
+        ) : null}
+      </div>
     </Card>
   );
 }
 
 export default function App({ adminProfile = null, onLogout = null }) {
   const { message } = AntdApp.useApp();
-  const [section, setSection] = useState('overview');
+  const [section, setSection] = useState('domains');
   const [loading, setLoading] = useState(false);
-  const [health, setHealth] = useState(null);
   const [domains, setDomains] = useState([]);
   const [mailboxes, setMailboxes] = useState([]);
   const [selectedMailboxAddress, setSelectedMailboxAddress] = useState(null);
@@ -269,7 +280,12 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [domainDnsStatus, setDomainDnsStatus] = useState({});
   const [mailboxModalOpen, setMailboxModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [searchText, setSearchText] = useState('');
+  const [sectionSearchText, setSectionSearchText] = useState({
+    domains: '',
+    mailboxes: '',
+    messages: '',
+    api: '',
+  });
   const [apiTokens, setApiTokens] = useState([]);
   const [newApiToken, setNewApiToken] = useState(null);
   const [apiEndpointKey, setApiEndpointKey] = useState('messages');
@@ -278,68 +294,100 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [retentionForm] = Form.useForm();
   const [apiTokenForm] = Form.useForm();
 
-  const summaryCards = useMemo(
-    () => buildSummaryCards(health?.stats, domains, mailboxes, messages),
-    [health, domains, mailboxes, messages],
-  );
-
-  const healthItems = useMemo(
-    () => buildHealthItems(health, domains, mailboxes, messages),
-    [health, domains, mailboxes, messages],
-  );
-
   const unreadCount = useMemo(
     () => messages.filter((item) => !item.isRead).length,
     [messages],
   );
 
-  const latestDomain = domains[0] || null;
-  const latestMailbox = mailboxes[0] || null;
-  const latestMessage = messages[0] || null;
   const hasDomains = domains.length > 0;
   const hasMailboxes = mailboxes.length > 0;
   const sectionOptions = useMemo(() => buildSectionOptions(section), [section]);
-  const currentSectionMeta = SECTION_META[section] ?? SECTION_META.overview;
   const activeApiEndpoint = API_ENDPOINTS.find((item) => item.key === apiEndpointKey) ?? API_ENDPOINTS[0];
 
-  const normalizedSearchText = useMemo(() => searchText.trim().toLowerCase(), [searchText]);
+  const normalizedSectionSearch = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(sectionSearchText).map(([key, value]) => [key, value.trim().toLowerCase()]),
+      ),
+    [sectionSearchText],
+  );
 
   const filteredDomains = useMemo(() => {
-    if (!normalizedSearchText) {
+    const keyword = normalizedSectionSearch.domains;
+    if (!keyword) {
       return domains;
     }
 
     return domains.filter(
-      (item) =>
-        item.domain.toLowerCase().includes(normalizedSearchText) ||
-        (item.note || '').toLowerCase().includes(normalizedSearchText),
+      (item) => item.domain.toLowerCase().includes(keyword) || (item.note || '').toLowerCase().includes(keyword),
     );
-  }, [domains, normalizedSearchText]);
+  }, [domains, normalizedSectionSearch.domains]);
 
   const filteredMailboxes = useMemo(() => {
-    if (!normalizedSearchText) {
+    const keyword = normalizedSectionSearch.mailboxes;
+    if (!keyword) {
       return mailboxes;
     }
 
     return mailboxes.filter(
-      (item) =>
-        item.address.toLowerCase().includes(normalizedSearchText) ||
-        item.domain.toLowerCase().includes(normalizedSearchText),
+      (item) => item.address.toLowerCase().includes(keyword) || item.domain.toLowerCase().includes(keyword),
     );
-  }, [mailboxes, normalizedSearchText]);
+  }, [mailboxes, normalizedSectionSearch.mailboxes]);
 
   const filteredMessages = useMemo(() => {
-    if (!normalizedSearchText) {
+    const keyword = normalizedSectionSearch.messages;
+    if (!keyword) {
       return messages;
     }
 
     return messages.filter(
       (item) =>
-        (item.subject || '').toLowerCase().includes(normalizedSearchText) ||
-        (item.fromAddress || '').toLowerCase().includes(normalizedSearchText) ||
-        (item.envelopeTo || '').toLowerCase().includes(normalizedSearchText),
+        (item.subject || '').toLowerCase().includes(keyword) ||
+        (item.fromAddress || '').toLowerCase().includes(keyword) ||
+        (item.envelopeTo || '').toLowerCase().includes(keyword),
     );
-  }, [messages, normalizedSearchText]);
+  }, [messages, normalizedSectionSearch.messages]);
+
+  const filteredApiTokens = useMemo(() => {
+    const keyword = normalizedSectionSearch.api;
+    if (!keyword) {
+      return apiTokens;
+    }
+
+    return apiTokens.filter(
+      (item) =>
+        (item.name || '').toLowerCase().includes(keyword) ||
+        (item.tokenPrefix || '').toLowerCase().includes(keyword),
+    );
+  }, [apiTokens, normalizedSectionSearch.api]);
+
+  const filteredApiEndpoints = useMemo(() => {
+    const keyword = normalizedSectionSearch.api;
+    if (!keyword) {
+      return API_ENDPOINTS;
+    }
+
+    return API_ENDPOINTS.filter(
+      (item) =>
+        item.title.toLowerCase().includes(keyword) ||
+        item.endpoint.toLowerCase().includes(keyword) ||
+        item.summary.toLowerCase().includes(keyword) ||
+        item.usage.some((usageItem) => usageItem.toLowerCase().includes(keyword)),
+    );
+  }, [normalizedSectionSearch.api]);
+
+  useEffect(() => {
+    if (!filteredApiEndpoints.some((item) => item.key === apiEndpointKey)) {
+      setApiEndpointKey(filteredApiEndpoints[0]?.key ?? API_ENDPOINTS[0].key);
+    }
+  }, [apiEndpointKey, filteredApiEndpoints]);
+
+  function updateSectionSearch(sectionKey, value) {
+    setSectionSearchText((current) => ({
+      ...current,
+      [sectionKey]: value,
+    }));
+  }
 
   const selectedMailbox = mailboxes.find((item) => item.address === selectedMailboxAddress) || null;
 
@@ -395,8 +443,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   async function loadData() {
     try {
       setLoading(true);
-      const [healthResponse, domainsResponse, mailboxesResponse, apiTokensResponse] = await Promise.all([
-        getHealth(),
+      const [domainsResponse, mailboxesResponse, apiTokensResponse] = await Promise.all([
         getDomains(),
         getMailboxes(),
         getApiTokens(),
@@ -405,8 +452,6 @@ export default function App({ adminProfile = null, onLogout = null }) {
       const nextDomains = domainsResponse.items ?? [];
       const nextMailboxes = mailboxesResponse.items ?? [];
       const nextApiTokens = apiTokensResponse.items ?? [];
-
-      setHealth(healthResponse);
       setDomains(nextDomains);
       setMailboxes(nextMailboxes);
       setApiTokens(nextApiTokens);
@@ -489,7 +534,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
         await handleDetectDomainDns(createdDomain.id, { silent: true });
       }
 
-      message.success('域名已创建，已自动开始检测 MX 记录');
+      message.success('域名已创建，已自动开始真实 DNS 检测并校验 MX 配置');
       setDomainModalOpen(false);
       domainForm.resetFields();
     } catch (error) {
@@ -828,85 +873,41 @@ export default function App({ adminProfile = null, onLogout = null }) {
             options={sectionOptions}
           />
         </div>
-
       </Sider>
 
       <Layout className="app-main-layout">
         <Header className="app-header">
-          <Row className="app-header-main" align="middle" justify="space-between" gutter={[16, 16]} wrap>
-            <Col flex="auto">
-              <div className="header-title-wrap">
-                <Space direction="vertical" size={4}>
-                  <Text type="secondary" className="section-eyebrow">
-                    DoMail Workspace
-                  </Text>
-                  <Title level={3} style={{ margin: 0 }}>
-                    {currentSectionMeta.title}
-                  </Title>
-                  <Text type="secondary">{currentSectionMeta.description}</Text>
-                </Space>
-              </div>
-            </Col>
-            <Col>
-              <div className="header-actions">
-                <div className="header-search-wrap">
-                  <Input
-                    aria-label="全局搜索"
-                    placeholder="搜索域名、邮箱、主题"
-                    prefix={<SearchOutlined />}
-                    className="global-search"
-                    value={searchText}
-                    onChange={(event) => setSearchText(event.target.value)}
-                  />
-                </div>
-                <div className="header-action-buttons">
-                  <Button icon={<ReloadOutlined />} onClick={loadData} className="header-refresh-button">
-                    刷新
+          <div className="app-header-main">
+            <div className="app-header-surface app-header-surface-compact">
+              <div className="header-global-actions">
+                <Button icon={<ReloadOutlined />} onClick={loadData} className="header-refresh-button">
+                  刷新
+                </Button>
+                {adminProfile?.username ? (
+                  <div className="admin-session-card" aria-label={`当前管理员 ${adminProfile.username}`}>
+                    <div className="admin-session-label">管理员</div>
+                    <div className="admin-session-value">{adminProfile.username}</div>
+                  </div>
+                ) : null}
+                {onLogout ? (
+                  <Button onClick={onLogout} className="header-logout-button">
+                    退出登录
                   </Button>
-                  {adminProfile?.username ? (
-                    <div className="admin-session-card" aria-label={`当前管理员 ${adminProfile.username}`}>
-                      <div className="admin-session-label">管理员</div>
-                      <div className="admin-session-value">{adminProfile.username}</div>
-                    </div>
-                  ) : null}
-                  {onLogout ? (
-                    <Button onClick={onLogout} className="header-logout-button">
-                      退出登录
-                    </Button>
-                  ) : null}
-                </div>
+                ) : null}
               </div>
-            </Col>
-          </Row>
+            </div>
+          </div>
         </Header>
 
         <Content className="app-content">
           <Spin spinning={loading}>
-            {section === 'overview' && (
-              <OverviewSection
-                filteredMessages={filteredMessages}
-                hasDomains={hasDomains}
-                hasMailboxes={hasMailboxes}
-                health={health}
-                healthItems={healthItems}
-                latestDomain={latestDomain}
-                latestMailbox={latestMailbox}
-                latestMessage={latestMessage}
-                onCreateDomain={() => setDomainModalOpen(true)}
-                onCreateMailbox={(random) => openMailboxModal({ random })}
-                onDeleteMessage={handleDeleteMessage}
-                onOpenMessageDetail={handleOpenMessageDetail}
-                onViewMessages={() => setSection('messages')}
-                summaryCards={summaryCards}
-                formatDateTime={formatDateTime}
-              />
-            )}
-
             {section === 'domains' && (
               <DomainTableSection
                 domains={filteredDomains}
                 domainDnsStatus={domainDnsStatus}
                 formatDateTime={formatDateTime}
+                searchText={sectionSearchText.domains}
+                onSearchChange={(value) => updateSectionSearch('domains', value)}
                 onCreateDomain={() => setDomainModalOpen(true)}
                 onDeleteDomain={handleDeleteDomain}
                 onDetectDns={handleDetectDomainDns}
@@ -919,11 +920,14 @@ export default function App({ adminProfile = null, onLogout = null }) {
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
                 <SectionHero
                   title="邮箱管理"
-                  description="为域名生成收件地址，支持手动前缀与随机前缀两种方式。"
-                  extra={(
+                  description="为域名创建收件地址，并管理自动清理策略。"
+                  searchPlaceholder={SECTION_META.mailboxes.searchPlaceholder}
+                  searchValue={sectionSearchText.mailboxes}
+                  onSearchChange={(value) => updateSectionSearch('mailboxes', value)}
+                  actions={(
                     <Space wrap>
                       <Button onClick={() => openMailboxModal({ random: true })} disabled={!hasDomains}>
-                        随机生成邮箱
+                        随机邮箱
                       </Button>
                       <Button type="primary" icon={<PlusOutlined />} onClick={() => openMailboxModal({ random: false })} disabled={!hasDomains}>
                         创建邮箱
@@ -950,11 +954,14 @@ export default function App({ adminProfile = null, onLogout = null }) {
                   title={messageDetail ? '邮件详情' : '邮件收件区'}
                   description={
                     messageDetail
-                      ? '聚焦查看当前邮件内容，处理完成后可返回邮件列表继续浏览。'
-                      : '选择邮箱后集中查看最新邮件，常用操作都放在当前页完成。'
+                      ? '查看当前邮件内容并快速返回列表。'
+                      : '按邮箱集中查看最新邮件与未读状态。'
                   }
-                  extra={(
-                    <Space wrap>
+                  searchPlaceholder={messageDetail ? '' : SECTION_META.messages.searchPlaceholder}
+                  searchValue={messageDetail ? '' : sectionSearchText.messages}
+                  onSearchChange={messageDetail ? null : (value) => updateSectionSearch('messages', value)}
+                  actions={
+                    messageDetail ? null : (
                       <Select
                         aria-label="选择邮箱"
                         value={selectedMailboxAddress}
@@ -966,8 +973,8 @@ export default function App({ adminProfile = null, onLogout = null }) {
                           value: item.address,
                         }))}
                       />
-                    </Space>
-                  )}
+                    )
+                  }
                 />
 
                 {messageDetail ? (
@@ -1112,8 +1119,11 @@ export default function App({ adminProfile = null, onLogout = null }) {
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
                 <SectionHero
                   title="API 说明"
-                  description="保留 Token 管理、接口清单、请求头格式和 curl 用法示例，不在页面内直接发请求。"
-                  extra={<Tag color="blue">{API_ENDPOINTS.length} 个核心接口</Tag>}
+                  description="保留 Token 管理、接口清单与 curl 示例；示例地址会自动跟随当前站点域名生成。"
+                  searchPlaceholder={SECTION_META.api.searchPlaceholder}
+                  searchValue={sectionSearchText.api}
+                  onSearchChange={(value) => updateSectionSearch('api', value)}
+                  actions={<Tag color="blue">{filteredApiEndpoints.length} 个匹配接口</Tag>}
                 />
 
                 {newApiToken?.token ? (
@@ -1195,7 +1205,7 @@ Authorization: Bearer {'<token>'}
                               block
                               value={apiEndpointKey}
                               onChange={setApiEndpointKey}
-                              options={API_ENDPOINTS.map((item) => ({
+                              options={filteredApiEndpoints.map((item) => ({
                                 label: item.title,
                                 value: item.key,
                               }))}
@@ -1234,7 +1244,7 @@ Authorization: Bearer {'<token>'}
                   <Table
                     rowKey="id"
                     columns={apiTokenColumns}
-                    dataSource={apiTokens}
+                    dataSource={filteredApiTokens}
                     pagination={false}
                     locale={{ emptyText: '还没有 API Token，请先创建一个。' }}
                   />

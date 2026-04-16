@@ -27,7 +27,7 @@ export default function DomainCreateModal({
         <div className="cloudflare-form-panel">
           <Text strong>先添加域名，系统会给出下一步配置建议</Text>
           <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-            只需要填写域名，邮件服务器 IP 与 MX 记录会由后端环境变量统一生成。
+            只需要填写域名；创建后系统会给出建议的 MX 配置，并可直接发起真实 DNS 检测。
           </Paragraph>
         </div>
 
@@ -52,7 +52,7 @@ export default function DomainCreateModal({
           showIcon
           className="form-inline-alert"
           message="创建后可直接查看 DNS 建议和推荐操作。"
-          description="无论你使用哪个 DNS 托管商，创建后都可以按系统基于后端环境变量生成的通用记录建议继续完成配置。"
+          description="无论你使用哪个 DNS 托管商，创建后都可以按系统给出的 MX 建议完成配置，并通过 DNS 检测确认是否与当前设置一致。"
         />
 
         <Form.Item label="补充说明（可选）" name="setupNote">

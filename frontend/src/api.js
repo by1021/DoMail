@@ -21,11 +21,6 @@ export async function getAdminSession() {
   return data;
 }
 
-export async function getHealth() {
-  const { data } = await api.get('/health');
-  return data;
-}
-
 export async function getDomains() {
   const { data } = await api.get('/domains');
   return data;

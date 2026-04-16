@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { resolveMx } from 'node:dns/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { customAlphabet } from 'nanoid';
 
@@ -643,19 +644,21 @@ function buildDnsHostLabel(domain, host) {
 }
 
 function getMailDnsConfig() {
-  const mailServerIp = String(process.env.MAIL_SERVER_IP ?? '').trim() || null;
   const mailMxHost = String(process.env.MAIL_MX_HOST ?? '').trim().toLowerCase() || null;
 
   return {
-    mailServerIp,
     mailMxHost,
   };
 }
 
+function normalizeDnsTarget(value) {
+  return String(value ?? '').trim().toLowerCase().replace(/\.+$/, '');
+}
+
 function buildDefaultDnsRecords(domain, smtpHost, serverIp, mxHost) {
   const normalizedMxHost =
-    String(mxHost ?? '').trim().toLowerCase() ||
-    String(smtpHost ?? '').trim().toLowerCase() ||
+    normalizeDnsTarget(mxHost) ||
+    normalizeDnsTarget(smtpHost) ||
     `mail.${domain}`;
 
   return [
@@ -666,7 +669,7 @@ function buildDefaultDnsRecords(domain, smtpHost, serverIp, mxHost) {
       priority: 10,
       status: 'pending',
       proxied: false,
-      note: `接收 ${domain} 的入站邮件，MX 应指向你自己的收件主机名`,
+      note: `接收 ${domain} 的入站邮件，MX 应指向 ${normalizedMxHost}`,
     },
   ];
 }
@@ -707,7 +710,7 @@ function normalizeDnsGuidance(domain, options = {}) {
     : buildDefaultDnsRecords(domain, options.smtpHost, options.serverIp, options.mxHost);
   const setupNote =
     String(options.setupNote ?? '').trim() ||
-    '请先确认当前域名的 DNS 托管商，再补充最小收件记录；最少只需完成 MX 和邮件主机解析。';
+    '请先确认当前域名的 DNS 托管商，并将 MX 记录指向系统要求的收件主机；完成后再重新检测 DNS。';
 
   return {
     dnsRecords,
@@ -876,9 +879,9 @@ export function createDomain({
 }) {
   const now = timestamp();
   const normalizedDomain = normalizeDomain(domain);
-  const { mailServerIp, mailMxHost } = getMailDnsConfig();
-  const normalizedServerIp = mailServerIp || String(serverIp ?? '').trim() || null;
-  const normalizedMxHost = mailMxHost || String(mxHost ?? '').trim().toLowerCase() || null;
+  const { mailMxHost } = getMailDnsConfig();
+  const normalizedServerIp = String(serverIp ?? '').trim() || null;
+  const normalizedMxHost = mailMxHost || normalizeDnsTarget(mxHost) || null;
   const guidance = normalizeDnsGuidance(normalizedDomain, {
     dnsRecords,
     setupNote,
@@ -921,7 +924,7 @@ export function removeDomain(id) {
   return deleteDomainStatement.run(id).changes > 0;
 }
 
-export function detectDomainDnsStatus(id) {
+export async function detectDomainDnsStatus(id) {
   const domain = getDomainById(id);
 
   if (!domain) {
@@ -930,25 +933,59 @@ export function detectDomainDnsStatus(id) {
 
   const checkedAt = timestamp();
   const normalizedRequiredRecords = normalizeDnsRecords(domain.dnsRecords);
+  const expectedMxRecords = normalizedRequiredRecords.filter((record) => record.type === 'MX');
+  let resolvedMxRecords = [];
+  let dnsLookupError = null;
+
+  try {
+    resolvedMxRecords = (await resolveMx(domain.domain)).map((record) => ({
+      exchange: normalizeDnsTarget(record.exchange),
+      priority: Number(record.priority),
+    }));
+  } catch (error) {
+    dnsLookupError = error;
+  }
+
   const requiredRecords = normalizedRequiredRecords.map((record) => {
-    const isMxRecord = record.type === 'MX';
-    const matched = isMxRecord;
+    if (record.type !== 'MX') {
+      return {
+        ...record,
+        expectedValue: record.value,
+        matched: false,
+        actualValue: null,
+      };
+    }
+
+    const expectedValue = normalizeDnsTarget(record.value);
+    const expectedPriority =
+      record.priority !== undefined && record.priority !== null && record.priority !== ''
+        ? Number(record.priority)
+        : null;
+    const matchedRecord = resolvedMxRecords.find((item) => (
+      item.exchange === expectedValue &&
+      (expectedPriority === null || item.priority === expectedPriority)
+    ));
 
     return {
       ...record,
       expectedValue: record.value,
-      matched,
-      actualValue: matched ? record.value : null,
+      matched: Boolean(matchedRecord),
+      actualValue: matchedRecord ? `${matchedRecord.exchange} (priority ${matchedRecord.priority})` : null,
     };
   });
+
   const optionalRecords = buildOptionalDnsRecords(domain.domain).map((record) => ({
     ...record,
     expectedValue: record.value,
     matched: false,
     actualValue: null,
   }));
-  const mxRecords = requiredRecords.filter((record) => record.type === 'MX');
-  const mxMatched = mxRecords.length > 0 && mxRecords.every((record) => record.matched);
+
+  const hasExpectedMx = expectedMxRecords.length > 0;
+  const mxMatched = hasExpectedMx && expectedMxRecords.every((record) => (
+    requiredRecords.some((item) => item.type === 'MX' && item.name === record.name && item.value === record.value && item.matched)
+  ));
+  const hasAnyResolvedMx = resolvedMxRecords.length > 0;
   const nextIsActive = mxMatched;
 
   if (Boolean(domain.isActive) !== nextIsActive) {
@@ -959,20 +996,45 @@ export function detectDomainDnsStatus(id) {
     });
   }
 
+  const actualMxSummary = hasAnyResolvedMx
+    ? resolvedMxRecords.map((record) => `${record.exchange} (priority ${record.priority})`).join(', ')
+    : null;
+
+  let status = 'pending';
+  let summary = '尚未检测到有效 MX 记录，域名暂不启用。';
+  let nextStep = '请先为该域名添加 MX 记录，并等待 DNS 生效后重新检测。';
+
+  if (mxMatched) {
+    status = 'ready';
+    summary = 'MX 记录检测成功，当前配置与系统要求一致，域名已启用并可用于收件。';
+    nextStep = '现在可以创建邮箱并发送测试邮件。';
+  } else if (dnsLookupError) {
+    status = 'pending';
+    summary = 'DNS 查询失败，暂时无法确认 MX 记录状态。';
+    nextStep = '请确认域名可公开解析，稍后重新检测 DNS。';
+  } else if (hasAnyResolvedMx) {
+    status = 'mismatch';
+    summary = '已检测到 MX 记录，但当前配置与系统要求不一致，域名暂不启用。';
+    nextStep = '请将 MX 记录改为系统要求的主机和值一致后，再重新检测。';
+  } else if (!hasExpectedMx) {
+    status = 'pending';
+    summary = '当前域名缺少系统期望的 MX 配置说明，暂无法完成自动校验。';
+    nextStep = '请先补充该域名的 MX 指引配置后，再重新检测。';
+  }
+
   return {
     domain: domain.domain,
-    status: mxMatched ? 'ready' : 'pending',
+    status,
     canEnable: mxMatched,
     isActive: nextIsActive,
-    summary: mxMatched
-      ? 'MX 记录检测成功，域名已启用并可用于收件。'
-      : 'MX 记录尚未检测成功，域名暂不启用。',
-    nextStep: mxMatched
-      ? '现在可以创建邮箱并发送测试邮件。'
-      : '请先确保 MX 记录生效后，再重新检测 DNS。',
+    summary,
+    nextStep,
     checkedAt,
     requiredRecords,
     optionalRecords,
+    actualMxRecords: resolvedMxRecords,
+    actualMxSummary,
+    dnsLookupErrorCode: dnsLookupError?.code ?? null,
   };
 }
 
