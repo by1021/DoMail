@@ -256,16 +256,19 @@ function getAuthConfig() {
 }
 
 function createSessionMiddleware(authConfig) {
+  const isProduction = process.env.NODE_ENV === 'production';
+
   return session({
     name: 'domail.sid',
     secret: authConfig.sessionSecret,
     resave: false,
     saveUninitialized: false,
     rolling: true,
+    proxy: isProduction,
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction ? 'auto' : false,
       maxAge: authConfig.sessionMaxAgeMs,
     },
   });
@@ -292,6 +295,24 @@ function destroySession(request) {
 function regenerateSession(request) {
   return new Promise((resolve, reject) => {
     request.session.regenerate((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+function saveSession(request) {
+  return new Promise((resolve, reject) => {
+    if (!request.session) {
+      resolve();
+      return;
+    }
+
+    request.session.save((error) => {
       if (error) {
         reject(error);
         return;
@@ -419,6 +440,11 @@ export function createApp() {
   const authConfig = getAuthConfig();
   const app = express();
   const corsOrigin = process.env.CORS_ORIGIN?.split(',').map((item) => item.trim()).filter(Boolean);
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isProduction) {
+    app.set('trust proxy', true);
+  }
 
   app.use(
     cors({
@@ -458,6 +484,14 @@ export function createApp() {
         username: authConfig.adminUsername,
         loggedInAt: new Date().toISOString(),
       };
+      await saveSession(request);
+
+      response.set({
+        'X-DoMail-Request-Secure': String(request.secure),
+        'X-DoMail-Forwarded-Proto': String(request.headers['x-forwarded-proto'] ?? ''),
+        'X-DoMail-Session-Id': String(request.sessionID ?? ''),
+        'X-DoMail-Cookie-Secure': String(request.session.cookie.secure ?? ''),
+      });
 
       response.json({
         ok: true,

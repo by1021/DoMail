@@ -321,7 +321,7 @@ curl "http://127.0.0.1:3001/api/messages/<messageId>" \
 
 生产部署建议：
 
-1. 后端作为常驻 Node.js 进程运行
+1. 后端由 PM2 作为常驻 Node.js 进程托管
 2. 前端构建后由 Nginx 托管静态资源
 3. Nginx 反向代理 `/api`
 4. SMTP 由后端直接监听
@@ -333,7 +333,8 @@ curl "http://127.0.0.1:3001/api/messages/<messageId>" \
 cd /opt/domain-mail/backend
 npm ci
 cp .env.example .env
-npm start
+npm install -g pm2
+pm2 start src/index.js --name domail-backend
 ```
 
 推荐生产配置示例：
@@ -343,7 +344,7 @@ NODE_ENV=production
 HTTP_PORT=3001
 SMTP_PORT=25
 SMTP_HOST=0.0.0.0
-MAIL_MX_HOST=mail.example.com
+MAIL_MX_HOST=mx.example.com
 CORS_ORIGIN=https://mail.example.com
 ADMIN_USERNAME=your-admin
 ADMIN_PASSWORD=strong-password
@@ -353,10 +354,35 @@ SESSION_MAX_AGE_MS=43200000
 
 说明：
 
-- `NODE_ENV=production` 下 Cookie 行为更严格
+- `NODE_ENV=production` 下 Cookie 会启用 `Secure`
+- 当前版本已对反向代理场景启用 `trust proxy` 兼容，适合放在 Nginx / Cloudflare 后面
+- `MAIL_MX_HOST` 建议单独使用 `mx.example.com` 之类邮件主机名，不要与 Web 面板共用橙云代理域名
 - `SMTP_PORT=25` 前需要确认系统权限、防火墙和云厂商端口策略
-- `data.db` 默认在后端运行目录
+- `data.db` 默认在后端运行目录，因此 PM2 启动时当前目录必须是 `/opt/domain-mail/backend`
 - 当前 Session 更适合单实例部署
+
+推荐使用 PM2 托管后端，原因是：
+
+- 支持后台运行，不依赖当前 SSH 会话
+- 进程异常退出后可自动拉起
+- 可直接管理日志、重启与开机自启
+- 适合本项目同时监听 HTTP 与 SMTP 的常驻进程模型
+
+推荐启动方式：
+
+```bash
+cd /opt/domain-mail/backend
+pm2 start src/index.js --name domail-backend --update-env
+```
+
+如果是首次部署，建议先确认：
+
+```bash
+cd /opt/domain-mail/backend
+NODE_ENV=production node src/index.js
+```
+
+确认 `.env`、端口和权限都正常后，再交给 PM2 托管。
 
 ### 2. 前端部署
 
@@ -393,7 +419,7 @@ frontend/dist
 
 推荐上线验证顺序：
 
-1. 启动后端
+1. 用 PM2 启动后端
 2. 本机访问 `http://127.0.0.1:3001/api/health`
 3. 构建前端
 4. 配置并重载 Nginx
@@ -468,48 +494,131 @@ server {
 - 不要把静态目录放到 `/root/...`
 - `sudo nginx -t` 校验通过
 - `/api/health` 可通过正式域名访问
+- 如果启用 Cloudflare，Web 域名如 `mail.example.com` 可开橙云，但 MX / SMTP 主机名应保持灰云
+- 如果启用 Cloudflare，源站 Nginx 需要识别 `CF-Connecting-IP`，当前示例配置已包含对应设置
 
-## 开机自启动
+## PM2 后台运行与开机自启
 
-生产环境建议使用 `systemd` 管理后端，确保开机自启和异常拉起。
+生产环境建议使用 **PM2** 管理后端，确保后台运行、异常拉起和开机自启。
 
-### `systemd` 示例
+**这一节有一个非常关键的前提：**
+只要服务以生产模式运行（例如设置了 `NODE_ENV=production`），后端登录 Cookie 就会启用 `Secure`。
+这意味着**管理后台必须通过 HTTPS 正式域名访问**，并且反向代理必须把 [`X-Forwarded-Proto`](deploy/nginx/domail.conf) 正确传给后端；否则就会出现：
 
-文件示例：`/etc/systemd/system/domail-backend.service`
+- 登录接口返回成功
+- 但随后请求 [`/api/auth/session`](backend/src/index.js:486) 或其他受保护接口时返回 `401`
+- 前端表现为“请先登录管理账号”
 
-```ini
-[Unit]
-Description=DoMail Backend
-After=network.target
+如果你是下面这些情况之一，请不要直接照抄生产模式示例：
 
-[Service]
-Type=simple
-WorkingDirectory=/opt/domain-mail/backend
-ExecStart=/usr/bin/npm start
-Restart=always
-RestartSec=5
-Environment=NODE_ENV=production
-User=www-data
+- 还在用 `http://服务器IP` 或 `http://域名`
+- 还没配好 HTTPS 证书
+- 还没让 Nginx 正确转发 [`X-Forwarded-Proto`](deploy/nginx/domail.conf)
+- 还在直接访问 `http://127.0.0.1:3001` 验证登录页面
 
-[Install]
-WantedBy=multi-user.target
-```
+推荐场景：
 
-启用方式：
+- 项目部署目录：`/opt/domain-mail/backend`
+- 后端目录中已存在 `.env`
+- Node.js 已安装，并且当前用户可直接执行 `node`
+- 前端由 Nginx 托管，并通过 HTTPS 正式域名访问
+- Nginx 已按 [`deploy/nginx/domail.conf`](deploy/nginx/domail.conf) 反代 `/api`
+- 尽量避免把服务长期部署在 `/root/...` 路径下
+
+### 1. 安装 PM2
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable domail-backend
-sudo systemctl start domail-backend
-sudo systemctl status domail-backend
+npm install -g pm2
+pm2 -v
+```
+
+### 2. 使用 PM2 启动后端
+
+推荐直接执行 [`backend/src/index.js`](backend/src/index.js:927)，避免额外的 `npm` 子进程层：
+
+```bash
+cd /opt/domain-mail/backend
+pm2 start src/index.js --name domail-backend --update-env
+```
+
+如果你希望显式带上生产环境变量，也可以这样启动：
+
+```bash
+cd /opt/domain-mail/backend
+NODE_ENV=production pm2 start src/index.js --name domail-backend --update-env
+```
+
+启动后常用命令：
+
+```bash
+pm2 status
+pm2 logs domail-backend
+pm2 restart domail-backend --update-env
+pm2 stop domail-backend
+pm2 delete domail-backend
 ```
 
 说明：
 
-- `WorkingDirectory` 改成你的后端目录
-- `User` 改成实际运行用户
-- 如需加载 `.env`，可额外使用 `EnvironmentFile=` 或在启动方式中自行注入环境变量
-- Nginx 也建议设置为系统服务并保持开机自启
+- 必须先 `cd /opt/domain-mail/backend` 再启动，确保 `data.db` 仍落在后端目录
+- 推荐进程名使用 `domail-backend`，方便排障和日志定位
+- 修改 `.env` 后，使用 `pm2 restart domail-backend --update-env` 重新加载环境变量
+- PM2 托管的是同一个 Node.js 进程，因此 Nginx 仍继续反代到 `127.0.0.1:3001`
+
+### 3. 设置 PM2 开机自启
+
+先保存当前进程列表：
+
+```bash
+pm2 save
+```
+
+然后生成并启用开机自启：
+
+```bash
+pm2 startup
+```
+
+PM2 会输出一条需要再执行一次的命令，通常类似：
+
+```bash
+sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u root --hp /root
+```
+
+把 PM2 输出的那条命令原样执行完成后，再执行一次：
+
+```bash
+pm2 save
+```
+
+这样服务器重启后，PM2 会自动恢复 `domail-backend` 进程。
+
+### 4. 部署后先做这 4 个确认
+
+1. 确认 PM2 实际读到了生产环境变量
+   例如用 `pm2 env domail-backend`、`pm2 show domail-backend` 或 `pm2 logs domail-backend` 检查当前启动命令、工作目录与报错信息。
+
+2. 确认浏览器访问的是 **HTTPS 正式域名**，不是：
+   - `http://服务器IP`
+   - `http://域名`
+   - `http://127.0.0.1:3001`
+
+3. 确认反向代理把 HTTPS 信息传给了后端
+   参考 [`deploy/nginx/domail.conf`](deploy/nginx/domail.conf) 中 `/api/` 的这些头：
+   - `X-Forwarded-Proto`
+   - `X-Forwarded-Host`
+   - `X-Forwarded-Port`
+
+4. 确认前端生产环境仍通过同域 `/api` 访问后端，而不是写死到 `127.0.0.1:3001`
+
+补充建议：
+
+- PM2 启动前所在目录必须固定到后端目录，否则 SQLite 的 `data.db` 可能生成到错误位置
+- 若放在 Nginx / Cloudflare 之后，后端需运行在 `NODE_ENV=production`
+- **一旦设置了 `NODE_ENV=production`，就必须确保浏览器是通过 HTTPS 域名访问站点**
+- 如果暂时还在用 HTTP 调试登录，不要把后端以生产模式跑在最终访问链路上
+- 若登录后立刻掉线，优先检查代理头、HTTPS、Cookie `Secure`、以及反向代理下的 `trust proxy` 配置
+- 如果你发现“手动执行 [`node src/index.js`](backend/src/index.js:927) 可以登录，但 PM2 托管后不行”，最常见原因就是：PM2 启动时没有带上预期环境变量，或启动目录不在 `/opt/domain-mail/backend`
 
 ## 常见问题排查
 
@@ -521,6 +630,23 @@ sudo systemctl status domail-backend
 - 浏览器是否携带 Cookie
 - `CORS_ORIGIN` 是否正确
 - 是否通过同域 `/api` 访问后端
+- Nginx 是否正确传递了 `X-Forwarded-Proto`
+- 如果启用了 Cloudflare，是否已在 Nginx 中识别 `CF-Connecting-IP`
+- 后端是否运行在 `NODE_ENV=production` 且已启用反向代理兼容配置
+- 当前访问地址是否真的是 **HTTPS 正式域名**
+- 是否误用了 `http://IP:3001`、`http://域名` 或其他非 HTTPS 地址访问管理后台
+
+常见现象是：登录请求返回成功，但随后调用 [`/api/auth/session`](backend/src/index.js:486) 或其他受保护接口时立刻变成 `401`。这通常说明浏览器没有正确保存或回传 [`domail.sid`](backend/src/index.js:262)。
+
+如果后端运行在生产模式，[`createSessionMiddleware()`](backend/src/index.js:258) 会把 Cookie 设为 `secure: true`，并且 [`createApp()`](backend/src/index.js:421) 会启用 `trust proxy`。
+因此只要反向代理没有把 HTTPS 信息正确传进来，或者浏览器根本不是通过 HTTPS 域名访问，登录后就会表现成“刚登录就掉线”。
+
+一个高频误区是：
+
+- 手动在 shell 里启动后端时，没有设置 `NODE_ENV=production`，所以登录正常
+- 换成 [`systemd`](README.md:476) 后，服务文件里加了 `Environment=NODE_ENV=production`
+- 这时 Cookie 改成了 `Secure`
+- 如果你访问的仍然不是 HTTPS 正式域名，就会看到“请先登录管理账号”
 
 ### 2. 页面跨域报错
 
