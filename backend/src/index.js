@@ -28,6 +28,7 @@ import {
   listMessagesByMailboxAddress,
   getMessageById,
   markMessageAsRead,
+  purgeExpiredMailboxes,
   purgeExpiredMessages,
   removeApiToken,
   removeDomain,
@@ -35,6 +36,7 @@ import {
   removeMessage,
   saveIncomingMessage,
   touchApiTokenLastUsedAt,
+  updateMailboxMessageRetentionByAddress,
   updateMailboxRetentionByAddress,
 } from './db.js';
 
@@ -80,7 +82,7 @@ const apiTokenSchema = z.object({
 const smtpPort = Number(process.env.SMTP_PORT || 2525);
 const httpPort = Number(process.env.HTTP_PORT || 3001);
 const smtpHost = process.env.SMTP_HOST || '0.0.0.0';
-const cleanupIntervalMs = Number(process.env.MESSAGE_CLEANUP_INTERVAL_MS || 5 * 60 * 1000);
+const cleanupIntervalMs = Number(process.env.MAILBOX_CLEANUP_INTERVAL_MS || process.env.MESSAGE_CLEANUP_INTERVAL_MS || 5 * 60 * 1000);
 
 let runningHttpServer = null;
 let runningSmtpServer = null;
@@ -106,7 +108,7 @@ const apiTokenProtectedGetPaths = [
 ];
 
 const apiTokenProtectedWritePaths = [
-  /^\/mailboxes(?:\/[^/]+)?(?:\/retention)?$/,
+  /^\/mailboxes(?:\/[^/]+)?(?:\/retention|\/message-retention)?$/,
 ];
 
 function buildError(status, code, message) {
@@ -692,7 +694,33 @@ export function createApp() {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        sendValidationError(response, error, '自动清理参数不合法');
+        sendValidationError(response, error, '邮箱自动清理参数不合法');
+        return;
+      }
+
+      sendError(response, error);
+    }
+  });
+
+  app.patch('/api/mailboxes/:address/message-retention', (request, response) => {
+    try {
+      const payload = mailboxRetentionSchema.parse({
+        retentionValue: request.body?.retentionValue ?? null,
+        retentionUnit: request.body?.retentionUnit ?? null,
+      });
+
+      const item = updateMailboxMessageRetentionByAddress(
+        decodeURIComponent(request.params.address),
+        payload,
+      );
+
+      response.json({
+        ok: true,
+        item,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        sendValidationError(response, error, '邮件自动清理参数不合法');
         return;
       }
 
@@ -880,13 +908,18 @@ export function startCleanupTask() {
 
   cleanupTimer = setInterval(() => {
     try {
-      const removedCount = purgeExpiredMessages();
+      const removedMailboxCount = purgeExpiredMailboxes();
+      const removedMessageCount = purgeExpiredMessages();
 
-      if (removedCount > 0) {
-        console.log(`Purged ${removedCount} expired messages`);
+      if (removedMailboxCount > 0) {
+        console.log(`Purged ${removedMailboxCount} expired mailboxes`);
+      }
+
+      if (removedMessageCount > 0) {
+        console.log(`Purged ${removedMessageCount} expired messages`);
       }
     } catch (error) {
-      console.error('Failed to purge expired messages', error);
+      console.error('Failed to run cleanup tasks', error);
     }
   }, cleanupIntervalMs);
 

@@ -89,6 +89,12 @@ export async function updateMailboxRetention(address, payload) {
   return data;
 }
 
+export async function updateMailboxMessageRetention(address, payload) {
+  const encodedAddress = encodeURIComponent(address);
+  const { data } = await api.patch(`/mailboxes/${encodedAddress}/message-retention`, payload);
+  return data;
+}
+
 export async function getApiTokens() {
   const { data } = await api.get('/tokens');
   return data;

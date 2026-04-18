@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button, Card, Popconfirm, Space, Tag, Typography } from 'antd';
-import { DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { DeleteOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -13,7 +13,7 @@ export default function MessagePreviewCard({
 }) {
   return (
     <Card className="message-preview-card message-preview-card-responsive" hoverable onClick={() => onOpen(item.id)}>
-      <Space direction="vertical" size={10} style={{ width: '100%' }}>
+      <Space direction="vertical" size={8} style={{ width: '100%' }}>
         <div className="message-preview-header">
           <div className="message-preview-title-group">
             <div className="message-preview-title-row">
@@ -41,18 +41,7 @@ export default function MessagePreviewCard({
         </div>
 
         <Space wrap className="message-preview-actions">
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            style={{ paddingInline: 0 }}
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen(item.id);
-            }}
-          >
-            查看详情
-          </Button>
-
+          <Text type="secondary">点击卡片查看详情</Text>
           {confirmDelete ? (
             <Popconfirm
               title="确认删除这封邮件？"

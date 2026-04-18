@@ -27,14 +27,25 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
               </div>
               <div className="auth-title-block">
                 <Text type="secondary" className="section-eyebrow">
-                  DoMail Admin
+                  DoMail
                 </Text>
                 <Title level={3} style={{ margin: 0 }}>
-                  管理后台登录
+                  登录
                 </Title>
                 <Text type="secondary" className="auth-subtitle">
-                  输入管理员账号和密码后即可进入后台。
+                  输入账号和密码后进入域名邮箱界面。
                 </Text>
+              </div>
+            </div>
+
+            <div className="auth-feature-list">
+              <div className="auth-feature-item">
+                <Text strong>域名与邮箱</Text>
+                <Text type="secondary">集中查看和处理收件相关内容。</Text>
+              </div>
+              <div className="auth-feature-item">
+                <Text strong>安全登录</Text>
+                <Text type="secondary">登录后可刷新数据并退出。</Text>
               </div>
             </div>
 
@@ -51,7 +62,7 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
             <div className="auth-form-shell">
               <Space direction="vertical" size={14} style={{ width: '100%' }}>
                 <Text type="secondary" className="auth-form-caption">
-                  请填写管理员账号与密码。
+                  请使用账号登录。
                 </Text>
 
                 <Spin spinning={loading}>
@@ -66,26 +77,26 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
                     }}
                   >
                     <Form.Item
-                      label="管理员账号"
+                      label="账号"
                       name="username"
-                      rules={[{ required: true, message: '请输入管理员账号' }]}
+                      rules={[{ required: true, message: '请输入账号' }]}
                     >
                       <Input
                         prefix={<UserOutlined />}
-                        placeholder="请输入管理员账号"
+                        placeholder="请输入账号"
                         autoComplete="username"
                         size="large"
                       />
                     </Form.Item>
 
                     <Form.Item
-                      label="管理员密码"
+                      label="密码"
                       name="password"
-                      rules={[{ required: true, message: '请输入管理员密码' }]}
+                      rules={[{ required: true, message: '请输入密码' }]}
                     >
                       <Input.Password
                         prefix={<LockOutlined />}
-                        placeholder="请输入管理员密码"
+                        placeholder="请输入密码"
                         autoComplete="current-password"
                         size="large"
                       />
@@ -93,7 +104,7 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
 
                     <Form.Item style={{ marginBottom: 0 }}>
                       <Button type="primary" htmlType="submit" loading={submitting} block size="large">
-                        登录管理后台
+                        进入
                       </Button>
                     </Form.Item>
                   </Form>
@@ -143,7 +154,7 @@ export default function AuthApp() {
       });
       setAdminProfile(response.item ?? null);
       setErrorMessage('');
-      message.success('已登录管理后台');
+      message.success('已登录');
     } catch (error) {
       setAdminProfile(null);
       setErrorMessage(extractErrorMessage(error, '登录失败'));

@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   Col,
-  Descriptions,
   Empty,
   Form,
   Input,
@@ -25,8 +24,8 @@ import {
 import {
   DeleteOutlined,
   PlusOutlined,
-  ReloadOutlined,
   SearchOutlined,
+  SettingOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import {
@@ -46,6 +45,7 @@ import {
   getMailboxes,
   getMessageDetail,
   markMessageRead,
+  updateMailboxMessageRetention,
   updateMailboxRetention,
 } from './api.js';
 import DomainTableSection from './components/DomainTableSection.jsx';
@@ -69,7 +69,7 @@ import {
   buildSectionOptions,
 } from './app-config.jsx';
 
-const { Header, Content, Sider } = Layout;
+const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
 function WorkspaceBrand() {
@@ -82,7 +82,7 @@ function WorkspaceBrand() {
             <Title level={4} className="app-brand-title" style={{ margin: 0 }}>
               域名邮箱
             </Title>
-            <Text type="secondary">DoMail 管理工作台</Text>
+            <Text type="secondary">DoMail</Text>
           </div>
         </Space>
       </div>
@@ -91,41 +91,35 @@ function WorkspaceBrand() {
 }
 
 function SectionHero({
-  title,
-  description,
+  title = '搜索',
   actions = null,
   searchPlaceholder = '',
   searchValue = '',
   onSearchChange = null,
 }) {
-  return (
-    <Card className="section-intro-card page-toolbar-card">
-      <div className="section-hero-layout">
-        <div className="section-hero-main">
-          <Space direction="vertical" size={4}>
-            <Title level={4} style={{ margin: 0 }}>
-              {title}
-            </Title>
-            {description ? <Text type="secondary">{description}</Text> : null}
-          </Space>
-        </div>
+  if (!onSearchChange && !actions) {
+    return null;
+  }
 
-        {(onSearchChange || actions) ? (
-          <div className="section-hero-toolbar">
-            {onSearchChange ? (
-              <Input
-                aria-label={`${title}搜索`}
-                placeholder={searchPlaceholder}
-                prefix={<SearchOutlined />}
-                allowClear
-                className="section-hero-search"
-                value={searchValue}
-                onChange={(event) => onSearchChange(event.target.value)}
-              />
-            ) : null}
-            {actions ? <div className="section-hero-actions">{actions}</div> : null}
-          </div>
-        ) : null}
+  return (
+    <Card className="page-toolbar-card page-toolbar-card-minimal">
+      <div className="section-hero-toolbar">
+        <div className="section-hero-search-slot">
+          {onSearchChange ? (
+            <Input
+              aria-label={`${title}搜索`}
+              placeholder={searchPlaceholder}
+              prefix={<SearchOutlined />}
+              allowClear
+              className="section-hero-search"
+              value={searchValue}
+              onChange={(event) => onSearchChange(event.target.value)}
+            />
+          ) : null}
+        </div>
+        <div className="section-hero-actions-slot">
+          {actions ? <div className="section-hero-actions">{actions}</div> : null}
+        </div>
       </div>
     </Card>
   );
@@ -146,6 +140,8 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [domainDnsStatus, setDomainDnsStatus] = useState({});
   const [mailboxModalOpen, setMailboxModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [mailboxBatchSubmitting, setMailboxBatchSubmitting] = useState(false);
+  const [selectedMailboxRowKeys, setSelectedMailboxRowKeys] = useState([]);
   const [sectionSearchText, setSectionSearchText] = useState({
     domains: '',
     mailboxes: '',
@@ -158,6 +154,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [domainForm] = Form.useForm();
   const [mailboxForm] = Form.useForm();
   const [retentionForm] = Form.useForm();
+  const [bulkRetentionForm] = Form.useForm();
   const [apiTokenForm] = Form.useForm();
 
   const unreadCount = useMemo(
@@ -198,6 +195,16 @@ export default function App({ adminProfile = null, onLogout = null }) {
           item.address.toLowerCase().includes(keyword) || item.domain.toLowerCase().includes(keyword),
       ),
     [mailboxes, normalizedSectionSearch.mailboxes],
+  );
+
+  const selectedMailboxRows = useMemo(
+    () => mailboxes.filter((item) => selectedMailboxRowKeys.includes(item.id)),
+    [mailboxes, selectedMailboxRowKeys],
+  );
+
+  const retentionTargetMailboxes = useMemo(
+    () => (selectedMailboxRows.length > 0 ? selectedMailboxRows : filteredMailboxes),
+    [filteredMailboxes, selectedMailboxRows],
   );
 
   const filteredMessages = useMemo(
@@ -336,8 +343,8 @@ export default function App({ adminProfile = null, onLogout = null }) {
       const selectedMailboxRecord = nextMailboxes.find((item) => item.address === nextMailboxAddress);
 
       retentionForm.setFieldsValue({
-        retentionValue: selectedMailboxRecord?.retentionValue ?? null,
-        retentionUnit: selectedMailboxRecord?.retentionUnit ?? 'hour',
+        retentionValue: selectedMailboxRecord?.messageRetentionValue ?? null,
+        retentionUnit: selectedMailboxRecord?.messageRetentionUnit ?? 'hour',
       });
     } catch (error) {
       message.error(extractErrorMessage(error, '加载数据失败，请确认后端 API 可用'));
@@ -349,6 +356,12 @@ export default function App({ adminProfile = null, onLogout = null }) {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    setSelectedMailboxRowKeys((current) =>
+      current.filter((id) => mailboxes.some((item) => item.id === id)),
+    );
+  }, [mailboxes]);
 
   useEffect(() => {
     if (!selectedMailboxAddress) {
@@ -374,8 +387,8 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
   useEffect(() => {
     retentionForm.setFieldsValue({
-      retentionValue: selectedMailbox?.retentionValue ?? null,
-      retentionUnit: selectedMailbox?.retentionUnit ?? 'hour',
+      retentionValue: selectedMailbox?.messageRetentionValue ?? null,
+      retentionUnit: selectedMailbox?.messageRetentionUnit ?? 'hour',
     });
   }, [selectedMailbox, retentionForm]);
 
@@ -502,6 +515,25 @@ export default function App({ adminProfile = null, onLogout = null }) {
     }
   }
 
+  async function handleBatchDeleteMailboxes() {
+    if (selectedMailboxRows.length === 0) {
+      message.warning('请先勾选邮箱');
+      return;
+    }
+
+    try {
+      setMailboxBatchSubmitting(true);
+      await Promise.all(selectedMailboxRows.map((item) => deleteMailbox(item.address)));
+      message.success(`已删除 ${selectedMailboxRows.length} 个邮箱`);
+      setSelectedMailboxRowKeys([]);
+      await loadData();
+    } catch (error) {
+      message.error(extractErrorMessage(error, '批量删除邮箱失败'));
+    } finally {
+      setMailboxBatchSubmitting(false);
+    }
+  }
+
   async function handleOpenMessageDetail(messageId) {
     try {
       setLoading(true);
@@ -552,7 +584,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
     setMessageDetail(null);
   }
 
-  async function handleUpdateRetention(values) {
+  async function handleUpdateMessageRetention(values) {
     if (!selectedMailboxAddress) {
       message.warning('请先选择邮箱');
       return;
@@ -564,11 +596,49 @@ export default function App({ adminProfile = null, onLogout = null }) {
         retentionUnit: values.retentionValue ? values.retentionUnit : null,
       };
 
-      await updateMailboxRetention(selectedMailboxAddress, payload);
-      message.success(payload.retentionValue ? '自动清理设置已更新' : '已关闭自动清理');
+      await updateMailboxMessageRetention(selectedMailboxAddress, payload);
+      message.success(payload.retentionValue ? '邮件自动清理设置已更新' : '已关闭邮件自动清理');
       await loadData();
     } catch (error) {
-      message.error(extractErrorMessage(error, '更新自动清理设置失败'));
+      message.error(extractErrorMessage(error, '更新邮件自动清理设置失败'));
+    }
+  }
+
+  async function handleBatchUpdateRetention(values, options = {}) {
+    if (retentionTargetMailboxes.length === 0) {
+      message.warning('当前没有可应用邮箱自动清理设置的邮箱');
+      return;
+    }
+
+    const shouldClear = options.clear === true;
+    const retentionValue = shouldClear ? null : (values.retentionValue ? Number(values.retentionValue) : null);
+    const retentionUnit = shouldClear ? null : (values.retentionValue ? values.retentionUnit : null);
+
+    if (!shouldClear && !retentionValue) {
+      message.warning('请输入邮箱自动清理时间');
+      return;
+    }
+
+    try {
+      setMailboxBatchSubmitting(true);
+      await Promise.all(
+        retentionTargetMailboxes.map((item) =>
+          updateMailboxRetention(item.address, {
+            retentionValue,
+            retentionUnit,
+          }),
+        ),
+      );
+      message.success(
+        shouldClear
+          ? `已关闭 ${retentionTargetMailboxes.length} 个邮箱的邮箱自动清理设置`
+          : `已更新 ${retentionTargetMailboxes.length} 个邮箱的邮箱自动清理设置`,
+      );
+      await loadData();
+    } catch (error) {
+      message.error(extractErrorMessage(error, '批量更新邮箱自动清理设置失败'));
+    } finally {
+      setMailboxBatchSubmitting(false);
     }
   }
 
@@ -646,6 +716,19 @@ export default function App({ adminProfile = null, onLogout = null }) {
         <div className="mailbox-table-single-line">
           <Badge count={value} showZero color="#1677ff" />
         </div>
+      ),
+    },
+    {
+      title: '自动清理账号',
+      key: 'retention',
+      width: 140,
+      render: (_, record) => (
+        <Space direction="vertical" size={2} className="mailbox-table-cell-stack">
+          <Text className="mailbox-table-primary-text">{getRetentionLabel(record)}</Text>
+          <Text type="secondary" className="mailbox-table-secondary-text">
+            {record.retentionValue ? '到时间后自动删除该邮箱账号' : '当前未启用'}
+          </Text>
+        </Space>
       ),
     },
     {
@@ -727,6 +810,13 @@ export default function App({ adminProfile = null, onLogout = null }) {
     setMailboxModalOpen(true);
   }
 
+  const mailboxRowSelection = {
+    selectedRowKeys: selectedMailboxRowKeys,
+    onChange: setSelectedMailboxRowKeys,
+  };
+
+  const isBatchRetentionUsingSelection = selectedMailboxRows.length > 0;
+
   return (
     <Layout className="app-shell app-shell-responsive">
       <Sider width={320} theme="light" className="app-sider">
@@ -745,29 +835,6 @@ export default function App({ adminProfile = null, onLogout = null }) {
       </Sider>
 
       <Layout className="app-main-layout">
-        <Header className="app-header">
-          <div className="app-header-main">
-            <div className="app-header-surface app-header-surface-compact">
-              <div className="header-global-actions">
-                <Button icon={<ReloadOutlined />} onClick={loadData} className="header-refresh-button">
-                  刷新
-                </Button>
-                {adminProfile?.username ? (
-                  <div className="admin-session-card" aria-label={`当前管理员 ${adminProfile.username}`}>
-                    <div className="admin-session-label">管理员</div>
-                    <div className="admin-session-value">{adminProfile.username}</div>
-                  </div>
-                ) : null}
-                {onLogout ? (
-                  <Button onClick={onLogout} className="header-logout-button">
-                    退出登录
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </Header>
-
         <Content className="app-content">
           <Spin spinning={loading}>
             {section === 'domains' && (
@@ -786,27 +853,124 @@ export default function App({ adminProfile = null, onLogout = null }) {
             {section === 'mailboxes' && (
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
                 <SectionHero
-                  title="邮箱管理"
-                  description="为域名创建收件地址，并管理自动清理策略。"
+                  title="邮箱"
                   searchPlaceholder={SECTION_META.mailboxes.searchPlaceholder}
                   searchValue={sectionSearchText.mailboxes}
                   onSearchChange={(value) => updateSectionSearch('mailboxes', value)}
                   actions={(
-                    <Space wrap>
-                      <Button onClick={() => openMailboxModal({ random: true })} disabled={!hasDomains}>
+                    <Space wrap className="mailbox-section-hero-actions">
+                      <Button
+                        className="domain-action-button"
+                        onClick={() => openMailboxModal({ random: true })}
+                        disabled={!hasDomains}
+                      >
                         随机邮箱
                       </Button>
-                      <Button type="primary" icon={<PlusOutlined />} onClick={() => openMailboxModal({ random: false })} disabled={!hasDomains}>
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        className="domain-action-button domain-action-button-accent"
+                        onClick={() => openMailboxModal({ random: false })}
+                        disabled={!hasDomains}
+                      >
                         创建邮箱
                       </Button>
                     </Space>
                   )}
                 />
 
-                <Card className="mailbox-table-card">
+                <Card className="mailbox-toolbar-card" title="批量操作">
+                  <div className="mailbox-toolbar-inline mailbox-toolbar-grid">
+                    <div className="mailbox-toolbar-inline-copy">
+                      <Text strong>
+                        {isBatchRetentionUsingSelection
+                          ? `已选 ${retentionTargetMailboxes.length} 个邮箱`
+                          : `当前列表 ${retentionTargetMailboxes.length} 个邮箱`}
+                      </Text>
+                      <Text type="secondary">
+                        未勾选时默认作用于当前列表；删除仅对勾选项生效。
+                      </Text>
+                    </div>
+
+                    <Form
+                      form={bulkRetentionForm}
+                      layout="inline"
+                      initialValues={{ retentionValue: null, retentionUnit: 'hour' }}
+                      onFinish={handleBatchUpdateRetention}
+                      className="retention-form mailbox-inline-retention-form"
+                    >
+                      <Form.Item name="retentionValue">
+                        <Input
+                          aria-label="批量邮箱自动清理时间"
+                          type="number"
+                          min={1}
+                          placeholder="时间"
+                        />
+                      </Form.Item>
+                      <Form.Item name="retentionUnit">
+                        <Select
+                          aria-label="批量邮箱自动清理时间单位"
+                          options={[
+                            { label: '小时', value: 'hour' },
+                            { label: '天', value: 'day' },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Form>
+
+                    <Space wrap size={[10, 10]} className="mailbox-toolbar-inline-actions">
+                      <Button
+                        type="primary"
+                        className="domain-action-button domain-action-button-accent"
+                        onClick={() => bulkRetentionForm.submit()}
+                        disabled={retentionTargetMailboxes.length === 0}
+                        loading={mailboxBatchSubmitting}
+                      >
+                        保存邮箱清理
+                      </Button>
+                      <Button
+                        className="domain-action-button"
+                        onClick={() => handleBatchUpdateRetention(bulkRetentionForm.getFieldsValue(), { clear: true })}
+                        disabled={retentionTargetMailboxes.length === 0}
+                        loading={mailboxBatchSubmitting}
+                      >
+                        关闭邮箱清理
+                      </Button>
+                      <Button
+                        className="domain-action-button"
+                        onClick={() => setSection('messages')}
+                        disabled={!hasMailboxes}
+                      >
+                        打开收件区
+                      </Button>
+                      <Popconfirm
+                        title={`确认删除已选中的 ${selectedMailboxRowKeys.length} 个邮箱？`}
+                        onConfirm={handleBatchDeleteMailboxes}
+                        disabled={selectedMailboxRowKeys.length === 0}
+                      >
+                        <Button
+                          danger
+                          icon={<DeleteOutlined />}
+                          className="domain-action-button domain-action-button-danger"
+                          disabled={selectedMailboxRowKeys.length === 0}
+                          loading={mailboxBatchSubmitting}
+                        >
+                          批量删除
+                        </Button>
+                      </Popconfirm>
+                    </Space>
+                  </div>
+                </Card>
+
+                <Card
+                  className="mailbox-table-card"
+                  title="邮箱列表"
+                  extra={<Text type="secondary">{filteredMailboxes.length} 个结果</Text>}
+                >
                   <Table
                     className="mailbox-table"
                     rowKey="id"
+                    rowSelection={mailboxRowSelection}
                     columns={mailboxColumns}
                     dataSource={filteredMailboxes}
                     locale={{ emptyText: '暂无邮箱，请先创建域名后新增邮箱。' }}
@@ -819,28 +983,25 @@ export default function App({ adminProfile = null, onLogout = null }) {
             {section === 'messages' && (
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
                 <SectionHero
-                  title={messageDetail ? '邮件详情' : '邮件收件区'}
-                  description={
-                    messageDetail
-                      ? '查看当前邮件内容并快速返回列表。'
-                      : '按邮箱集中查看最新邮件与未读状态。'
-                  }
+                  title="邮件"
                   searchPlaceholder={messageDetail ? '' : SECTION_META.messages.searchPlaceholder}
                   searchValue={messageDetail ? '' : sectionSearchText.messages}
                   onSearchChange={messageDetail ? null : (value) => updateSectionSearch('messages', value)}
                   actions={
                     messageDetail ? null : (
-                      <Select
-                        aria-label="选择邮箱"
-                        value={selectedMailboxAddress}
-                        onChange={(value) => loadMessages(value, { keepSection: true })}
-                        className="mailbox-selector"
-                        placeholder="选择邮箱"
-                        options={mailboxes.map((item) => ({
-                          label: item.address,
-                          value: item.address,
-                        }))}
-                      />
+                      <Space wrap className="mailbox-section-hero-actions">
+                        <Select
+                          aria-label="选择邮箱"
+                          value={selectedMailboxAddress}
+                          onChange={(value) => loadMessages(value, { keepSection: true })}
+                          className="mailbox-selector"
+                          placeholder="选择邮箱"
+                          options={mailboxes.map((item) => ({
+                            label: item.address,
+                            value: item.address,
+                          }))}
+                        />
+                      </Space>
                     )
                   }
                 />
@@ -855,130 +1016,113 @@ export default function App({ adminProfile = null, onLogout = null }) {
                     />
                   </div>
                 ) : (
-                  <Row gutter={[16, 16]} align="top">
-                    <Col xs={24} xl={14}>
-                      <Card
-                        title="邮件收件区"
-                        extra={<Tag color={unreadCount ? 'error' : 'success'}>{unreadCount} 未读</Tag>}
-                      >
-                        {filteredMessages.length === 0 ? (
-                          <Empty description="当前还没有收件记录" />
-                        ) : (
-                          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                            {filteredMessages.map((item) => (
-                              <MessagePreviewCard
-                                key={item.id}
-                                item={item}
-                                formatDateTime={formatDateTime}
-                                onOpen={handleOpenMessageDetail}
-                                onDelete={handleDeleteMessage}
-                                confirmDelete
-                              />
-                            ))}
-                          </Space>
-                        )}
-                      </Card>
-                    </Col>
+                  <>
+                    <Row gutter={[16, 16]} align="top" className="message-workspace-layout">
+                      <Col xs={24} xl={15}>
+                        <Card
+                          title="收件列表"
+                          className="message-list-card"
+                          extra={<Tag color={unreadCount ? 'error' : 'success'}>{unreadCount} 未读</Tag>}
+                        >
+                          {filteredMessages.length === 0 ? (
+                            <Empty description={selectedMailbox ? '当前还没有收件记录' : '请先选择一个邮箱'} />
+                          ) : (
+                            <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                              {filteredMessages.map((item) => (
+                                <MessagePreviewCard
+                                  key={item.id}
+                                  item={item}
+                                  formatDateTime={formatDateTime}
+                                  onOpen={handleOpenMessageDetail}
+                                  onDelete={handleDeleteMessage}
+                                  confirmDelete
+                                />
+                              ))}
+                            </Space>
+                          )}
+                        </Card>
+                      </Col>
 
-                    <Col xs={24} xl={10}>
-                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                        <Card title="当前邮箱概况">
+                      <Col xs={24} xl={9}>
+                        <Card title="当前邮箱" className="message-sidebar-card">
                           {selectedMailbox ? (
-                            <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                              <Descriptions column={1} className="mailbox-info" size="small">
-                                <Descriptions.Item label="邮箱地址">{selectedMailbox.address}</Descriptions.Item>
-                                <Descriptions.Item label="所属域名">{selectedMailbox.domain}</Descriptions.Item>
-                                <Descriptions.Item label="创建方式">{selectedMailbox.source}</Descriptions.Item>
-                                <Descriptions.Item label="最近收件">
-                                  {formatDateTime(selectedMailbox.latestReceivedAt)}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="自动清理">{getRetentionLabel(selectedMailbox)}</Descriptions.Item>
-                              </Descriptions>
+                            <Space direction="vertical" size={14} style={{ width: '100%' }} className="message-panel-stack">
+                              <div className="mailbox-setting-summary mailbox-setting-summary-compact">
+                                <div className="mailbox-setting-summary-item">
+                                  <Text type="secondary">邮箱地址</Text>
+                                  <Text strong>{selectedMailbox.address}</Text>
+                                </div>
+                                <div className="mailbox-setting-summary-item">
+                                  <Text type="secondary">所属域名</Text>
+                                  <Text strong>{selectedMailbox.domain}</Text>
+                                </div>
+                                <div className="mailbox-setting-summary-item">
+                                  <Text type="secondary">创建方式</Text>
+                                  <Text strong>{selectedMailbox.source}</Text>
+                                </div>
+                                <div className="mailbox-setting-summary-item">
+                                  <Text type="secondary">最近收件</Text>
+                                  <Text strong>{formatDateTime(selectedMailbox.latestReceivedAt)}</Text>
+                                </div>
+                              </div>
 
                               <div className="message-summary-panel">
                                 <Text strong className="message-summary-line">
-                                  当前 {messages.length} 封邮件，未读 {unreadCount} 封。
+                                  邮件自动清理
                                 </Text>
-                                <List
-                                  split={false}
-                                  dataSource={[
-                                    '点击邮件卡片后，会切换到沉浸式详情页。',
-                                    '不需要的邮件可直接删除。',
-                                  ]}
-                                  renderItem={(item) => <List.Item className="message-tip-item">{item}</List.Item>}
-                                />
+                                <Text type="secondary">
+                                  设置当前邮箱内邮件的保留时间。
+                                </Text>
                               </div>
-                            </Space>
-                          ) : (
-                            <Empty description="请先创建邮箱" />
-                          )}
-                        </Card>
 
-                        <Card title="当前邮箱设置">
-                          {selectedMailbox ? (
-                            <div>
-                              <Text strong style={{ display: 'block', marginBottom: 12 }}>
-                                自动清理设置
-                              </Text>
                               <Form
                                 form={retentionForm}
                                 layout="vertical"
-                                onFinish={handleUpdateRetention}
+                                onFinish={handleUpdateMessageRetention}
                                 initialValues={{ retentionValue: null, retentionUnit: 'hour' }}
-                                className="retention-form"
+                                className="retention-form message-retention-form"
                               >
-                                <Space wrap align="start">
-                                  <Form.Item name="retentionValue">
+                                <div className="mailbox-setting-form-grid">
+                                  <Form.Item name="retentionValue" label="邮件自动清理时间">
                                     <Input
-                                      aria-label="自动清理时长"
+                                      aria-label="邮件自动清理时间"
                                       type="number"
                                       min={1}
-                                      placeholder="关闭时留空"
-                                      style={{ width: 140 }}
+                                      placeholder="留空表示关闭"
                                     />
                                   </Form.Item>
-                                  <Form.Item name="retentionUnit">
+                                  <Form.Item name="retentionUnit" label="单位">
                                     <Select
-                                      aria-label="自动清理单位"
-                                      style={{ width: 100 }}
+                                      aria-label="邮件自动清理时间单位"
                                       options={[
                                         { label: '小时', value: 'hour' },
                                         { label: '天', value: 'day' },
                                       ]}
                                     />
                                   </Form.Item>
-                                  <Form.Item>
-                                    <Button type="primary" htmlType="submit">
-                                      保存
-                                    </Button>
-                                  </Form.Item>
-                                  <Form.Item>
-                                    <Button
-                                      onClick={() => {
-                                        retentionForm.setFieldsValue({ retentionValue: null, retentionUnit: 'hour' });
-                                        retentionForm.submit();
-                                      }}
-                                    >
-                                      关闭自动清理
-                                    </Button>
-                                  </Form.Item>
+                                </div>
+                                <Space wrap className="mailbox-setting-form-actions">
+                                  <Button type="primary" icon={<SettingOutlined />} htmlType="submit">
+                                    保存设置
+                                  </Button>
+                                  <Button
+                                    onClick={() => {
+                                      retentionForm.setFieldsValue({ retentionValue: null, retentionUnit: 'hour' });
+                                      retentionForm.submit();
+                                    }}
+                                  >
+                                    关闭邮件自动清理
+                                  </Button>
                                 </Space>
                               </Form>
-                            </div>
+                            </Space>
                           ) : (
-                            <Empty description="请先创建邮箱" />
+                            <Empty description="请先创建或选择邮箱" />
                           )}
                         </Card>
-
-                        <MessageDetailDrawer
-                          messageDetail={messageDetail}
-                          onDeleteMessage={handleDeleteMessage}
-                          onBack={handleBackToMessageList}
-                          formatDateTime={formatDateTime}
-                        />
-                      </Space>
-                    </Col>
-                  </Row>
+                      </Col>
+                    </Row>
+                  </>
                 )}
               </Space>
             )}
@@ -986,16 +1130,14 @@ export default function App({ adminProfile = null, onLogout = null }) {
             {section === 'api' && (
               <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
                 <SectionHero
-                  title="API 说明"
-                  description="保留 Token 管理、接口清单与 curl 示例；示例地址会自动跟随当前站点域名生成。"
+                  title="API"
                   searchPlaceholder={SECTION_META.api.searchPlaceholder}
                   searchValue={sectionSearchText.api}
                   onSearchChange={(value) => updateSectionSearch('api', value)}
-                  actions={<Tag color="blue">{filteredApiEndpoints.length} 个匹配接口</Tag>}
                 />
 
                 {newApiToken?.token ? (
-                  <Card className="api-token-highlight-card" title="新建 Token">
+                  <Card className="api-token-highlight-card" title="新 Token">
                     <Space direction="vertical" size={10} style={{ width: '100%' }}>
                       <div className="api-token-highlight-head">
                         <Text>
@@ -1007,7 +1149,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
                         {newApiToken.token}
                       </Text>
                       <Text type="secondary">
-                        请立即复制保存。页面不再内置调试请求能力，如需使用请将该 Token 带入下方示例命令。
+                        请立即复制保存，并用于下方示例命令。
                       </Text>
                     </Space>
                   </Card>
@@ -1015,7 +1157,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
                 <Row gutter={[16, 16]} align="top">
                   <Col xs={24} xl={10}>
-                    <Card title="Token 管理" className="api-card">
+                    <Card title="Token" className="api-card">
                       <Space direction="vertical" size={16} style={{ width: '100%' }}>
                         <Form form={apiTokenForm} layout="vertical" onFinish={handleCreateApiToken}>
                           <Form.Item
@@ -1046,16 +1188,16 @@ Authorization: Bearer {'<token>'}
 
                         <div className="api-create-tips">
                           <Text strong className="api-tips-title">
-                            使用前准备
+                            使用说明
                           </Text>
                           <List
                             split={false}
                             dataSource={[
-                              '先登录后台并创建一个 API Token。',
-                              'domain 直接填写已创建的域名字符串，例如 example.com。',
-                              '邮箱地址可通过"查询邮箱列表"接口获取，并在路径中做 URL 编码。',
-                              'messageId 需从邮件列表接口返回结果中获取。',
-                              '页面仅提供说明和示例，实际调用请在终端、脚本或你的客户端中完成。',
+                              '先创建一个 API Token。',
+                              'domain 直接填写已创建的域名，例如 example.com。',
+                              '邮箱地址可通过“查询邮箱列表”接口获取，并在路径中做 URL 编码。',
+                              'messageId 从邮件列表接口返回结果中获取。',
+                              '页面仅提供说明和示例，实际调用请在终端或客户端中完成。',
                             ]}
                             renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
                           />
@@ -1065,7 +1207,7 @@ Authorization: Bearer {'<token>'}
                   </Col>
 
                   <Col xs={24} xl={14}>
-                    <Card title="接口清单与用法" className="api-card">
+                    <Card title="接口清单" className="api-card">
                       <Space direction="vertical" size={16} style={{ width: '100%' }}>
                         <Form layout="vertical">
                           <Form.Item label="接口选择">
@@ -1091,7 +1233,7 @@ Authorization: Bearer {'<token>'}
 
                         <div className="api-create-tips">
                           <Text strong className="api-tips-title">
-                            调用说明
+                            说明
                           </Text>
                           <List
                             split={false}
@@ -1108,7 +1250,7 @@ Authorization: Bearer {'<token>'}
                   </Col>
                 </Row>
 
-                <Card title="已有 Token" className="api-card api-token-table-card">
+                <Card title="Token 列表" className="api-card api-token-table-card">
                   <Table
                     rowKey="id"
                     columns={apiTokenColumns}

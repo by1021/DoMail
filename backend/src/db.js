@@ -36,6 +36,8 @@ db.exec(`
     is_active INTEGER NOT NULL DEFAULT 1,
     retention_value INTEGER,
     retention_unit TEXT,
+    message_retention_value INTEGER,
+    message_retention_unit TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
@@ -136,6 +138,14 @@ const mailboxMigrations = [
   {
     name: 'retention_unit',
     sql: `ALTER TABLE mailboxes ADD COLUMN retention_unit TEXT`,
+  },
+  {
+    name: 'message_retention_value',
+    sql: `ALTER TABLE mailboxes ADD COLUMN message_retention_value INTEGER`,
+  },
+  {
+    name: 'message_retention_unit',
+    sql: `ALTER TABLE mailboxes ADD COLUMN message_retention_unit TEXT`,
   },
 ];
 
@@ -252,6 +262,8 @@ const insertMailboxStatement = db.prepare(`
     is_active,
     retention_value,
     retention_unit,
+    message_retention_value,
+    message_retention_unit,
     created_at,
     updated_at
   )
@@ -264,6 +276,8 @@ const insertMailboxStatement = db.prepare(`
     @is_active,
     @retention_value,
     @retention_unit,
+    @message_retention_value,
+    @message_retention_unit,
     @created_at,
     @updated_at
   )
@@ -279,6 +293,8 @@ const listMailboxesStatement = db.prepare(`
     m.is_active,
     m.retention_value,
     m.retention_unit,
+    m.message_retention_value,
+    m.message_retention_unit,
     m.created_at,
     m.updated_at,
     d.domain,
@@ -309,6 +325,8 @@ const getMailboxByIdStatement = db.prepare(`
     m.is_active,
     m.retention_value,
     m.retention_unit,
+    m.message_retention_value,
+    m.message_retention_unit,
     m.created_at,
     m.updated_at,
     d.domain
@@ -327,6 +345,8 @@ const getMailboxByAddressStatement = db.prepare(`
     m.is_active,
     m.retention_value,
     m.retention_unit,
+    m.message_retention_value,
+    m.message_retention_unit,
     m.created_at,
     m.updated_at,
     d.domain
@@ -361,25 +381,49 @@ const updateMailboxRetentionByAddressStatement = db.prepare(`
   WHERE address = @address
 `);
 
+const updateMailboxMessageRetentionByAddressStatement = db.prepare(`
+  UPDATE mailboxes
+  SET message_retention_value = @message_retention_value,
+      message_retention_unit = @message_retention_unit,
+      updated_at = @updated_at
+  WHERE address = @address
+`);
+
 const deleteMessageStatement = db.prepare(`
   DELETE FROM messages
   WHERE id = ?
-`);
-
-const listMailboxRetentionStatement = db.prepare(`
-  SELECT
-    id,
-    retention_value,
-    retention_unit
-  FROM mailboxes
-  WHERE retention_value IS NOT NULL
-    AND retention_unit IS NOT NULL
 `);
 
 const purgeExpiredMessagesByMailboxStatement = db.prepare(`
   DELETE FROM messages
   WHERE mailbox_id = ?
     AND received_at < ?
+`);
+
+const listMailboxRetentionStatement = db.prepare(`
+  SELECT
+    id,
+    retention_value,
+    retention_unit,
+    created_at
+  FROM mailboxes
+  WHERE retention_value IS NOT NULL
+    AND retention_unit IS NOT NULL
+`);
+
+const listMailboxMessageRetentionStatement = db.prepare(`
+  SELECT
+    id,
+    message_retention_value,
+    message_retention_unit
+  FROM mailboxes
+  WHERE message_retention_value IS NOT NULL
+    AND message_retention_unit IS NOT NULL
+`);
+
+const purgeExpiredMailboxStatement = db.prepare(`
+  DELETE FROM mailboxes
+  WHERE id = ?
 `);
 
 const insertMessageStatement = db.prepare(`
@@ -807,6 +851,8 @@ function mapMailbox(row) {
     isActive: Boolean(row.is_active),
     retentionValue: row.retention_value ?? null,
     retentionUnit: row.retention_unit ?? null,
+    messageRetentionValue: row.message_retention_value ?? null,
+    messageRetentionUnit: row.message_retention_unit ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     messageCount: row.message_count ?? 0,
@@ -1098,6 +1144,8 @@ export function createMailbox({ domain, localPart, source = 'manual' }) {
     is_active: 1,
     retention_value: null,
     retention_unit: null,
+    message_retention_value: null,
+    message_retention_unit: null,
     created_at: now,
     updated_at: now,
   };
@@ -1158,6 +1206,25 @@ export function updateMailboxRetentionByAddress(address, retention) {
     address: mailbox.address,
     retention_value: normalized.retentionValue,
     retention_unit: normalized.retentionUnit,
+    updated_at: timestamp(),
+  });
+
+  return getMailboxByAddress(mailbox.address);
+}
+
+export function updateMailboxMessageRetentionByAddress(address, retention) {
+  const mailbox = getMailboxByAddress(address);
+
+  if (!mailbox) {
+    throw new Error('MAILBOX_NOT_FOUND');
+  }
+
+  const normalized = normalizeRetentionPolicy(retention);
+
+  updateMailboxMessageRetentionByAddressStatement.run({
+    address: mailbox.address,
+    message_retention_value: normalized.retentionValue,
+    message_retention_unit: normalized.retentionUnit,
     updated_at: timestamp(),
   });
 
@@ -1247,13 +1314,36 @@ export function removeApiToken(id) {
   return deleteApiTokenStatement.run(id).changes > 0;
 }
 
-export function purgeExpiredMessages(referenceTime = timestamp()) {
+export function purgeExpiredMailboxes(referenceTime = timestamp()) {
   let removedCount = 0;
   const mailboxes = listMailboxRetentionStatement.all();
 
   for (const mailbox of mailboxes) {
     const retentionValue = mailbox.retention_value;
     const retentionUnit = mailbox.retention_unit;
+    const createdAt = mailbox.created_at;
+
+    if (!retentionValue || !retentionUnit || !createdAt) {
+      continue;
+    }
+
+    const cutoffTime = subtractRetention(referenceTime, retentionValue, retentionUnit);
+
+    if (createdAt < cutoffTime) {
+      removedCount += purgeExpiredMailboxStatement.run(mailbox.id).changes;
+    }
+  }
+
+  return removedCount;
+}
+
+export function purgeExpiredMessages(referenceTime = timestamp()) {
+  let removedCount = 0;
+  const mailboxes = listMailboxMessageRetentionStatement.all();
+
+  for (const mailbox of mailboxes) {
+    const retentionValue = mailbox.message_retention_value;
+    const retentionUnit = mailbox.message_retention_unit;
 
     if (!retentionValue || !retentionUnit) {
       continue;

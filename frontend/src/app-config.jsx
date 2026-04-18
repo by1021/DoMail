@@ -31,23 +31,15 @@ export const SECTION_DEFINITIONS = [
 
 export const SECTION_META = {
   domains: {
-    title: '域名',
-    description: '查看域名接入与 DNS 进度',
     searchPlaceholder: '搜索域名或备注',
   },
   mailboxes: {
-    title: '邮箱',
-    description: '管理收件地址与保留策略',
     searchPlaceholder: '搜索邮箱地址或域名',
   },
   messages: {
-    title: '邮件',
-    description: '集中查看邮件与详情',
     searchPlaceholder: '搜索主题、发件人、收件地址',
   },
   api: {
-    title: 'API',
-    description: '管理 Token 与接口说明',
     searchPlaceholder: '搜索 Token 或接口说明',
   },
 };

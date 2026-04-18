@@ -1,9 +1,9 @@
 import React from 'react';
 import { Button, Card, Input, Popconfirm, Space, Table, Tag, Typography } from 'antd';
-import { DeleteOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EyeOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { getDomainStatusMeta } from '../app-view-helpers.js';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, onDeleteDomain }) {
   return [
@@ -109,29 +109,30 @@ export default function DomainTableSection({
   });
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section domain-table-section">
-      <Card className="section-intro-card page-toolbar-card">
-        <div className="domain-table-toolbar">
-          <div className="domain-table-toolbar-copy">
-            <Title level={4} style={{ margin: 0 }}>
-              域名管理
-            </Title>
-            <Text type="secondary">
-              聚焦查看域名状态、下一步动作和常用操作。
-            </Text>
-          </div>
-
-          <div className="domain-table-toolbar-actions">
+      <Card className="page-toolbar-card page-toolbar-card-minimal">
+        <div className="domain-table-toolbar domain-table-toolbar-minimal">
+          <div className="section-hero-search-slot">
             <Input
               aria-label="域名搜索"
               placeholder="搜索域名或备注"
+              prefix={<SearchOutlined />}
               allowClear
               value={searchText}
               onChange={(event) => onSearchChange(event.target.value)}
               className="domain-table-search"
             />
-            <Button type="primary" icon={<PlusOutlined />} onClick={onCreateDomain}>
-              添加域名
-            </Button>
+          </div>
+          <div className="section-hero-actions-slot">
+            <div className="domain-table-toolbar-actions">
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={onCreateDomain}
+                className="domain-action-button domain-action-button-accent"
+              >
+                新建域名
+              </Button>
+            </div>
           </div>
         </div>
       </Card>
