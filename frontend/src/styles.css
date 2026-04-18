@@ -125,6 +125,19 @@ body {
   justify-items: center;
 }
 
+.brand-action-group.ant-space {
+  width: 100%;
+  justify-content: center;
+}
+
+.brand-action-group.ant-space .ant-space-item {
+  display: inline-flex;
+}
+
+.brand-action-button.ant-btn {
+  min-width: 116px;
+}
+
 .app-brand-logo.ant-avatar {
   background: var(--primary-gradient);
   box-shadow: 0 18px 36px rgba(37, 99, 235, 0.24);
@@ -1621,6 +1634,12 @@ body {
     border-radius: 18px;
   }
 
+  .brand-action-group.ant-space,
+  .brand-action-group.ant-space .ant-space-item,
+  .brand-action-button.ant-btn {
+    width: 100%;
+  }
+
   .side-panel {
     margin: 0 18px 12px;
     padding: 10px;
@@ -1889,6 +1908,10 @@ body {
 
   .brand-surface {
     padding: 16px 14px;
+  }
+
+  .brand-action-group.ant-space {
+    gap: 8px;
   }
 
   .domain-table-card .ant-card-body,

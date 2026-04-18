@@ -23,7 +23,9 @@ import {
 } from 'antd';
 import {
   DeleteOutlined,
+  LogoutOutlined,
   PlusOutlined,
+  ReloadOutlined,
   SearchOutlined,
   SettingOutlined,
   ThunderboltOutlined,
@@ -72,7 +74,7 @@ import {
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
-function WorkspaceBrand() {
+function WorkspaceBrand({ loading = false, onRefresh = null, onLogout = null }) {
   return (
     <div className="brand-block">
       <div className="brand-surface">
@@ -84,6 +86,25 @@ function WorkspaceBrand() {
             </Title>
             <Text type="secondary">DoMail</Text>
           </div>
+          <Space size={[10, 10]} wrap className="brand-action-group">
+            <Button
+              icon={<ReloadOutlined />}
+              className="domain-action-button brand-action-button"
+              onClick={onRefresh}
+              loading={loading}
+            >
+              刷新
+            </Button>
+            <Button
+              danger
+              icon={<LogoutOutlined />}
+              className="domain-action-button domain-action-button-danger brand-action-button"
+              onClick={onLogout}
+              disabled={!onLogout}
+            >
+              退出登录
+            </Button>
+          </Space>
         </Space>
       </div>
     </div>
@@ -820,7 +841,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
   return (
     <Layout className="app-shell app-shell-responsive">
       <Sider width={320} theme="light" className="app-sider">
-        <WorkspaceBrand />
+        <WorkspaceBrand loading={loading} onRefresh={loadData} onLogout={onLogout} />
 
         <div className="side-panel side-panel-navigation">
           <Segmented
