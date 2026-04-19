@@ -326,7 +326,7 @@ body {
 }
 
 .page-toolbar-card-minimal.ant-card .ant-card-body {
-  padding: 12px 16px;
+  padding: 10px 14px;
 }
 
 .domain-table-toolbar-minimal {
@@ -379,7 +379,9 @@ body {
 .mailbox-toolbar-card-responsive.ant-card,
 .mailbox-table-card-responsive.ant-card,
 .message-list-card-responsive.ant-card,
-.message-sidebar-card-responsive.ant-card {
+.page-section-toolbar-card.ant-card,
+.page-section-panel.ant-card,
+.page-section-highlight-card.ant-card {
   width: 100%;
 }
 
@@ -392,7 +394,11 @@ body {
 .message-detail-layout-responsive,
 .message-workspace-layout-responsive,
 .message-panel-stack-responsive,
-.message-retention-form-responsive,
+.message-retention-inline-form-responsive.ant-form,
+.message-retention-toolbar-layout-responsive,
+.message-retention-toolbar-actions-responsive,
+.message-section-content-responsive,
+.api-panel-grid-responsive,
 .domain-table-section-responsive,
 .page-section-mailboxes,
 .page-section-messages,
@@ -515,7 +521,44 @@ body {
 .page-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  width: 100%;
+}
+
+.page-section-toolbar {
+  align-items: center;
+}
+
+.page-section-panel.ant-card {
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 251, 255, 0.98) 100%);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.page-section-panel.ant-card .ant-card-head {
+  border-bottom-color: rgba(148, 163, 184, 0.12);
+}
+
+.page-section-panel.ant-card .ant-card-body {
+  padding: 14px 16px;
+}
+
+.page-section-panel-subtle.ant-card {
+  background:
+    radial-gradient(circle at right top, rgba(37, 99, 235, 0.08), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 255, 0.98) 100%);
+}
+
+.page-section-highlight-card.ant-card {
+  border-color: rgba(22, 119, 255, 0.16);
+  background:
+    radial-gradient(circle at right top, rgba(37, 99, 235, 0.1), transparent 36%),
+    linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(255, 255, 255, 1) 100%);
+  box-shadow: 0 18px 36px rgba(37, 99, 235, 0.08);
+}
+
+.page-section-grid {
   width: 100%;
 }
 
@@ -533,7 +576,6 @@ body {
 
 .page-toolbar-card.ant-card,
 .section-intro-card.ant-card,
-.api-hero-card.ant-card,
 .message-detail-panel.ant-card,
 .domain-detail-hero.ant-card,
 .auth-card.ant-card {
@@ -791,13 +833,11 @@ body {
   border-top: 1px solid rgba(148, 163, 184, 0.12);
 }
 
-.message-list-card.ant-card,
-.message-sidebar-card.ant-card {
+.message-list-card.ant-card {
   height: 100%;
 }
 
-.message-list-card.ant-card .ant-card-body,
-.message-sidebar-card.ant-card .ant-card-body {
+.message-list-card.ant-card .ant-card-body {
   padding: 16px;
 }
 
@@ -814,12 +854,16 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
+.message-summary-panel-compact {
+  gap: 6px;
+  padding: 12px;
+}
+
 .message-summary-line {
   color: #0f172a;
 }
 
 .mailbox-toolbar-card.ant-card,
-.message-sidebar-card.ant-card,
 .message-list-card.ant-card {
   border-radius: 20px;
   border: 1px solid rgba(148, 163, 184, 0.14);
@@ -827,7 +871,6 @@ body {
 }
 
 .mailbox-toolbar-card.ant-card .ant-card-body,
-.message-sidebar-card.ant-card .ant-card-body,
 .message-list-card.ant-card .ant-card-body {
   padding: 16px;
 }
@@ -835,6 +878,55 @@ body {
 .message-workspace-layout {
   width: 100%;
 }
+
+.message-section-content {
+  width: 100%;
+}
+
+.message-toolbar-card.ant-card .ant-card-body {
+  padding: 14px 16px;
+}
+
+.message-toolbar-layout {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.message-toolbar-main {
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
+.message-toolbar-inline-copy {
+  min-width: 0;
+}
+
+.message-toolbar-inline-copy .ant-typography:first-child {
+  font-size: 15px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.message-retention-copy-compact {
+  gap: 2px;
+}
+
+.message-retention-copy-compact .ant-typography:first-child {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.message-retention-copy-compact .ant-typography-secondary {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.message-retention-inline-form.ant-form {
+  justify-content: flex-start;
+}
+
+.message-retention-toolbar-actions {
+  width: auto;
+}
+
 
 .mailbox-toolbar-grid {
   display: grid;
@@ -1011,6 +1103,7 @@ body {
 .ant-table-wrapper .ant-table {
   background: rgba(255, 255, 255, 0.72);
   border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .ant-table-wrapper .ant-table-container table > thead > tr:first-child > *:first-child {
@@ -1029,63 +1122,72 @@ body {
   height: 100%;
 }
 
-.api-hero-card.ant-card {
-  overflow: hidden;
-  background:
-    radial-gradient(circle at right top, rgba(22, 119, 255, 0.16), transparent 28%),
-    linear-gradient(135deg, #ffffff 0%, #f3f8ff 58%, #eef6ff 100%);
+.api-overview-card.ant-card .ant-card-body {
+  padding: 14px 16px;
 }
 
-.api-hero-card .ant-card-body {
-  padding: 24px 26px;
+.api-management-stack {
+  width: 100%;
 }
 
-.api-hero-layout {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
+.api-subcard.ant-card {
+  height: auto;
+  box-shadow: none;
 }
 
-.api-hero-main {
-  flex: 1;
-  min-width: 0;
+.api-endpoint-card.ant-card,
+.api-token-table-card.ant-card {
+  height: auto;
 }
 
-.api-hero-tag.ant-tag {
-  width: fit-content;
-  margin: 0;
-  padding-inline: 10px;
-  border-radius: 999px;
-  font-weight: 700;
+.api-card-compact.ant-card .ant-card-head {
+  min-height: 52px;
+  padding: 0 16px;
 }
 
-.api-hero-copy {
-  max-width: 680px;
-  line-height: 1.8;
+.api-card-compact.ant-card .ant-card-body {
+  padding: 14px 16px;
 }
 
-.api-hero-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  gap: 12px;
-  min-width: 280px;
+.api-panel-grid {
+  width: 100%;
 }
 
-.api-hero-stat {
+.api-panel-grid-responsive {
+  width: 100%;
+}
+
+.api-auth-panel.api-auth-panel-compact,
+.api-create-tips.api-create-tips-compact,
+.api-endpoint-preview.api-endpoint-preview-compact,
+.api-curl-block {
   display: grid;
   gap: 8px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(96, 165, 250, 0.18);
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.06);
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
-.api-hero-stat-value {
-  font-size: 28px;
-  line-height: 1;
-  color: #1677ff;
+.api-auth-panel.api-auth-panel-compact {
+  gap: 10px;
+}
+
+.api-endpoint-segmented.ant-segmented {
+  width: 100%;
+}
+
+.api-curl-title {
+  display: block;
+}
+
+.api-token-table-card.ant-card .ant-card-body {
+  padding-top: 10px;
+}
+
+.api-token-table .ant-table-cell {
+  vertical-align: top;
 }
 
 .api-token-highlight-card.ant-card {
@@ -1113,28 +1215,12 @@ body {
   word-break: break-all;
 }
 
-.api-layout-grid {
-  display: grid;
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.api-create-card.ant-card,
-.api-endpoints-card.ant-card,
 .api-token-table-card.ant-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 251, 255, 0.98) 100%);
 }
 
-.api-create-card .ant-card-head,
-.api-endpoints-card .ant-card-head,
 .api-token-table-card .ant-card-head {
   border-bottom-color: rgba(148, 163, 184, 0.12);
-}
-
-.api-panel-intro {
-  display: grid;
-  gap: 6px;
 }
 
 .api-create-tips {
@@ -1320,57 +1406,89 @@ body {
   min-width: 0;
 }
 
+.domain-table-toolbar.domain-table-toolbar-minimal {
+  gap: 10px 12px;
+}
+
+.domain-table-toolbar.domain-table-toolbar-minimal .section-hero-search-slot {
+  flex: 1 1 220px;
+}
+
+.domain-table-toolbar.domain-table-toolbar-minimal .section-hero-actions-slot {
+  flex: 0 0 auto;
+}
+
+.domain-table-toolbar.domain-table-toolbar-minimal .domain-table-toolbar-actions {
+  gap: 8px;
+}
+
 .domain-table-domain-cell,
 .domain-table-cell-stack,
 .mailbox-table-cell-stack {
   display: grid;
   align-content: start;
   justify-items: start;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
+}
+
+.domain-table-cell-centered {
+  width: 100%;
+  height: 100%;
+  justify-items: center;
+  align-content: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.mailbox-table-address-cell,
+.mailbox-table-time-cell,
+.mailbox-table-retention-cell,
+.mailbox-table-count-cell {
+  width: 100%;
+  min-height: 72px;
+}
+
+.mailbox-table-address-head {
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .mailbox-table-primary-text.ant-typography {
   line-height: 1.4;
 }
 
+.mailbox-table-address-text.ant-typography {
+  font-size: 15px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
 .mailbox-table-secondary-text.ant-typography {
   color: #64748b;
-  line-height: 1.5;
+  line-height: 1.45;
+  font-size: 12px;
 }
 
-.mailbox-table-single-line {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-}
-
-.mailbox-table-inline-tag.ant-tag {
+.mailbox-table-inline-tag.ant-tag,
+.mailbox-table-source-tag.ant-tag {
   margin-inline-end: 0;
-}
-
-.mailbox-action-group.ant-space {
-  align-items: center;
-}
-
-.mailbox-action-group.ant-space .ant-space-item {
-  display: inline-flex;
-  align-items: center;
-}
-
-.mailbox-action-link.ant-btn,
-.mailbox-action-danger.ant-btn {
-  min-height: 32px;
-  border-radius: 10px;
-}
-
-.mailbox-action-link.ant-btn {
-  padding-inline: 0;
+  padding-inline: 10px;
+  border-radius: 999px;
   font-weight: 600;
 }
 
-.mailbox-action-danger.ant-btn {
-  padding-inline: 8px;
+.mailbox-table-count-badge.ant-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mailbox-action-group {
+  width: 100%;
+  justify-content: center;
 }
 
 .mailbox-section-hero-actions {
@@ -1382,22 +1500,58 @@ body {
   justify-content: flex-end;
 }
 
-.mailbox-toolbar-card.ant-card,
-.mailbox-table-card.ant-card,
-.message-sidebar-card.ant-card,
-.message-list-card.ant-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 251, 255, 0.98) 100%);
+.message-section-content .ant-card-head,
+.api-overview-card .ant-card-head,
+.api-token-table-card .ant-card-head {
+  min-height: 52px;
+  padding-inline: 16px;
 }
 
-.mailbox-toolbar-card .ant-card-head,
-.mailbox-table-card .ant-card-head,
-.message-sidebar-card .ant-card-head,
-.message-list-card .ant-card-head {
-  border-bottom-color: rgba(148, 163, 184, 0.12);
+.message-section-content .ant-card-head-title,
+.api-overview-card .ant-card-head-title,
+.api-token-table-card .ant-card-head-title {
+  font-weight: 700;
+}
+
+.message-toolbar-card.ant-card .ant-card-head {
+  min-height: 52px;
+  padding-inline: 16px;
+}
+
+.message-toolbar-card.ant-card .ant-card-head-title {
+  font-weight: 700;
+}
+
+.message-toolbar-card.ant-card .ant-card-extra {
+  margin-inline-start: 8px;
+}
+
+.message-toolbar-card.ant-card .ant-card-extra .ant-tag {
+  margin-inline-end: 0;
+}
+
+.mailbox-section-hero-actions .ant-btn,
+.mailbox-section-hero-actions .ant-select {
+  min-width: 0;
 }
 
 .mailbox-toolbar-card.ant-card .ant-card-body {
   padding: 14px 16px;
+}
+
+.mailbox-toolbar-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) auto;
+  gap: 12px 16px;
+  align-items: center;
+}
+
+.mailbox-toolbar-main {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px 16px;
+  align-items: center;
+  min-width: 0;
 }
 
 .mailbox-toolbar-inline {
@@ -1410,8 +1564,7 @@ body {
 .mailbox-toolbar-inline-copy {
   display: grid;
   gap: 4px;
-  min-width: 220px;
-  flex: 1 1 280px;
+  min-width: 0;
 }
 
 .mailbox-toolbar-inline-copy .ant-typography:first-child {
@@ -1423,6 +1576,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -1439,20 +1593,40 @@ body {
 .mailbox-toolbar-inline-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
-}
-
-.mailbox-table-card .ant-card-extra {
-  color: #64748b;
 }
 
 .mailbox-table-card .ant-table-cell,
 .mailbox-table .ant-table-cell {
-  vertical-align: top;
+  vertical-align: middle;
+}
+
+.mailbox-table-card .ant-table-thead > tr > th,
+.mailbox-table-card .ant-table-tbody > tr > td {
+  padding-inline: 14px;
+}
+
+.mailbox-table-card .ant-table-tbody > tr > td {
+  text-align: center;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.mailbox-table-card .ant-table-tbody > tr > td .mailbox-table-cell-stack,
+.mailbox-table-card .ant-table-tbody > tr > td .mailbox-action-group,
+.mailbox-table-card .ant-table-tbody > tr > td .mailbox-table-count-cell {
+  width: 100%;
+  justify-items: center;
+  align-content: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .domain-table-domain-head {
+  width: 100%;
   align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .domain-table-domain-name.ant-typography {
@@ -1471,11 +1645,13 @@ body {
 .domain-table-domain-note.ant-typography,
 .domain-table-updated-meta.ant-typography {
   color: #64748b;
-  line-height: 1.6;
+  line-height: 1.45;
+  font-size: 12px;
 }
 
 .domain-table-status-cell {
-  max-width: 320px;
+  width: 100%;
+  max-width: none;
 }
 
 .domain-table-section-responsive .ant-table-cell,
@@ -1490,21 +1666,37 @@ body {
 
 .domain-table-status-title.ant-typography {
   color: #0f172a;
-  line-height: 1.6;
+  line-height: 1.35;
+  font-size: 14px;
 }
 
 .domain-table-status-next.ant-typography {
-  line-height: 1.6;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .domain-table-updated-cell {
-  min-height: 52px;
+  width: 100%;
+  min-height: 44px;
+}
+
+.domain-table-updated-cell-centered {
+  width: 100%;
+  justify-items: center;
+  align-content: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .domain-table-updated-at.ant-typography {
   color: #0f172a;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.35;
+  font-size: 13px;
+  text-align: center;
 }
 
 .domain-action-group {
@@ -1517,6 +1709,11 @@ body {
 
 .domain-action-group-inline {
   justify-content: flex-start;
+}
+
+.domain-action-group-centered {
+  width: 100%;
+  justify-content: center;
 }
 
 .domain-action-button.ant-btn {
@@ -1680,11 +1877,28 @@ body {
 
 .ant-table-wrapper .ant-table-thead > tr > th {
   background: #f8fbff;
+  text-align: center;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.domain-table-card .ant-table-tbody > tr > td {
+  text-align: center;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.domain-table-card .ant-table-thead > tr > th,
+.domain-table-card .ant-table-tbody > tr > td {
+  padding-inline: 14px;
 }
 
 .mailbox-table-responsive .ant-table-selection-column,
 .domain-table-card-responsive .ant-table-cell {
   vertical-align: top;
+}
+
+.domain-table-card .ant-table-thead > tr > th,
+.domain-table-card .ant-table-tbody > tr > td {
+  vertical-align: middle;
 }
 
 .ant-table-wrapper .ant-table-tbody > tr > td {
@@ -1693,6 +1907,33 @@ body {
 
 .ant-table-wrapper .ant-table-tbody > tr > td .ant-space {
   align-items: flex-start;
+}
+
+.domain-table-card .ant-table-tbody > tr > td .ant-space {
+  align-items: center;
+  justify-content: center;
+}
+
+.domain-table-card .ant-table-tbody > tr > td .domain-table-cell-stack,
+.domain-table-card .ant-table-tbody > tr > td .domain-action-group {
+  min-height: 72px;
+}
+
+.domain-table-card .ant-table-tbody > tr > td .domain-table-cell-stack {
+  width: 100%;
+  justify-items: center;
+  align-content: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.domain-table-card .ant-table-tbody > tr > td .domain-table-domain-head {
+  justify-content: center;
+}
+
+.domain-table-card .ant-table-tbody > tr > td .domain-action-group {
+  width: 100%;
+  justify-content: center;
 }
 
 .ant-empty {
@@ -1760,19 +2001,6 @@ body {
     width: 220px;
   }
 
-  .api-hero-layout,
-  .api-layout-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .api-hero-layout {
-    display: grid;
-  }
-
-  .api-hero-meta {
-    min-width: 0;
-  }
-
   .message-detail-panel .ant-card-extra {
     margin-inline-start: 0;
   }
@@ -1783,7 +2011,17 @@ body {
     gap: 12px;
   }
 
-  .mailbox-toolbar-grid-responsive {
+  .page-section-panel.ant-card .ant-card-body,
+  .message-toolbar-card.ant-card .ant-card-body,
+  .api-overview-card.ant-card .ant-card-body {
+    padding: 14px 16px;
+  }
+
+  .mailbox-toolbar-layout-responsive,
+  .mailbox-toolbar-main,
+  .message-toolbar-layout,
+  .message-toolbar-main,
+  .api-panel-grid-responsive {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1880,7 +2118,8 @@ body {
   .domain-table-toolbar,
   .domain-table-toolbar-actions,
   .mailbox-selector,
-  .mailbox-selector-responsive {
+  .mailbox-selector-responsive,
+  .page-section-toolbar {
     width: 100%;
   }
 
@@ -1889,6 +2128,11 @@ body {
   .mailbox-toolbar-inline {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .mailbox-toolbar-layout,
+  .mailbox-toolbar-main {
+    grid-template-columns: 1fr;
   }
 
   .section-hero-search-slot,
@@ -1902,7 +2146,10 @@ body {
   .mailbox-toolbar-grid-responsive,
   .mailbox-setting-summary,
   .mailbox-setting-form-grid,
-  .mailbox-setting-summary-compact {
+  .mailbox-setting-summary-compact,
+  .message-toolbar-layout,
+  .message-toolbar-main,
+  .api-panel-grid-responsive {
     grid-template-columns: 1fr;
   }
 
@@ -1911,9 +2158,18 @@ body {
   .section-hero-actions-responsive,
   .domain-table-toolbar-actions,
   .mailbox-toolbar-inline-actions,
-  .mailbox-toolbar-inline-actions-responsive {
+  .mailbox-toolbar-inline-actions-responsive,
+  .mailbox-section-hero-actions,
+  .mailbox-section-hero-actions-responsive {
     width: 100%;
     justify-content: stretch;
+  }
+
+  .mailbox-toolbar-inline-actions,
+  .mailbox-toolbar-inline-actions-responsive,
+  .mailbox-section-hero-actions,
+  .mailbox-section-hero-actions-responsive {
+    justify-content: flex-start;
   }
 
   .section-hero-search.ant-input-affix-wrapper,
@@ -1926,12 +2182,18 @@ body {
   .mailbox-section-hero-actions-compact,
   .mailbox-section-hero-actions-responsive,
   .mailbox-section-hero-actions .ant-btn,
+  .mailbox-section-hero-actions .ant-select,
   .domain-table-toolbar-actions .ant-btn,
   .mailbox-toolbar-inline-actions,
   .mailbox-toolbar-inline-actions .ant-btn,
   .mailbox-toolbar-inline-actions-responsive .ant-btn,
+  .message-retention-toolbar-actions,
+  .message-retention-toolbar-actions .ant-btn,
+  .message-retention-toolbar-actions-responsive .ant-btn,
   .mailbox-inline-retention-form,
   .mailbox-inline-retention-form-responsive,
+  .message-retention-inline-form,
+  .message-retention-inline-form-responsive,
   .mailbox-inline-retention-form .ant-form-item,
   .mailbox-inline-retention-form .ant-input,
   .mailbox-inline-retention-form .ant-select,
@@ -1994,9 +2256,17 @@ body {
   }
 
   .domain-table-card .ant-card-body,
-  .message-detail-panel .ant-card-body,
-  .api-hero-card .ant-card-body {
+  .message-detail-panel .ant-card-body {
     padding: 16px;
+  }
+
+  .api-card-compact.ant-card .ant-card-head {
+    padding-inline: 14px;
+  }
+
+  .api-card-compact.ant-card .ant-card-body,
+  .api-token-table-card.ant-card .ant-card-body {
+    padding: 12px 14px;
   }
 
   .message-summary-panel,
@@ -2090,6 +2360,10 @@ body {
     max-width: none;
   }
 
+  .domain-table-status-next.ant-typography {
+    -webkit-line-clamp: unset;
+  }
+
   .domain-detail-summary-grid {
     grid-template-columns: 1fr;
   }
@@ -2120,9 +2394,18 @@ body {
   }
 
   .message-list-card-responsive .ant-card-head,
-  .message-sidebar-card-responsive .ant-card-head,
+  .message-toolbar-card.ant-card .ant-card-head,
   .mailbox-table-card-responsive .ant-card-head {
     padding-inline: 14px;
+  }
+
+  .message-toolbar-card.ant-card .ant-card-extra,
+  .message-toolbar-card.ant-card .ant-card-extra .ant-space {
+    width: 100%;
+  }
+
+  .message-toolbar-card.ant-card .ant-card-extra .ant-space {
+    justify-content: flex-start;
   }
 
   .message-list-card-responsive .ant-card-extra,
@@ -2194,10 +2477,13 @@ body {
   .domain-table-card .ant-card-body,
   .message-detail-panel .ant-card-body,
   .auth-card .ant-card-body,
-  .api-hero-card .ant-card-body,
   .mailbox-toolbar-card.ant-card .ant-card-body,
-  .message-sidebar-card.ant-card .ant-card-body,
-  .message-list-card.ant-card .ant-card-body {
+  .message-list-card.ant-card .ant-card-body,
+  .page-section-panel.ant-card .ant-card-body,
+  .api-card-compact.ant-card .ant-card-body,
+  .api-token-table-card.ant-card .ant-card-body,
+  .message-toolbar-card.ant-card .ant-card-body,
+  .api-overview-card.ant-card .ant-card-body {
     padding: 14px 12px;
   }
 
@@ -2214,7 +2500,10 @@ body {
   .mailbox-setting-summary,
   .mailbox-setting-form-grid,
   .mailbox-inline-retention-form.ant-form,
-  .mailbox-inline-retention-form-responsive.ant-form {
+  .mailbox-inline-retention-form-responsive.ant-form,
+  .message-toolbar-layout,
+  .message-toolbar-main,
+  .api-panel-grid-responsive {
     grid-template-columns: 1fr;
   }
 
@@ -2252,13 +2541,8 @@ body {
     min-width: 560px;
   }
 
-  .mailbox-action-group.ant-space {
-    gap: 8px !important;
-  }
-
-  .mailbox-action-link.ant-btn,
-  .mailbox-action-danger.ant-btn {
-    min-height: 36px;
+  .mailbox-action-group {
+    gap: 8px;
   }
 
   .message-preview-card.ant-card .ant-card-body {
@@ -2269,6 +2553,10 @@ body {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+  }
+
+  .message-toolbar-card.ant-card .ant-card-extra {
+    margin-inline-start: 0;
   }
 
   .message-preview-actions .ant-btn {
@@ -2330,15 +2618,15 @@ body {
   .api-auth-panel,
   .api-endpoint-item,
   .api-create-tips,
-  .api-hero-stat {
+  .api-auth-panel.api-auth-panel-compact,
+  .api-create-tips.api-create-tips-compact,
+  .api-endpoint-preview.api-endpoint-preview-compact,
+  .api-curl-block {
     padding: 12px;
   }
 
-  .api-hero-meta {
-    grid-template-columns: 1fr;
-  }
-
-  .api-hero-stat-value {
-    font-size: 24px;
+  .api-card-compact.ant-card .ant-card-head {
+    min-height: 48px;
+    padding-inline: 12px;
   }
 }

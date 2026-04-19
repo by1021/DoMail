@@ -11,12 +11,13 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, on
       title: '域名',
       dataIndex: 'domain',
       key: 'domain',
-      width: 220,
+      width: 240,
+      align: 'center',
       render: (value, record) => {
         const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
 
         return (
-          <div className="domain-table-cell-stack domain-table-domain-cell">
+          <div className="domain-table-cell-stack domain-table-domain-cell domain-table-cell-centered">
             <Space wrap size={[8, 8]} className="domain-table-domain-head">
               <Text strong className="domain-table-domain-name">
                 {value}
@@ -26,7 +27,7 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, on
               </Tag>
             </Space>
             <Text type="secondary" className="domain-table-domain-note">
-              {record.note || `最小记录 ${record.dnsRecords?.length || 0} 条`}
+              {record.note || `${record.dnsRecords?.length || 0} 条记录`}
             </Text>
           </div>
         );
@@ -35,14 +36,15 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, on
     {
       title: '状态',
       key: 'status',
-      width: 260,
+      width: 200,
+      align: 'center',
       render: (_, record) => {
         const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
 
         return (
-          <div className="domain-table-cell-stack domain-table-status-cell">
+          <div className="domain-table-cell-stack domain-table-status-cell domain-table-cell-centered">
             <Text strong className="domain-table-status-title">
-              {statusMeta.summary}
+              {statusMeta.label}
             </Text>
             <Text type="secondary" className="domain-table-status-next">
               {statusMeta.nextStep}
@@ -52,16 +54,14 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, on
       },
     },
     {
-      title: '更新时间',
+      title: '时间',
       key: 'updatedAt',
-      width: 160,
+      width: 140,
+      align: 'center',
       render: (_, record) => (
-        <div className="domain-table-cell-stack domain-table-updated-cell">
+        <div className="domain-table-cell-stack domain-table-updated-cell domain-table-updated-cell-centered">
           <Text className="domain-table-updated-at">
             {formatDateTime(record.updatedAt || record.createdAt)}
-          </Text>
-          <Text type="secondary" className="domain-table-updated-meta">
-            {record.updatedAt ? '最近更新' : '创建时间'}
           </Text>
         </div>
       ),
@@ -69,9 +69,10 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, on
     {
       title: '操作',
       key: 'actions',
-      width: 180,
+      width: 168,
+      align: 'center',
       render: (_, record) => (
-        <div className="domain-action-group domain-action-group-inline domain-action-group-compact">
+        <div className="domain-action-group domain-action-group-inline domain-action-group-compact domain-action-group-centered">
           <Button
             type="default"
             icon={<EyeOutlined />}
@@ -154,7 +155,7 @@ export default function DomainTableSection({
           dataSource={domains}
           locale={{ emptyText: '暂无域名，先添加一个域名。' }}
           pagination={false}
-          scroll={{ x: 620 }}
+          scroll={{ x: 680 }}
         />
       </Card>
     </Space>
