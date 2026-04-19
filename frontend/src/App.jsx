@@ -542,7 +542,6 @@ export default function App({ adminProfile = null, onLogout = null }) {
       });
       message.success('邮箱已创建');
       setMailboxModalOpen(false);
-      mailboxForm.resetFields();
       await loadData();
     } catch (error) {
       message.error(extractErrorMessage(error, '创建邮箱失败'));
@@ -883,12 +882,18 @@ export default function App({ adminProfile = null, onLogout = null }) {
   ];
 
   function openMailboxModal(defaults = {}) {
+    mailboxForm.resetFields();
     mailboxForm.setFieldsValue({
       domain: defaults.domain ?? domains[0]?.domain,
       random: false,
       ...defaults,
     });
     setMailboxModalOpen(true);
+  }
+
+  function handleCloseMailboxModal() {
+    setMailboxModalOpen(false);
+    mailboxForm.resetFields();
   }
 
   const mailboxRowSelection = {
@@ -1407,7 +1412,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
         open={mailboxModalOpen}
         submitting={submitting}
         domainOptions={domainOptions}
-        onCancel={() => setMailboxModalOpen(false)}
+        onCancel={handleCloseMailboxModal}
         onSubmit={handleCreateMailbox}
       />
 

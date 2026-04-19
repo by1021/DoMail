@@ -1407,16 +1407,17 @@ body {
 }
 
 .domain-table-toolbar.domain-table-toolbar-minimal {
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 10px 12px;
 }
 
 .domain-table-toolbar.domain-table-toolbar-minimal .section-hero-search-slot {
-  flex: 0 1 320px;
+  flex: 1 1 320px;
 }
 
 .domain-table-toolbar.domain-table-toolbar-minimal .section-hero-actions-slot {
   flex: 0 0 auto;
+  margin-left: auto;
   align-self: center;
 }
 
