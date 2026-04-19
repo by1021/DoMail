@@ -21,10 +21,17 @@ function renderDnsRecordItem(record, index) {
       <Text code className="dns-record-value">
         {record.expectedValue || record.value}
       </Text>
+      {record.type === 'MX' && record.expectedPriorityNote ? (
+        <Text type="secondary" style={{ fontSize: '12px' }}>
+          {record.expectedPriorityNote}
+        </Text>
+      ) : null}
       {record.actualValue ? (
         <Text type="secondary">当前解析：{record.actualValue}</Text>
       ) : null}
-      <Text type="secondary">{record.note || '无备注'}</Text>
+      {record.note ? (
+        <Text type="secondary">{record.note}</Text>
+      ) : null}
     </div>
   );
 }

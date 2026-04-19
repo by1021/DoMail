@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { resolveMx } from 'node:dns/promises';
+import { getServers as getSystemDnsServers } from 'node:dns';
+import { Resolver, resolveMx } from 'node:dns/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { customAlphabet } from 'nanoid';
 
@@ -689,14 +690,82 @@ function buildDnsHostLabel(domain, host) {
 
 function getMailDnsConfig() {
   const mailMxHost = String(process.env.MAIL_MX_HOST ?? '').trim().toLowerCase() || null;
+  const dnsResolvers = String(process.env.DNS_RESOLVERS ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
   return {
     mailMxHost,
+    dnsResolvers,
   };
 }
 
 function normalizeDnsTarget(value) {
   return String(value ?? '').trim().toLowerCase().replace(/\.+$/, '');
+}
+
+function buildDnsResolverCandidates(configuredResolvers = []) {
+  const systemResolvers = getSystemDnsServers()
+    .map((item) => String(item ?? '').trim())
+    .filter(Boolean);
+
+  const fallbackResolvers = configuredResolvers.length > 0
+    ? configuredResolvers
+    : ['1.1.1.1', '8.8.8.8'];
+
+  return [
+    ...new Set([
+      ...systemResolvers,
+      ...fallbackResolvers,
+    ]),
+  ];
+}
+
+async function resolveMxWithFallback(domain, configuredResolvers = []) {
+  const attemptedResolvers = [];
+  let systemError = null;
+
+  try {
+    const records = await resolveMx(domain);
+    attemptedResolvers.push('system');
+    return {
+      records,
+      resolverUsed: 'system',
+      attemptedResolvers,
+      error: null,
+    };
+  } catch (error) {
+    systemError = error;
+    attemptedResolvers.push(`system:${error?.code ?? 'UNKNOWN'}`);
+  }
+
+  const candidates = buildDnsResolverCandidates(configuredResolvers);
+
+  for (const server of candidates) {
+    const resolver = new Resolver();
+    resolver.setServers([server]);
+
+    try {
+      const records = await resolver.resolveMx(domain);
+      attemptedResolvers.push(server);
+      return {
+        records,
+        resolverUsed: server,
+        attemptedResolvers,
+        error: systemError,
+      };
+    } catch (error) {
+      attemptedResolvers.push(`${server}:${error?.code ?? 'UNKNOWN'}`);
+    }
+  }
+
+  return {
+    records: [],
+    resolverUsed: null,
+    attemptedResolvers,
+    error: systemError,
+  };
 }
 
 function buildDefaultDnsRecords(domain, smtpHost, serverIp, mxHost) {
@@ -1050,17 +1119,20 @@ export async function detectDomainDnsStatus(id) {
   const checkedAt = timestamp();
   const normalizedRequiredRecords = normalizeDnsRecords(domain.dnsRecords);
   const expectedMxRecords = normalizedRequiredRecords.filter((record) => record.type === 'MX');
+  const { dnsResolvers } = getMailDnsConfig();
   let resolvedMxRecords = [];
   let dnsLookupError = null;
+  let dnsResolverUsed = null;
+  let dnsAttemptedResolvers = [];
 
-  try {
-    resolvedMxRecords = (await resolveMx(domain.domain)).map((record) => ({
-      exchange: normalizeDnsTarget(record.exchange),
-      priority: Number(record.priority),
-    }));
-  } catch (error) {
-    dnsLookupError = error;
-  }
+  const mxLookup = await resolveMxWithFallback(domain.domain, dnsResolvers);
+  resolvedMxRecords = mxLookup.records.map((record) => ({
+    exchange: normalizeDnsTarget(record.exchange),
+    priority: Number(record.priority),
+  }));
+  dnsLookupError = mxLookup.error;
+  dnsResolverUsed = mxLookup.resolverUsed;
+  dnsAttemptedResolvers = mxLookup.attemptedResolvers;
 
   const requiredRecords = normalizedRequiredRecords.map((record) => {
     if (record.type !== 'MX') {
@@ -1077,16 +1149,28 @@ export async function detectDomainDnsStatus(id) {
       record.priority !== undefined && record.priority !== null && record.priority !== ''
         ? Number(record.priority)
         : null;
-    const matchedRecord = resolvedMxRecords.find((item) => (
-      item.exchange === expectedValue &&
-      (expectedPriority === null || item.priority === expectedPriority)
-    ));
+    // 优化匹配逻辑：如果未指定优先级，则只匹配主机名；如果指定了优先级，则同时匹配主机名和优先级
+    const matchedRecord = resolvedMxRecords.find((item) => {
+      const hostMatches = item.exchange === expectedValue;
+      if (!hostMatches) {
+        return false;
+      }
+      // 如果配置中未指定优先级，则只要主机名匹配即可
+      if (expectedPriority === null) {
+        return true;
+      }
+      // 如果配置中指定了优先级，则需要同时匹配
+      return item.priority === expectedPriority;
+    });
 
     return {
       ...record,
       expectedValue: record.value,
       matched: Boolean(matchedRecord),
-      actualValue: matchedRecord ? `${matchedRecord.exchange} (priority ${matchedRecord.priority})` : null,
+      actualValue: matchedRecord ? `${matchedRecord.exchange} (优先级 ${matchedRecord.priority})` : null,
+      expectedPriorityNote: expectedPriority === null
+        ? '未指定优先级，接受任意优先级'
+        : `要求优先级 ${expectedPriority}`,
     };
   });
 
@@ -1113,21 +1197,22 @@ export async function detectDomainDnsStatus(id) {
   }
 
   const actualMxSummary = hasAnyResolvedMx
-    ? resolvedMxRecords.map((record) => `${record.exchange} (priority ${record.priority})`).join(', ')
+    ? resolvedMxRecords.map((record) => `${record.exchange} (优先级 ${record.priority})`).join(', ')
     : null;
 
   let status = 'pending';
   let summary = '尚未检测到有效 MX 记录，域名暂不启用。';
   let nextStep = '请先为该域名添加 MX 记录，并等待 DNS 生效后重新检测。';
 
+  const dnsLookupErrorCode = dnsLookupError?.code ?? null;
+  const isNoMxDataError = ['ENODATA', 'ENOTFOUND', 'ESERVFAIL', 'EREFUSED'].includes(dnsLookupErrorCode);
+
   if (mxMatched) {
     status = 'ready';
-    summary = 'MX 记录检测成功，当前配置与系统要求一致，域名已启用并可用于收件。';
+    summary = dnsResolverUsed && dnsResolverUsed !== 'system'
+      ? `MX 记录检测成功，已通过备用 DNS 解析器 ${dnsResolverUsed} 确认配置正确，域名已启用并可用于收件。`
+      : 'MX 记录检测成功，当前配置与系统要求一致，域名已启用并可用于收件。';
     nextStep = '现在可以创建邮箱并发送测试邮件。';
-  } else if (dnsLookupError) {
-    status = 'pending';
-    summary = 'DNS 查询失败，暂时无法确认 MX 记录状态。';
-    nextStep = '请确认域名可公开解析，稍后重新检测 DNS。';
   } else if (hasAnyResolvedMx) {
     status = 'mismatch';
     summary = '已检测到 MX 记录，但当前配置与系统要求不一致，域名暂不启用。';
@@ -1136,6 +1221,14 @@ export async function detectDomainDnsStatus(id) {
     status = 'pending';
     summary = '当前域名缺少系统期望的 MX 配置说明，暂无法完成自动校验。';
     nextStep = '请先补充该域名的 MX 指引配置后，再重新检测。';
+  } else if (isNoMxDataError) {
+    status = 'pending';
+    summary = '当前未检测到 MX 记录，域名暂不启用。';
+    nextStep = '请确认该域名根记录已正确添加 MX，且记录值与系统要求一致，等待生效后重新检测。';
+  } else if (dnsLookupError) {
+    status = 'pending';
+    summary = 'DNS 查询失败，暂时无法确认 MX 记录状态。';
+    nextStep = '请确认服务器网络和 DNS 解析器可用，稍后重新检测 DNS。';
   }
 
   return {
@@ -1150,7 +1243,10 @@ export async function detectDomainDnsStatus(id) {
     optionalRecords,
     actualMxRecords: resolvedMxRecords,
     actualMxSummary,
-    dnsLookupErrorCode: dnsLookupError?.code ?? null,
+    dnsResolverUsed,
+    dnsAttemptedResolvers,
+    dnsLookupErrorCode,
+    dnsLookupErrorMessage: dnsLookupError?.message ?? null,
   };
 }
 
