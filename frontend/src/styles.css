@@ -130,6 +130,10 @@ body {
   justify-content: center;
 }
 
+.brand-stack.ant-space {
+  width: 100%;
+}
+
 .brand-action-group.ant-space .ant-space-item {
   display: inline-flex;
 }
@@ -349,6 +353,87 @@ body {
   gap: 12px;
 }
 
+.domain-toolbar-card-responsive.ant-card,
+.mailbox-toolbar-card-responsive.ant-card,
+.mailbox-table-card-responsive.ant-card,
+.message-list-card-responsive.ant-card,
+.message-sidebar-card-responsive.ant-card {
+  width: 100%;
+}
+
+.domain-table-toolbar-responsive,
+.domain-table-toolbar-actions-responsive,
+.mailbox-toolbar-grid-responsive,
+.mailbox-toolbar-inline-actions-responsive,
+.mailbox-inline-retention-form-responsive.ant-form,
+.mailbox-setting-form-actions-responsive,
+.message-detail-layout-responsive,
+.message-workspace-layout-responsive,
+.message-panel-stack-responsive,
+.message-retention-form-responsive,
+.domain-table-section-responsive,
+.page-section-mailboxes,
+.page-section-messages,
+.page-section-api {
+  width: 100%;
+}
+
+.domain-action-group-compact {
+  gap: 8px;
+}
+
+.domain-action-button-compact.ant-btn {
+  min-width: 0;
+}
+
+.message-preview-card-mobile-friendly.ant-card {
+  width: 100%;
+}
+
+.message-preview-header-responsive,
+.message-preview-title-row-responsive,
+.message-preview-meta-responsive,
+.message-preview-actions-responsive,
+.message-preview-tags-responsive,
+.message-preview-delete-button {
+  max-width: 100%;
+}
+
+.message-preview-delete-button.ant-btn {
+  min-height: 32px;
+}
+
+.domain-detail-drawer-responsive .ant-drawer-body {
+  padding-bottom: 20px;
+}
+
+.domain-detail-content-responsive,
+.domain-detail-summary-grid-responsive,
+.domain-detail-toolbar-responsive,
+.dns-record-list-responsive,
+.dns-record-item-responsive,
+.dns-record-head-responsive,
+.dns-record-tag-group,
+.domain-detail-records-card,
+.domain-detail-notes-card {
+  width: 100%;
+}
+
+.message-detail-panel-mobile-friendly,
+.message-detail-actions,
+.message-detail-hero-responsive,
+.message-detail-heading-group,
+.message-detail-info-card,
+.message-body-grid-responsive,
+.message-body-card-responsive,
+.message-body-text-responsive,
+.message-html-preview-responsive,
+.message-detail-code-card,
+.message-detail-attachments-card,
+.message-code-block-responsive {
+  width: 100%;
+}
+
 .section-hero-search.ant-input-affix-wrapper,
 .domain-table-search.ant-input-affix-wrapper {
   width: min(100%, 320px);
@@ -442,7 +527,7 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: 32px 24px;
+  padding: clamp(24px, 5vw, 40px) 24px;
   overflow: hidden;
 }
 
@@ -468,7 +553,9 @@ body {
 .auth-shell-content {
   position: relative;
   z-index: 1;
-  width: min(100%, 480px);
+  width: min(100%, 420px);
+  max-width: calc(100vw - 48px);
+  margin-inline: auto;
 }
 
 .auth-card.ant-card {
@@ -482,7 +569,7 @@ body {
 }
 
 .auth-card .ant-card-body {
-  padding: 32px;
+  padding: 28px 26px;
 }
 
 .auth-form {
@@ -514,39 +601,26 @@ body {
 
 .auth-hero {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   justify-items: center;
+  text-align: center;
+}
+
+.auth-hero-compact {
+  gap: 12px;
 }
 
 .auth-title-block {
   display: grid;
   gap: 8px;
+  max-width: 300px;
   text-align: center;
   justify-items: center;
+  margin-inline: auto;
 }
 
 .auth-title-block .section-eyebrow {
   margin-bottom: 2px;
-}
-
-.auth-subtitle {
-  max-width: 240px;
-  line-height: 1.5;
-}
-
-.auth-feature-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.auth-feature-item {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(248, 251, 255, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .auth-alert.ant-alert {
@@ -554,22 +628,36 @@ body {
 }
 
 .auth-form-shell {
-  padding: 16px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 251, 255, 0.98) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  box-shadow:
-    0 16px 36px rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  width: 100%;
+  padding: 0;
 }
 
-.auth-form-head {
-  display: grid;
-  gap: 4px;
+.auth-shell-responsive,
+.auth-card-stack,
+.auth-hero-responsive,
+.auth-title-block-responsive,
+.auth-form-shell-responsive,
+.auth-form-stack,
+.auth-form-responsive,
+.mailbox-create-modal-responsive,
+.mailbox-create-form-responsive,
+.mailbox-form-panel-responsive,
+.mailbox-mode-group-responsive,
+.mailbox-create-flow,
+.mailbox-preview-card-responsive,
+.mailbox-preview-stack,
+.mailbox-preview-head,
+.mailbox-preview-address-responsive {
+  width: 100%;
 }
 
-.auth-form-caption {
-  margin: 0;
+.auth-shell-content-responsive {
+  width: min(100%, 420px);
+  max-width: calc(100vw - 48px);
+}
+
+.auth-card-responsive {
+  width: 100%;
 }
 
 .auth-loading {
@@ -874,6 +962,10 @@ body {
   max-width: 100%;
 }
 
+.mailbox-selector-responsive {
+  min-width: 0;
+}
+
 .ant-table-wrapper {
   border-radius: 20px;
 }
@@ -886,6 +978,7 @@ body {
 .domain-table-card .ant-table-wrapper,
 .app-content .ant-table-wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .domain-table-card .ant-table,
@@ -1150,6 +1243,15 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
+.mailbox-preview-head {
+  width: 100%;
+  align-items: center;
+}
+
+.mailbox-preview-card-responsive {
+  width: 100%;
+}
+
 .mailbox-preview-address {
   font-family: "Cascadia Code", "Consolas", monospace;
   font-size: 14px;
@@ -1350,6 +1452,16 @@ body {
   max-width: 320px;
 }
 
+.domain-table-section-responsive .ant-table-cell,
+.mailbox-table-responsive .ant-table-cell {
+  white-space: normal;
+}
+
+.domain-table-section-responsive .ant-table-content,
+.mailbox-table-responsive .ant-table-content {
+  -webkit-overflow-scrolling: touch;
+}
+
 .domain-table-status-title.ant-typography {
   color: #0f172a;
   line-height: 1.6;
@@ -1446,6 +1558,17 @@ body {
   gap: 10px;
 }
 
+.domain-detail-heading-group,
+.message-detail-heading-group {
+  width: 100%;
+  align-items: flex-start;
+}
+
+.domain-detail-toolbar-responsive,
+.message-detail-actions {
+  width: 100%;
+}
+
 .setup-step-card {
   padding: 14px 16px;
   border-radius: 16px;
@@ -1509,6 +1632,10 @@ body {
   max-width: 92vw;
 }
 
+.domain-detail-drawer-responsive .ant-drawer-header-title {
+  align-items: center;
+}
+
 .message-detail-panel.ant-card {
   min-height: 100%;
 }
@@ -1527,6 +1654,11 @@ body {
 
 .ant-table-wrapper .ant-table-thead > tr > th {
   background: #f8fbff;
+}
+
+.mailbox-table-responsive .ant-table-selection-column,
+.domain-table-card-responsive .ant-table-cell {
+  vertical-align: top;
 }
 
 .ant-table-wrapper .ant-table-tbody > tr > td {
@@ -1618,6 +1750,21 @@ body {
   .message-detail-panel .ant-card-extra {
     margin-inline-start: 0;
   }
+
+  .page-section-mailboxes,
+  .page-section-messages,
+  .page-section-api {
+    gap: 12px;
+  }
+
+  .mailbox-toolbar-grid-responsive {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mailbox-toolbar-inline-actions-responsive,
+  .mailbox-setting-form-actions-responsive {
+    width: 100%;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1626,12 +1773,25 @@ body {
   }
 
   .brand-block {
-    padding: 20px 18px 16px;
+    padding: 14px 14px 10px;
   }
 
   .brand-surface {
-    padding: 20px 16px;
+    padding: 14px 14px 12px;
     border-radius: 18px;
+  }
+
+  .brand-stack.ant-space {
+    gap: 10px !important;
+  }
+
+  .app-brand-logo.ant-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .app-brand-title.ant-typography {
+    font-size: 18px;
   }
 
   .brand-action-group.ant-space,
@@ -1640,9 +1800,13 @@ body {
     width: 100%;
   }
 
+  .brand-action-button.ant-btn {
+    min-width: 0;
+  }
+
   .side-panel {
-    margin: 0 18px 12px;
-    padding: 10px;
+    margin: 0 14px 10px;
+    padding: 8px;
   }
 
   .section-segmented.ant-segmented {
@@ -1654,13 +1818,22 @@ body {
     display: flex;
     flex-direction: row;
     min-width: max-content;
+    gap: 4px;
+  }
+
+  .section-segmented.ant-segmented .ant-segmented-item {
+    flex: 0 0 auto;
   }
 
   .nav-option {
-    min-height: 38px;
-    padding: 7px 8px;
+    min-height: 36px;
+    padding: 6px 8px;
     font-size: 12px;
     gap: 8px;
+  }
+
+  .nav-option-text {
+    white-space: nowrap;
   }
 
   .nav-option-icon {
@@ -1675,7 +1848,8 @@ body {
   .section-hero-actions,
   .domain-table-toolbar,
   .domain-table-toolbar-actions,
-  .mailbox-selector {
+  .mailbox-selector,
+  .mailbox-selector-responsive {
     width: 100%;
   }
 
@@ -1687,6 +1861,7 @@ body {
   }
 
   .mailbox-toolbar-grid,
+  .mailbox-toolbar-grid-responsive,
   .mailbox-setting-summary,
   .mailbox-setting-form-grid,
   .mailbox-setting-summary-compact {
@@ -1696,7 +1871,8 @@ body {
   .section-hero-actions-slot,
   .section-hero-actions,
   .domain-table-toolbar-actions,
-  .mailbox-toolbar-inline-actions {
+  .mailbox-toolbar-inline-actions,
+  .mailbox-toolbar-inline-actions-responsive {
     width: 100%;
     justify-content: stretch;
   }
@@ -1706,11 +1882,14 @@ body {
   .section-hero-actions .ant-btn,
   .section-hero-actions .ant-select,
   .mailbox-section-hero-actions,
+  .mailbox-section-hero-actions-compact,
   .mailbox-section-hero-actions .ant-btn,
   .domain-table-toolbar-actions .ant-btn,
   .mailbox-toolbar-inline-actions,
   .mailbox-toolbar-inline-actions .ant-btn,
+  .mailbox-toolbar-inline-actions-responsive .ant-btn,
   .mailbox-inline-retention-form,
+  .mailbox-inline-retention-form-responsive,
   .mailbox-inline-retention-form .ant-form-item,
   .mailbox-inline-retention-form .ant-input,
   .mailbox-inline-retention-form .ant-select,
@@ -1718,9 +1897,27 @@ body {
     width: 100%;
   }
 
+  .mailbox-inline-retention-form.ant-form,
+  .mailbox-inline-retention-form-responsive.ant-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .mailbox-inline-retention-form.ant-form .ant-form-item:last-child,
+  .mailbox-inline-retention-form-responsive.ant-form .ant-form-item:last-child {
+    grid-column: span 1;
+  }
+
   .auth-shell {
     padding: 18px;
-    align-items: stretch;
+    align-items: center;
+  }
+
+  .auth-shell-content {
+    display: flex;
+    justify-content: center;
   }
 
   .auth-shell::before {
@@ -1737,12 +1934,21 @@ body {
     border-radius: 22px;
   }
 
-  .auth-card .ant-card-body {
+  .auth-card .ant-card-body,
+  .auth-card-responsive .ant-card-body {
     padding: 22px 18px;
   }
 
-  .auth-feature-list {
-    grid-template-columns: 1fr;
+  .auth-card-stack {
+    gap: 16px !important;
+  }
+
+  .auth-hero-responsive {
+    gap: 10px;
+  }
+
+  .auth-title-block-responsive {
+    gap: 6px;
   }
 
   .domain-table-card .ant-card-body,
@@ -1846,7 +2052,8 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .mailbox-mode-group.ant-radio-group {
+  .mailbox-mode-group.ant-radio-group,
+  .mailbox-mode-group-responsive.ant-radio-group {
     grid-template-columns: 1fr;
   }
 
@@ -1866,6 +2073,21 @@ body {
     font-size: 14px;
   }
 
+  .message-workspace-layout-responsive {
+    margin-inline: 0;
+  }
+
+  .message-list-card-responsive .ant-card-head,
+  .message-sidebar-card-responsive .ant-card-head,
+  .mailbox-table-card-responsive .ant-card-head {
+    padding-inline: 14px;
+  }
+
+  .message-list-card-responsive .ant-card-extra,
+  .mailbox-table-card-responsive .ant-card-extra {
+    margin-inline-start: 0;
+  }
+
   .ant-card {
     border-radius: 20px;
   }
@@ -1874,7 +2096,7 @@ body {
 @media (max-width: 576px) {
   .app-content.ant-layout-content,
   .auth-shell {
-    padding: 14px;
+    padding: 12px;
   }
 
   .section-hero-toolbar,
@@ -1892,12 +2114,12 @@ body {
   }
 
   .brand-block {
-    padding: 14px 14px 10px;
+    padding: 10px 10px 8px;
   }
 
   .side-panel {
-    margin: 0 14px 10px;
-    padding: 8px;
+    margin: 0 10px 8px;
+    padding: 6px;
   }
 
   .brand-surface,
@@ -1907,18 +2129,30 @@ body {
   }
 
   .brand-surface {
-    padding: 16px 14px;
+    padding: 12px 12px 10px;
+  }
+
+  .brand-stack.ant-space {
+    gap: 8px !important;
   }
 
   .brand-action-group.ant-space {
     gap: 8px;
   }
 
+  .page-toolbar-card.ant-card .ant-card-body,
+  .page-toolbar-card-minimal.ant-card .ant-card-body {
+    padding: 12px;
+  }
+
   .domain-table-card .ant-card-body,
   .message-detail-panel .ant-card-body,
   .auth-card .ant-card-body,
-  .api-hero-card .ant-card-body {
-    padding: 16px 14px;
+  .api-hero-card .ant-card-body,
+  .mailbox-toolbar-card.ant-card .ant-card-body,
+  .message-sidebar-card.ant-card .ant-card-body,
+  .message-list-card.ant-card .ant-card-body {
+    padding: 14px 12px;
   }
 
   .message-summary-panel,
@@ -1932,20 +2166,67 @@ body {
   }
 
   .mailbox-setting-summary,
-  .mailbox-setting-form-grid {
+  .mailbox-setting-form-grid,
+  .mailbox-inline-retention-form.ant-form,
+  .mailbox-inline-retention-form-responsive.ant-form {
     grid-template-columns: 1fr;
   }
 
+  .auth-card-stack {
+    gap: 14px !important;
+  }
+
+  .auth-title-block-responsive .section-eyebrow {
+    margin-bottom: 0;
+  }
+
+  .mailbox-create-flow {
+    gap: 12px !important;
+  }
+
+  .mailbox-preview-head {
+    align-items: flex-start;
+  }
+
+  .mailbox-preview-address-responsive {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
   .auth-logo {
-    width: 56px;
-    height: 56px;
-    border-radius: 18px;
-    font-size: 22px;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    font-size: 20px;
   }
 
   .domain-table-card .ant-table,
+  .mailbox-table-responsive .ant-table,
   .app-content .ant-table {
-    min-width: 640px;
+    min-width: 560px;
+  }
+
+  .mailbox-action-group.ant-space {
+    gap: 8px !important;
+  }
+
+  .mailbox-action-link.ant-btn,
+  .mailbox-action-danger.ant-btn {
+    min-height: 36px;
+  }
+
+  .message-preview-card.ant-card .ant-card-body {
+    padding: 12px 14px;
+  }
+
+  .message-preview-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .message-preview-actions .ant-btn {
+    align-self: flex-start;
   }
 
   .ant-drawer .ant-drawer-content-wrapper,
@@ -1959,23 +2240,31 @@ body {
   .mailbox-create-modal .ant-modal-content,
   .ant-modal,
   .ant-modal .ant-modal-content {
-    width: calc(100vw - 24px) !important;
-    max-width: calc(100vw - 24px);
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
   }
 
   .mailbox-create-modal .ant-modal-content,
   .ant-modal .ant-modal-content {
-    padding: 16px 14px;
+    padding: 14px 12px;
   }
 
   .ant-modal .ant-modal-header {
-    margin-bottom: 14px;
-    padding-bottom: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
   }
 
   .ant-modal .ant-modal-footer {
-    margin-top: 16px;
-    padding-top: 12px;
+    margin-top: 14px;
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .ant-modal .ant-modal-footer .ant-btn {
+    width: 100%;
+    margin-inline-start: 0 !important;
   }
 
   .domain-detail-drawer .ant-drawer-content-wrapper {
@@ -1984,7 +2273,7 @@ body {
 
   .domain-detail-drawer .ant-drawer-header,
   .domain-detail-drawer .ant-drawer-body {
-    padding-inline: 14px;
+    padding-inline: 12px;
   }
 
   .message-body-text,

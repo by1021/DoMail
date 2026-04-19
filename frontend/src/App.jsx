@@ -78,7 +78,13 @@ function WorkspaceBrand({ loading = false, onRefresh = null, onLogout = null }) 
   return (
     <div className="brand-block">
       <div className="brand-surface">
-        <Space direction="vertical" size={14} style={{ width: '100%' }} align="center">
+        <Space
+          direction="vertical"
+          size={14}
+          style={{ width: '100%' }}
+          align="center"
+          className="brand-stack"
+        >
           <Avatar size={56} icon={<ThunderboltOutlined />} className="app-brand-logo" />
           <div className="brand-copy">
             <Title level={4} className="app-brand-title" style={{ margin: 0 }}>
@@ -840,7 +846,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
   return (
     <Layout className="app-shell app-shell-responsive">
-      <Sider width={320} theme="light" className="app-sider">
+      <Sider width={320} theme="light" breakpoint="lg" collapsedWidth="0" className="app-sider">
         <WorkspaceBrand loading={loading} onRefresh={loadData} onLogout={onLogout} />
 
         <div className="side-panel side-panel-navigation">
@@ -872,14 +878,19 @@ export default function App({ adminProfile = null, onLogout = null }) {
             )}
 
             {section === 'mailboxes' && (
-              <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
+              <Space
+                direction="vertical"
+                size={16}
+                style={{ width: '100%' }}
+                className="page-section page-section-mailboxes"
+              >
                 <SectionHero
                   title="邮箱"
                   searchPlaceholder={SECTION_META.mailboxes.searchPlaceholder}
                   searchValue={sectionSearchText.mailboxes}
                   onSearchChange={(value) => updateSectionSearch('mailboxes', value)}
                   actions={(
-                    <Space wrap className="mailbox-section-hero-actions">
+                    <Space wrap size={[10, 10]} className="mailbox-section-hero-actions mailbox-section-hero-actions-compact">
                       <Button
                         className="domain-action-button"
                         onClick={() => openMailboxModal({ random: true })}
@@ -900,8 +911,8 @@ export default function App({ adminProfile = null, onLogout = null }) {
                   )}
                 />
 
-                <Card className="mailbox-toolbar-card" title="批量操作">
-                  <div className="mailbox-toolbar-inline mailbox-toolbar-grid">
+                <Card className="mailbox-toolbar-card mailbox-toolbar-card-responsive" title="批量操作">
+                  <div className="mailbox-toolbar-inline mailbox-toolbar-grid mailbox-toolbar-grid-responsive">
                     <div className="mailbox-toolbar-inline-copy">
                       <Text strong>
                         {isBatchRetentionUsingSelection
@@ -918,7 +929,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
                       layout="inline"
                       initialValues={{ retentionValue: null, retentionUnit: 'hour' }}
                       onFinish={handleBatchUpdateRetention}
-                      className="retention-form mailbox-inline-retention-form"
+                      className="retention-form mailbox-inline-retention-form mailbox-inline-retention-form-responsive"
                     >
                       <Form.Item name="retentionValue">
                         <Input
@@ -939,7 +950,11 @@ export default function App({ adminProfile = null, onLogout = null }) {
                       </Form.Item>
                     </Form>
 
-                    <Space wrap size={[10, 10]} className="mailbox-toolbar-inline-actions">
+                    <Space
+                      wrap
+                      size={[10, 10]}
+                      className="mailbox-toolbar-inline-actions mailbox-toolbar-inline-actions-responsive"
+                    >
                       <Button
                         type="primary"
                         className="domain-action-button domain-action-button-accent"
@@ -984,25 +999,31 @@ export default function App({ adminProfile = null, onLogout = null }) {
                 </Card>
 
                 <Card
-                  className="mailbox-table-card"
+                  className="mailbox-table-card mailbox-table-card-responsive"
                   title="邮箱列表"
                   extra={<Text type="secondary">{filteredMailboxes.length} 个结果</Text>}
                 >
                   <Table
-                    className="mailbox-table"
+                    className="mailbox-table mailbox-table-responsive"
                     rowKey="id"
                     rowSelection={mailboxRowSelection}
                     columns={mailboxColumns}
                     dataSource={filteredMailboxes}
                     locale={{ emptyText: '暂无邮箱，请先创建域名后新增邮箱。' }}
                     pagination={false}
+                    scroll={{ x: 760 }}
                   />
                 </Card>
               </Space>
             )}
 
             {section === 'messages' && (
-              <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
+              <Space
+                direction="vertical"
+                size={16}
+                style={{ width: '100%' }}
+                className="page-section page-section-messages"
+              >
                 <SectionHero
                   title="邮件"
                   searchPlaceholder={messageDetail ? '' : SECTION_META.messages.searchPlaceholder}
@@ -1010,12 +1031,12 @@ export default function App({ adminProfile = null, onLogout = null }) {
                   onSearchChange={messageDetail ? null : (value) => updateSectionSearch('messages', value)}
                   actions={
                     messageDetail ? null : (
-                      <Space wrap className="mailbox-section-hero-actions">
+                      <Space wrap size={[10, 10]} className="mailbox-section-hero-actions mailbox-section-hero-actions-compact">
                         <Select
                           aria-label="选择邮箱"
                           value={selectedMailboxAddress}
                           onChange={(value) => loadMessages(value, { keepSection: true })}
-                          className="mailbox-selector"
+                          className="mailbox-selector mailbox-selector-responsive"
                           placeholder="选择邮箱"
                           options={mailboxes.map((item) => ({
                             label: item.address,
@@ -1028,7 +1049,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
                 />
 
                 {messageDetail ? (
-                  <div className="message-detail-layout">
+                  <div className="message-detail-layout message-detail-layout-responsive">
                     <MessageDetailDrawer
                       messageDetail={messageDetail}
                       onDeleteMessage={handleDeleteMessage}
@@ -1038,11 +1059,11 @@ export default function App({ adminProfile = null, onLogout = null }) {
                   </div>
                 ) : (
                   <>
-                    <Row gutter={[16, 16]} align="top" className="message-workspace-layout">
+                    <Row gutter={[16, 16]} align="top" className="message-workspace-layout message-workspace-layout-responsive">
                       <Col xs={24} xl={15}>
                         <Card
                           title="收件列表"
-                          className="message-list-card"
+                          className="message-list-card message-list-card-responsive"
                           extra={<Tag color={unreadCount ? 'error' : 'success'}>{unreadCount} 未读</Tag>}
                         >
                           {filteredMessages.length === 0 ? (
@@ -1065,9 +1086,14 @@ export default function App({ adminProfile = null, onLogout = null }) {
                       </Col>
 
                       <Col xs={24} xl={9}>
-                        <Card title="当前邮箱" className="message-sidebar-card">
+                        <Card title="当前邮箱" className="message-sidebar-card message-sidebar-card-responsive">
                           {selectedMailbox ? (
-                            <Space direction="vertical" size={14} style={{ width: '100%' }} className="message-panel-stack">
+                            <Space
+                              direction="vertical"
+                              size={14}
+                              style={{ width: '100%' }}
+                              className="message-panel-stack message-panel-stack-responsive"
+                            >
                               <div className="mailbox-setting-summary mailbox-setting-summary-compact">
                                 <div className="mailbox-setting-summary-item">
                                   <Text type="secondary">邮箱地址</Text>
@@ -1101,7 +1127,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
                                 layout="vertical"
                                 onFinish={handleUpdateMessageRetention}
                                 initialValues={{ retentionValue: null, retentionUnit: 'hour' }}
-                                className="retention-form message-retention-form"
+                                className="retention-form message-retention-form message-retention-form-responsive"
                               >
                                 <div className="mailbox-setting-form-grid">
                                   <Form.Item name="retentionValue" label="邮件自动清理时间">
@@ -1122,7 +1148,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
                                     />
                                   </Form.Item>
                                 </div>
-                                <Space wrap className="mailbox-setting-form-actions">
+                                <Space wrap size={[10, 10]} className="mailbox-setting-form-actions mailbox-setting-form-actions-responsive">
                                   <Button type="primary" icon={<SettingOutlined />} htmlType="submit">
                                     保存设置
                                   </Button>
@@ -1149,7 +1175,12 @@ export default function App({ adminProfile = null, onLogout = null }) {
             )}
 
             {section === 'api' && (
-              <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section">
+              <Space
+                direction="vertical"
+                size={16}
+                style={{ width: '100%' }}
+                className="page-section page-section-api"
+              >
                 <SectionHero
                   title="API"
                   searchPlaceholder={SECTION_META.api.searchPlaceholder}
@@ -1277,6 +1308,7 @@ Authorization: Bearer {'<token>'}
                     columns={apiTokenColumns}
                     dataSource={filteredApiTokens}
                     pagination={false}
+                    scroll={{ x: 680 }}
                     locale={{ emptyText: '还没有 API Token，请先创建一个。' }}
                   />
                 </Card>

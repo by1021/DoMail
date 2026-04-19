@@ -31,9 +31,9 @@ export default function MessageDetailDrawer({
   return (
     <Card
       title="当前邮件详情"
-      className="message-detail-panel message-detail-panel-responsive"
+      className="message-detail-panel message-detail-panel-responsive message-detail-panel-mobile-friendly"
       extra={
-        <Space wrap>
+        <Space wrap size={[8, 8]} className="message-detail-actions">
           {onBack ? <Button onClick={onBack}>返回列表</Button> : null}
           <Popconfirm title="确认删除这封邮件？" onConfirm={() => onDeleteMessage(messageDetail.id)}>
             <Button danger icon={<DeleteOutlined />}>
@@ -44,9 +44,9 @@ export default function MessageDetailDrawer({
       }
     >
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Card className="message-detail-hero">
+        <Card className="message-detail-hero message-detail-hero-responsive">
           <Space direction="vertical" size={10} style={{ width: '100%' }}>
-            <Space wrap>
+            <Space wrap size={[8, 8]} className="message-detail-heading-group">
               <Title level={4} style={{ margin: 0 }}>
                 {messageDetail.subject || '(no subject)'}
               </Title>
@@ -65,7 +65,7 @@ export default function MessageDetailDrawer({
           </Space>
         </Card>
 
-        <Card title="基础信息">
+        <Card title="基础信息" className="message-detail-info-card">
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="收件邮箱">{messageDetail.address}</Descriptions.Item>
             <Descriptions.Item label="Envelope To">{messageDetail.envelopeTo || '-'}</Descriptions.Item>
@@ -74,10 +74,10 @@ export default function MessageDetailDrawer({
           </Descriptions>
         </Card>
 
-        <div className="message-body-grid">
-          <Card title="邮件正文" className="message-body-card">
+        <div className="message-body-grid message-body-grid-responsive">
+          <Card title="邮件正文" className="message-body-card message-body-card-responsive">
             {messageDetail.text ? (
-              <div className="message-body-text">
+              <div className="message-body-text message-body-text-responsive">
                 {messageDetail.text.split(/\r?\n/).map((line, index) => (
                   <p key={`${index}-${line}`}>{line || '\u00A0'}</p>
                 ))}
@@ -87,10 +87,10 @@ export default function MessageDetailDrawer({
             )}
           </Card>
 
-          <Card title="HTML 预览" className="message-body-card">
+          <Card title="HTML 预览" className="message-body-card message-body-card-responsive">
             {messageDetail.html ? (
               <div
-                className="message-html-preview"
+                className="message-html-preview message-html-preview-responsive"
                 dangerouslySetInnerHTML={{ __html: messageDetail.html }}
               />
             ) : (
@@ -99,11 +99,11 @@ export default function MessageDetailDrawer({
           </Card>
         </div>
 
-        <Card title="HTML 源码">
-          <pre className="message-code-block">{messageDetail.html || '(empty)'}</pre>
+        <Card title="HTML 源码" className="message-detail-code-card">
+          <pre className="message-code-block message-code-block-responsive">{messageDetail.html || '(empty)'}</pre>
         </Card>
 
-        <Card title="附件元数据">
+        <Card title="附件元数据" className="message-detail-attachments-card">
           {messageDetail.attachments?.length ? (
             <List
               dataSource={messageDetail.attachments}

@@ -16,36 +16,22 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
   const [form] = Form.useForm();
 
   return (
-    <div className="auth-shell">
+    <div className="auth-shell auth-shell-responsive">
       <div className="auth-shell-background" />
-      <div className="auth-shell-content">
-        <Card className="auth-card">
-          <Space direction="vertical" size={24} style={{ width: '100%' }}>
-            <div className="auth-hero">
+      <div className="auth-shell-content auth-shell-content-responsive">
+        <Card className="auth-card auth-card-responsive">
+          <Space direction="vertical" size={20} style={{ width: '100%' }} className="auth-card-stack">
+            <div className="auth-hero auth-hero-compact auth-hero-responsive">
               <div className="auth-logo">
                 <ThunderboltOutlined />
               </div>
-              <div className="auth-title-block">
+              <div className="auth-title-block auth-title-block-responsive">
                 <Text type="secondary" className="section-eyebrow">
                   DoMail
                 </Text>
                 <Title level={3} style={{ margin: 0 }}>
-                  登录
+                  域名邮箱登录
                 </Title>
-                <Text type="secondary" className="auth-subtitle">
-                  输入账号和密码后进入域名邮箱界面。
-                </Text>
-              </div>
-            </div>
-
-            <div className="auth-feature-list">
-              <div className="auth-feature-item">
-                <Text strong>域名与邮箱</Text>
-                <Text type="secondary">集中查看和处理收件相关内容。</Text>
-              </div>
-              <div className="auth-feature-item">
-                <Text strong>安全登录</Text>
-                <Text type="secondary">登录后可刷新数据并退出。</Text>
               </div>
             </div>
 
@@ -59,17 +45,13 @@ function LoginPage({ loading, submitting, errorMessage, onSubmit }) {
               />
             ) : null}
 
-            <div className="auth-form-shell">
-              <Space direction="vertical" size={14} style={{ width: '100%' }}>
-                <Text type="secondary" className="auth-form-caption">
-                  请使用账号登录。
-                </Text>
-
+            <div className="auth-form-shell auth-form-shell-responsive">
+              <Space direction="vertical" size={12} style={{ width: '100%' }} className="auth-form-stack">
                 <Spin spinning={loading}>
                   <Form
                     form={form}
                     layout="vertical"
-                    className="auth-form"
+                    className="auth-form auth-form-responsive"
                     onFinish={onSubmit}
                     initialValues={{
                       username: '',

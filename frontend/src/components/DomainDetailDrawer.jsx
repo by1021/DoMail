@@ -7,9 +7,9 @@ const { Title, Text } = Typography;
 
 function renderDnsRecordItem(record, index) {
   return (
-    <div className="dns-record-item" key={`${record.type}-${record.name}-${index}`}>
-      <div className="dns-record-head">
-        <Space wrap>
+    <div className="dns-record-item dns-record-item-responsive" key={`${record.type}-${record.name}-${index}`}>
+      <div className="dns-record-head dns-record-head-responsive">
+        <Space wrap size={[6, 6]} className="dns-record-tag-group">
           <Tag color="blue">{record.type}</Tag>
           <Text strong>{record.name}</Text>
           {record.priority !== undefined ? <Tag color="purple">优先级 {record.priority}</Tag> : null}
@@ -47,13 +47,18 @@ export default function DomainDetailDrawer({
       width={720}
       open={open}
       onClose={onClose}
-      className="domain-detail-drawer"
+      className="domain-detail-drawer domain-detail-drawer-responsive"
     >
       {domainDetail ? (
-        <Space direction="vertical" size={16} style={{ width: '100%' }} className="domain-detail-content">
+        <Space
+          direction="vertical"
+          size={16}
+          style={{ width: '100%' }}
+          className="domain-detail-content domain-detail-content-responsive"
+        >
           <Card className="domain-detail-hero">
             <Space direction="vertical" size={14} style={{ width: '100%' }}>
-              <Space wrap>
+              <Space wrap size={[8, 8]} className="domain-detail-heading-group">
                 <Title level={4} style={{ margin: 0 }}>
                   {domainDetail.domain}
                 </Title>
@@ -65,26 +70,26 @@ export default function DomainDetailDrawer({
 
               <Text type="secondary">{domainDetail.setupNote || domainDetail.note || '暂无额外说明'}</Text>
 
-              <div className="domain-detail-summary-grid">
-                <div className="domain-detail-summary-item">
+              <div className="domain-detail-summary-grid domain-detail-summary-grid-responsive">
+                <div className="domain-detail-summary-item domain-detail-summary-item-responsive">
                   <Text type="secondary">当前状态</Text>
                   <Text strong>{statusMeta.label}</Text>
                 </div>
-                <div className="domain-detail-summary-item">
+                <div className="domain-detail-summary-item domain-detail-summary-item-responsive">
                   <Text type="secondary">最小记录</Text>
                   <Text strong>{domainDetail.dnsRecords?.length || 0} 条</Text>
                 </div>
-                <div className="domain-detail-summary-item">
+                <div className="domain-detail-summary-item domain-detail-summary-item-responsive">
                   <Text type="secondary">MX 主机名</Text>
                   <Text strong>{domainDetail.mxHost || domainDetail.smtpHost || `mail.${domainDetail.domain}`}</Text>
                 </div>
-                <div className="domain-detail-summary-item">
+                <div className="domain-detail-summary-item domain-detail-summary-item-responsive">
                   <Text type="secondary">最近更新</Text>
                   <Text strong>{formatDateTime(domainDetail.updatedAt)}</Text>
                 </div>
               </div>
 
-              <div className="domain-detail-toolbar">
+              <div className="domain-detail-toolbar domain-detail-toolbar-responsive">
                 <Button
                   type="primary"
                   ghost
@@ -100,9 +105,13 @@ export default function DomainDetailDrawer({
             </Space>
           </Card>
 
-          <Card title="最小必需记录" extra={<Tag color="processing">{domainDetail.dnsRecords?.length || 0} 条</Tag>}>
+          <Card
+            title="最小必需记录"
+            className="domain-detail-records-card"
+            extra={<Tag color="processing">{domainDetail.dnsRecords?.length || 0} 条</Tag>}
+          >
             {domainDetail.dnsRecords?.length ? (
-              <div className="dns-record-list">
+              <div className="dns-record-list dns-record-list-responsive">
                 {domainDetail.dnsRecords.map((record, index) => renderDnsRecordItem(record, index))}
               </div>
             ) : (
@@ -110,7 +119,7 @@ export default function DomainDetailDrawer({
             )}
           </Card>
 
-          <Card title="补充说明">
+          <Card title="补充说明" className="domain-detail-notes-card">
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
               <Text type="secondary">
                 {domainDetail.dnsCheck?.summary || domainDetail.setupNote || statusMeta.summary}

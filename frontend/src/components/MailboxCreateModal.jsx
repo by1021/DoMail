@@ -37,16 +37,16 @@ export default function MailboxCreateModal({
       confirmLoading={submitting}
       onCancel={onCancel}
       onOk={() => form.submit()}
-      className="mailbox-create-modal"
+      className="mailbox-create-modal mailbox-create-modal-responsive"
     >
       <Form
         form={form}
         layout="vertical"
-        className="mailbox-create-form"
+        className="mailbox-create-form mailbox-create-form-responsive"
         initialValues={{ random: false }}
         onFinish={onSubmit}
       >
-        <div className="mailbox-form-panel">
+        <div className="mailbox-form-panel mailbox-form-panel-responsive">
           <Space direction="vertical" size={6} style={{ width: '100%' }}>
             <Text strong>创建流程</Text>
             <Paragraph type="secondary" style={{ margin: 0 }}>
@@ -69,7 +69,7 @@ export default function MailboxCreateModal({
         </Form.Item>
 
         <Form.Item label="生成方式" name="random">
-          <Radio.Group className="mailbox-mode-group">
+          <Radio.Group className="mailbox-mode-group mailbox-mode-group-responsive">
             <Radio.Button value={false}>自定义前缀</Radio.Button>
             <Radio.Button value={true}>随机前缀</Radio.Button>
           </Radio.Group>
@@ -82,7 +82,12 @@ export default function MailboxCreateModal({
             const localPart = getFieldValue('localPart');
 
             return (
-              <Space direction="vertical" size={14} style={{ width: '100%' }}>
+              <Space
+                direction="vertical"
+                size={14}
+                style={{ width: '100%' }}
+                className="mailbox-create-flow"
+              >
                 <Alert
                   type={random ? 'success' : 'info'}
                   showIcon
@@ -105,15 +110,20 @@ export default function MailboxCreateModal({
                   </Form.Item>
                 ) : null}
 
-                <div className="mailbox-preview-card">
-                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                    <Space wrap>
+                <div className="mailbox-preview-card mailbox-preview-card-responsive">
+                  <Space
+                    direction="vertical"
+                    size={8}
+                    style={{ width: '100%' }}
+                    className="mailbox-preview-stack"
+                  >
+                    <Space wrap size={[6, 6]} className="mailbox-preview-head">
                       <Text strong>邮箱预览</Text>
                       <Tag color={random ? 'green' : 'blue'}>
                         {random ? '随机前缀' : '自定义前缀'}
                       </Tag>
                     </Space>
-                    <Text className="mailbox-preview-address">
+                    <Text className="mailbox-preview-address mailbox-preview-address-responsive">
                       {buildPreviewAddress(domain, localPart, random)}
                     </Text>
                   </Space>

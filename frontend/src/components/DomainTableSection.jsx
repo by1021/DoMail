@@ -11,7 +11,7 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, on
       title: '域名',
       dataIndex: 'domain',
       key: 'domain',
-      width: 260,
+      width: 220,
       render: (value, record) => {
         const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
 
@@ -35,7 +35,7 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, on
     {
       title: '状态',
       key: 'status',
-      width: 320,
+      width: 260,
       render: (_, record) => {
         const statusMeta = getDomainStatusMeta(record, domainDnsStatus[record.id]);
 
@@ -54,7 +54,7 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, on
     {
       title: '更新时间',
       key: 'updatedAt',
-      width: 180,
+      width: 160,
       render: (_, record) => (
         <div className="domain-table-cell-stack domain-table-updated-cell">
           <Text className="domain-table-updated-at">
@@ -69,19 +69,24 @@ function createDomainColumns({ domainDnsStatus, formatDateTime, onOpenDetail, on
     {
       title: '操作',
       key: 'actions',
-      width: 220,
+      width: 180,
       render: (_, record) => (
-        <div className="domain-action-group domain-action-group-inline">
+        <div className="domain-action-group domain-action-group-inline domain-action-group-compact">
           <Button
             type="default"
             icon={<EyeOutlined />}
-            className="domain-action-button domain-action-button-accent"
+            className="domain-action-button domain-action-button-accent domain-action-button-compact"
             onClick={() => onOpenDetail(record.id)}
           >
             查看详情
           </Button>
           <Popconfirm title="确认删除该域名？" onConfirm={() => onDeleteDomain(record.id)}>
-            <Button danger type="default" icon={<DeleteOutlined />} className="domain-action-button domain-action-button-danger">
+            <Button
+              danger
+              type="default"
+              icon={<DeleteOutlined />}
+              className="domain-action-button domain-action-button-danger domain-action-button-compact"
+            >
               删除
             </Button>
           </Popconfirm>
@@ -108,9 +113,14 @@ export default function DomainTableSection({
     onDeleteDomain,
   });
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }} className="page-section domain-table-section">
-      <Card className="page-toolbar-card page-toolbar-card-minimal">
-        <div className="domain-table-toolbar domain-table-toolbar-minimal">
+    <Space
+      direction="vertical"
+      size={16}
+      style={{ width: '100%' }}
+      className="page-section domain-table-section domain-table-section-responsive"
+    >
+      <Card className="page-toolbar-card page-toolbar-card-minimal domain-toolbar-card-responsive">
+        <div className="domain-table-toolbar domain-table-toolbar-minimal domain-table-toolbar-responsive">
           <div className="section-hero-search-slot">
             <Input
               aria-label="域名搜索"
@@ -123,12 +133,12 @@ export default function DomainTableSection({
             />
           </div>
           <div className="section-hero-actions-slot">
-            <div className="domain-table-toolbar-actions">
+            <div className="domain-table-toolbar-actions domain-table-toolbar-actions-responsive">
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={onCreateDomain}
-                className="domain-action-button domain-action-button-accent"
+                className="domain-action-button domain-action-button-accent domain-action-button-compact"
               >
                 新建域名
               </Button>
@@ -137,13 +147,14 @@ export default function DomainTableSection({
         </div>
       </Card>
 
-      <Card className="domain-table-card">
+      <Card className="domain-table-card domain-table-card-responsive">
         <Table
           rowKey="id"
           columns={columns}
           dataSource={domains}
           locale={{ emptyText: '暂无域名，先添加一个域名。' }}
           pagination={false}
+          scroll={{ x: 620 }}
         />
       </Card>
     </Space>
