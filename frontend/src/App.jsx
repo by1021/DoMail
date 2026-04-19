@@ -69,6 +69,10 @@ import {
   SECTION_META,
   buildSectionOptions,
 } from './app-config.jsx';
+import {
+  buildMailboxRequestPayload,
+  getMailboxCreateInitialValues,
+} from './mailbox-create-utils.js';
 
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -535,17 +539,18 @@ export default function App({ adminProfile = null, onLogout = null }) {
   async function handleCreateMailbox(values) {
     try {
       setSubmitting(true);
-      await createMailbox({
-        domain: values.domain,
-        localPart: values.random ? undefined : values.localPart,
-        random: values.random,
-      });
+      await createMailbox(buildMailboxRequestPayload(values));
       message.success('邮箱已创建');
       setMailboxModalOpen(false);
       mailboxForm.resetFields();
       await loadData();
     } catch (error) {
-      message.error(extractErrorMessage(error, '创建邮箱失败'));
+      const errorCode = error?.response?.data?.error?.code;
+      const fallbackMessage = errorCode === 'MAILBOX_ALREADY_EXISTS'
+        ? '该邮箱已存在，请更换前缀或子域名后重试'
+        : '创建邮箱失败';
+
+      message.error(extractErrorMessage(error, fallbackMessage));
     } finally {
       setSubmitting(false);
     }
@@ -749,14 +754,8 @@ export default function App({ adminProfile = null, onLogout = null }) {
       align: 'center',
       render: (value, record) => (
         <div className="mailbox-table-cell-stack mailbox-table-address-cell domain-table-cell-centered">
-          <Space wrap size={[8, 8]} className="mailbox-table-address-head">
+          <Space wrap size={[6, 6]} className="mailbox-table-address-head">
             <Text strong className="mailbox-table-primary-text mailbox-table-address-text">{value}</Text>
-            <Tag
-              color={record.source?.includes('random') ? 'blue' : 'purple'}
-              className="mailbox-table-inline-tag mailbox-table-source-tag"
-            >
-              {record.source === 'random' ? '随机前缀' : '自定义前缀'}
-            </Tag>
           </Space>
           <Text type="secondary" className="mailbox-table-secondary-text">
             域名：{record.domain}
@@ -887,11 +886,12 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
   function openMailboxModal(defaults = {}) {
     mailboxForm.resetFields();
-    mailboxForm.setFieldsValue({
-      domain: defaults.domain ?? domains[0]?.domain,
-      random: false,
-      ...defaults,
-    });
+    mailboxForm.setFieldsValue(
+      getMailboxCreateInitialValues({
+        domain: defaults.domain ?? domains[0]?.domain,
+        ...defaults,
+      }),
+    );
     setMailboxModalOpen(true);
   }
 
@@ -955,17 +955,10 @@ export default function App({ adminProfile = null, onLogout = null }) {
                   actions={(
                     <div className="domain-table-toolbar-actions mailbox-section-hero-actions mailbox-section-hero-actions-compact mailbox-section-hero-actions-responsive">
                       <Button
-                        className="domain-action-button domain-action-button-compact"
-                        onClick={() => openMailboxModal({ random: true })}
-                        disabled={!hasDomains}
-                      >
-                        随机邮箱
-                      </Button>
-                      <Button
                         type="primary"
                         icon={<PlusOutlined />}
                         className="domain-action-button domain-action-button-accent domain-action-button-compact"
-                        onClick={() => openMailboxModal({ random: false })}
+                        onClick={() => openMailboxModal({ prefixMode: 'custom' })}
                         disabled={!hasDomains}
                       >
                         创建邮箱
@@ -1428,7 +1421,8 @@ export default function App({ adminProfile = null, onLogout = null }) {
         onCreateMailbox={() => {
           setDomainDrawerOpen(false);
           openMailboxModal({
-            random: false,
+            prefixMode: 'custom',
+            domainMode: 'root',
             domain: domainDetail?.domain,
           });
         }}

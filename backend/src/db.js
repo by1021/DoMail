@@ -1196,12 +1196,18 @@ export function createMailbox({
   }
 
   const normalizedLocalPart = localPart.trim().toLowerCase();
+  const address = normalizeAddress(normalizedLocalPart, targetMailboxDomain);
+
+  if (getMailboxByAddress(address)) {
+    throw new Error('MAILBOX_ALREADY_EXISTS');
+  }
+
   const now = timestamp();
   const payload = {
     id: `mbx_${nanoid()}`,
     domain_id: matchedDomain.id,
     local_part: normalizedLocalPart,
-    address: normalizeAddress(normalizedLocalPart, targetMailboxDomain),
+    address,
     source,
     is_active: 1,
     retention_value: null,

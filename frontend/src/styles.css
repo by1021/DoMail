@@ -1305,6 +1305,17 @@ body {
   padding-top: 14px;
 }
 
+.mailbox-create-modal .ant-modal-footer .ant-btn,
+.ant-modal .ant-modal-footer .ant-btn {
+  min-height: 40px;
+  height: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .form-section-title {
   margin-bottom: 12px;
   font-size: 13px;
@@ -1327,22 +1338,63 @@ body {
 }
 
 .mailbox-form-panel {
-  margin-bottom: 18px;
-  padding: 16px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #f8fbff 0%, #f6faff 100%);
-  border: 1px solid rgba(22, 119, 255, 0.1);
+  margin-bottom: 0;
+  padding: 20px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(251, 253, 255, 0.98) 0%, rgba(245, 249, 255, 0.98) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
 }
 
 .mailbox-form-panel-hero {
   background:
-    radial-gradient(circle at right top, rgba(37, 99, 235, 0.1), transparent 34%),
-    linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(242, 247, 255, 0.98) 100%);
-  border-color: rgba(37, 99, 235, 0.14);
+    radial-gradient(circle at right top, rgba(37, 99, 235, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(248, 251, 255, 1) 0%, rgba(244, 248, 255, 0.98) 100%);
+  border-color: rgba(37, 99, 235, 0.12);
+}
+
+.mailbox-form-panel-condensed {
+  margin-bottom: 0;
+  padding: 20px;
+}
+
+.mailbox-create-shell {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.mailbox-create-simple-stack {
+  width: 100%;
+}
+
+.mailbox-create-simple-panel {
+  padding: 18px;
+}
+
+.mailbox-create-simple-row {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.mailbox-create-block-head {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.mailbox-create-section-caption.ant-typography {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.mailbox-create-inline-caption.ant-typography {
+  margin-bottom: 2px;
 }
 
 .mailbox-create-form-compact.ant-form .ant-form-item {
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .mailbox-create-section {
@@ -1353,28 +1405,104 @@ body {
   margin-bottom: 0;
 }
 
+.mailbox-create-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 18px;
+  width: 100%;
+}
+
+.mailbox-create-layout-grid-balanced {
+  align-items: stretch;
+}
+
+.mailbox-create-layout-grid-detail {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .mailbox-create-form-compact .ant-form-item-label > label {
   font-weight: 600;
   color: #334155;
+  font-size: 13px;
+}
+
+.mailbox-create-modal .ant-modal {
+  width: min(760px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px);
 }
 
 .mailbox-create-form-compact .ant-input,
 .mailbox-create-form-compact .ant-select-selector {
-  min-height: 40px;
+  min-height: 46px;
+  height: 46px;
   border-radius: 14px !important;
 }
 
 .mailbox-create-form-compact .ant-input {
-  padding-inline: 12px;
+  padding: 11px 12px;
+  line-height: 22px;
+}
+
+.mailbox-create-form-compact .ant-select-single {
+  height: 46px;
+}
+
+.mailbox-create-form-compact .ant-select-single .ant-select-selector {
+  padding: 0 12px !important;
+}
+
+.mailbox-create-form-compact .ant-select-single .ant-select-selection-item,
+.mailbox-create-form-compact .ant-select-single .ant-select-selection-placeholder {
+  line-height: 44px !important;
+}
+
+.mailbox-create-form-compact .ant-form-item-control-input {
+  min-height: 46px;
 }
 
 .mailbox-mode-group.ant-radio-group {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
-  padding: 4px;
-  border-radius: 16px;
-  background: rgba(241, 245, 249, 0.86);
+  gap: 8px;
+  padding: 6px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.9) 0%, rgba(248, 250, 252, 0.96) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.mailbox-mode-group-inline.ant-radio-group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.mailbox-mode-group-inline.ant-radio-group .ant-radio-button-wrapper {
+  flex: 1 1 0;
+}
+
+.mailbox-mode-group-triple.ant-radio-group {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mailbox-domain-mode-group.ant-radio-group {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.08fr) minmax(0, 1.1fr);
+  align-items: stretch;
+}
+
+.mailbox-mode-group-triple.ant-radio-group .ant-radio-button-wrapper,
+.mailbox-domain-mode-group.ant-radio-group .ant-radio-button-wrapper {
+  min-height: 42px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.mailbox-domain-mode-group.ant-radio-group .ant-radio-button-wrapper {
+  white-space: normal;
+  word-break: break-word;
+  text-wrap: balance;
 }
 
 .mailbox-subdomain-mode-group.ant-radio-group {
@@ -1393,14 +1521,25 @@ body {
 }
 
 .mailbox-mode-group .ant-radio-button-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  height: auto;
+  padding: 10px 16px;
   text-align: center;
-  height: 40px;
-  line-height: 38px;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  word-break: keep-all;
   border: 0 !important;
-  border-radius: 12px !important;
-  background: transparent;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.55);
   color: #475569;
+  font-size: 13px;
   font-weight: 600;
+  transition: all 0.18s ease;
   box-shadow: none !important;
 }
 
@@ -1412,12 +1551,13 @@ body {
   background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
   color: #1677ff;
   box-shadow:
-    0 6px 18px rgba(37, 99, 235, 0.10),
+    0 8px 18px rgba(37, 99, 235, 0.08),
     inset 0 0 0 1px rgba(37, 99, 235, 0.08) !important;
 }
 
 .mailbox-mode-group .ant-radio-button-wrapper:hover {
   color: #0f172a;
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .mailbox-create-compact-grid {
@@ -1436,54 +1576,107 @@ body {
 }
 
 .mailbox-create-static-field {
-  display: grid;
-  gap: 4px;
-  min-height: 88px;
-  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 46px;
+  height: 46px;
+  padding: 7px 12px;
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
   border: 1px solid rgba(148, 163, 184, 0.12);
-  align-content: center;
+}
+
+.mailbox-create-static-desc.ant-typography {
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .mailbox-create-static-field-compact {
-  min-height: 74px;
+  min-height: 46px;
+  height: 46px;
+}
+
+.mailbox-create-static-field-emphasis {
+  background:
+    radial-gradient(circle at right top, rgba(37, 99, 235, 0.08), transparent 36%),
+    linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
+  border-color: rgba(37, 99, 235, 0.14);
 }
 
 .mailbox-create-static-field .ant-typography {
   margin: 0;
+  line-height: 1.15;
 }
 
 .mailbox-create-static-field .ant-typography-secondary {
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.mailbox-create-static-field .ant-typography-strong,
+.mailbox-create-static-field strong {
+  font-size: 13px;
+  line-height: 1.15;
 }
 
 .mailbox-create-summary-card {
-  padding: 14px 16px;
-  border-radius: 16px;
+  padding: 18px 20px;
+  border-radius: 20px;
   background:
-    radial-gradient(circle at right top, rgba(37, 99, 235, 0.08), transparent 32%),
-    linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    radial-gradient(circle at right top, rgba(37, 99, 235, 0.1), transparent 32%),
+    linear-gradient(180deg, rgba(248, 251, 255, 1) 0%, rgba(255, 255, 255, 0.99) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 24px rgba(37, 99, 235, 0.05);
 }
 
 .mailbox-create-summary-card-compact {
-  padding: 12px 14px;
+  padding: 16px 18px;
+}
+
+.mailbox-create-summary-card-inline {
+  border-radius: 18px;
 }
 
 .mailbox-create-summary-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 8px 12px;
+  gap: 10px 14px;
   width: 100%;
 }
 
 .mailbox-create-hint-text.ant-typography {
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.65;
+}
+
+.mailbox-create-summary-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+  width: 100%;
+}
+
+.mailbox-create-summary-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.mailbox-create-tip-panel {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.86) 0%, rgba(248, 251, 255, 0.96) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.16);
 }
 
 .mailbox-preview-card {
@@ -1511,7 +1704,11 @@ body {
   font-size: 14px;
   color: #0f172a;
   word-break: break-word;
-  line-height: 1.7;
+  line-height: 1.8;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 .domain-overview-card.ant-card,
@@ -1628,6 +1825,11 @@ body {
   padding-inline: 10px;
   border-radius: 999px;
   font-weight: 600;
+}
+
+.mailbox-table-source-tag-compact.ant-tag {
+  padding-inline: 8px;
+  font-size: 12px;
 }
 
 .mailbox-table-count-badge.ant-badge {
@@ -2140,6 +2342,10 @@ body {
     width: 100%;
   }
 
+  .mailbox-create-shell {
+    gap: 12px;
+  }
+
   .section-segmented.ant-segmented .ant-segmented-item {
     flex: 1 1 0;
   }
@@ -2537,31 +2743,60 @@ body {
   .mailbox-mode-group.ant-radio-group,
   .mailbox-mode-group-responsive.ant-radio-group,
   .mailbox-subdomain-mode-group.ant-radio-group,
-  .mailbox-create-compact-grid {
+  .mailbox-create-compact-grid,
+  .mailbox-create-layout-grid {
     grid-template-columns: 1fr;
   }
 
+  .mailbox-create-shell {
+    gap: 14px;
+  }
+
+  .mailbox-create-simple-panel {
+    padding: 16px;
+  }
+
+  .mailbox-mode-group-triple.ant-radio-group,
+  .mailbox-domain-mode-group.ant-radio-group {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mailbox-mode-group-inline.ant-radio-group {
+    display: grid;
+  }
+
   .mailbox-create-form-compact.ant-form .ant-form-item {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
 
   .mailbox-mode-group.ant-radio-group {
     gap: 6px;
+    padding: 5px;
   }
 
   .mailbox-mode-group .ant-radio-button-wrapper {
-    height: 38px;
-    line-height: 36px;
+    min-height: 40px;
+    padding: 8px 10px;
+    line-height: 1.35;
+  }
+
+  .mailbox-mode-group-triple.ant-radio-group .ant-radio-button-wrapper,
+  .mailbox-domain-mode-group.ant-radio-group .ant-radio-button-wrapper {
+    min-height: 40px;
+    padding: 8px 6px;
+    font-size: 12px;
+    line-height: 1.2;
   }
 
   .mailbox-create-static-field,
   .mailbox-create-static-field-compact {
-    min-height: 0;
+    min-height: 46px;
+    height: 46px;
   }
 
   .mailbox-create-summary-card,
   .mailbox-create-summary-card-compact {
-    padding: 12px 14px;
+    padding: 16px;
   }
 
   .mailbox-create-summary-head {
@@ -2715,21 +2950,64 @@ body {
     gap: 12px !important;
   }
 
+  .mailbox-create-shell {
+    gap: 12px;
+  }
+
+  .mailbox-create-block-head {
+    gap: 2px;
+  }
+
+  .mailbox-form-panel-condensed {
+    padding: 14px;
+  }
+
+  .mailbox-create-simple-panel {
+    padding: 14px;
+  }
+
   .mailbox-create-form-compact.ant-form .ant-form-item {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
   .mailbox-mode-group.ant-radio-group {
-    padding: 3px;
-    border-radius: 14px;
+    padding: 4px;
+    border-radius: 16px;
+  }
+
+  .mailbox-create-mode-toolbar {
+    gap: 12px;
   }
 
   .mailbox-mode-group .ant-radio-button-wrapper {
     font-size: 12px;
+    padding: 8px 10px;
+    line-height: 1.35;
+  }
+
+  .mailbox-mode-group-inline.ant-radio-group .ant-radio-button-wrapper {
+    white-space: nowrap;
+    word-break: keep-all;
+  }
+
+  .mailbox-mode-group-triple.ant-radio-group .ant-radio-button-wrapper,
+  .mailbox-domain-mode-group.ant-radio-group .ant-radio-button-wrapper {
+    padding: 8px 6px;
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .mailbox-domain-mode-group.ant-radio-group .ant-radio-button-wrapper {
+    white-space: normal;
   }
 
   .mailbox-preview-head {
     align-items: flex-start;
+  }
+
+  .mailbox-create-summary-item,
+  .mailbox-create-tip-panel {
+    padding: 10px 12px;
   }
 
   .mailbox-preview-address-responsive {
@@ -2811,6 +3089,7 @@ body {
 
   .ant-modal .ant-modal-footer .ant-btn {
     width: 100%;
+    min-height: 40px;
     margin-inline-start: 0 !important;
   }
 

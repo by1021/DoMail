@@ -119,6 +119,10 @@ function buildError(status, code, message) {
 }
 
 function normalizeError(error) {
+  if (error?.message === 'MAILBOX_ALREADY_EXISTS') {
+    return buildError(409, 'MAILBOX_ALREADY_EXISTS', '该邮箱已存在，请更换前缀或子域名');
+  }
+
   if (error?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
     return buildError(409, 'CONFLICT', '记录已存在');
   }
