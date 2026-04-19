@@ -72,7 +72,7 @@ export default function MailboxCreateModal({
                 <div className="mailbox-form-panel mailbox-form-panel-hero mailbox-form-panel-responsive mailbox-form-panel-condensed mailbox-create-simple-panel">
                   <Space direction="vertical" size={12} style={{ width: '100%' }}>
                     <Text type="secondary" className="mailbox-create-section-caption mailbox-create-inline-caption">
-                      选择主域名后，按需填写前缀或子域名。
+                      选择主域名，再按需设置前缀或子域名。
                     </Text>
 
                     <Form.Item label="主域名" name="domain" rules={[{ required: true, message: '请选择域名' }]} style={{ marginBottom: 0 }}>
@@ -106,7 +106,7 @@ export default function MailboxCreateModal({
                           ]}
                           style={{ marginBottom: 0 }}
                         >
-                          <Input placeholder="例如 support / sales / dev" />
+                          <Input placeholder="例如 support / team / dev" />
                         </Form.Item>
                       ) : (
                         <Form.Item label="邮箱前缀" style={{ marginBottom: 0 }}>
@@ -140,7 +140,7 @@ export default function MailboxCreateModal({
                           ]}
                           style={{ marginBottom: 0 }}
                         >
-                          <Input placeholder="例如 inbox / mail / team" />
+                          <Input placeholder="例如 inbox / mail / api" />
                         </Form.Item>
                       ) : domainMode === 'random-subdomain' ? (
                         <Form.Item label="子域名前缀" style={{ marginBottom: 0 }}>
@@ -172,7 +172,7 @@ export default function MailboxCreateModal({
                         </Text>
 
                         <Text type="secondary" className="mailbox-create-hint-text">
-                          重复时更换前缀或子域名即可。
+                          冲突时更换前缀或子域名。
                         </Text>
                       </Space>
                     </div>

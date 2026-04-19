@@ -199,7 +199,7 @@ curl http://127.0.0.1:3001/api/mailboxes \
 
 - 方法：`POST`
 - 路径：`/api/mailboxes`
-- 用途：创建邮箱，支持固定前缀或随机前缀
+- 用途：创建邮箱，支持自定义/随机前缀，以及主域名/随机子域名/自定义子域名
 
 调用示例：
 
@@ -207,15 +207,17 @@ curl http://127.0.0.1:3001/api/mailboxes \
 curl -X POST http://127.0.0.1:3001/api/mailboxes \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
-  -d '{"domain":"example.com","localPart":"test","random":false}'
+  -d '{"domain":"example.com","localPart":"test","random":false,"randomSubdomain":false}'
 ```
 
 说明：
 
-- `domain` 直接填写已创建的主域名字符串，例如 `example.com`
-- 固定前缀邮箱：传 `localPart`，并保持 `random=false`
-- 随机前缀邮箱：传 `random=true`
-- 当前版本创建接口仅支持在已创建主域名下生成邮箱，不支持随机子域名或自定义子域名参数
+- `domain` 填已创建的主域名，例如 `example.com`
+- 固定前缀：传 `localPart`，并保持 `random=false`
+- 随机前缀：传 `random=true`
+- 随机子域名：传 `randomSubdomain=true`
+- 自定义子域名：传 `subdomain`，例如 `inbox`
+- `randomSubdomain` 与 `subdomain` 二选一；传 `subdomain` 时优先使用自定义子域名
 
 ### 3. 删除邮箱
 

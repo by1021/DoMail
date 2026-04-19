@@ -92,16 +92,16 @@ export const API_ENDPOINTS = [
     key: 'create-mailbox',
     title: '创建邮箱',
     endpoint: 'POST /api/mailboxes',
-    summary: '通过 Bearer Token 创建邮箱，支持手动前缀或随机前缀。',
+    summary: '创建邮箱，支持自定义/随机前缀与主域名/子域名模式。',
     usage: [
       '请求头携带 Authorization: Bearer <token>。',
-      '请求体直接传入 domain；如需固定前缀再补充 localPart。',
-      'random=true 时由系统自动生成前缀。',
+      'domain 填已创建主域名；localPart 用于自定义前缀，random=true 为随机前缀。',
+      'randomSubdomain=true 为随机子域名；subdomain 用于自定义子域名，且优先生效。',
     ],
     example: `curl -X POST ${API_EXAMPLE_BASE_URL}/mailboxes \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer <token>" \\
-  -d '{"domain":"example.com","localPart":"test","random":false}'`,
+  -d '{"domain":"example.com","localPart":"test","random":false,"randomSubdomain":false}'`,
   },
   {
     key: 'delete-mailbox',
