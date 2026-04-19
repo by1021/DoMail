@@ -1322,6 +1322,17 @@ export function listMessagesByMailboxAddress(address) {
   );
 }
 
+export function getLatestMessageByMailboxAddress(address) {
+  const messages = listMessagesByMailboxAddressStatement.all(normalizeMailboxAddress(address));
+  
+  if (messages.length === 0) {
+    return null;
+  }
+  
+  const latestMessageId = messages[0].id;
+  return getMessageById(latestMessageId);
+}
+
 export function getMessageById(id) {
   const message = mapOptionalRow(getMessageByIdStatement.get(id), mapMessage);
 

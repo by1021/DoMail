@@ -23,6 +23,7 @@ import {
   getDomainById,
   getDomainByNameOrSubdomain,
   getMailboxByAddress,
+  getLatestMessageByMailboxAddress,
   listApiTokens,
   listDomains,
   listMailboxes,
@@ -107,6 +108,7 @@ const publicApiPaths = new Set([
 const apiTokenProtectedGetPaths = [
   /^\/mailboxes$/,
   /^\/mailboxes\/[^/]+\/messages$/,
+  /^\/mailboxes\/[^/]+\/latest-message$/,
   /^\/messages\/[^/]+$/,
 ];
 
@@ -819,6 +821,29 @@ export function createApp() {
       mailbox: domainMailbox,
       items: latestOnly ? items.slice(0, 1) : items,
       latest: latestOnly,
+    });
+  });
+
+  app.get('/api/mailboxes/:address/latest-message', (request, response) => {
+    const mailboxAddress = decodeURIComponent(request.params.address);
+    const domainMailbox = getMailboxByAddress(mailboxAddress);
+
+    if (!domainMailbox) {
+      sendNotFoundError(response, 'MAILBOX_NOT_FOUND', '邮箱不存在');
+      return;
+    }
+
+    const latestMessage = getLatestMessageByMailboxAddress(mailboxAddress);
+
+    if (!latestMessage) {
+      sendNotFoundError(response, 'MESSAGE_NOT_FOUND', '该邮箱暂无邮件');
+      return;
+    }
+
+    response.json({
+      ok: true,
+      mailbox: domainMailbox,
+      item: latestMessage,
     });
   });
 

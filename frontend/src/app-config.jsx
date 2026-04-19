@@ -71,76 +71,161 @@ export const API_ENDPOINTS = [
     key: 'list-mailboxes',
     title: '查询邮箱列表',
     endpoint: 'GET /api/mailboxes',
-    summary: '获取所有邮箱列表，返回邮箱地址、域名、邮件数等信息。',
+    summary: '获取邮箱列表',
     usage: [
-      '使用 Bearer Token 认证即可查询所有邮箱。',
-      '返回的 items 数组包含每个邮箱的详细信息。',
-      '从返回结果中获取邮箱 address，用于后续查询邮件列表。',
+      '无需参数，仅需 Bearer Token 认证',
+      '返回 items 数组，包含所有邮箱信息',
+      '从结果中提取 address 字段用于后续查询邮件',
     ],
-    example: `curl ${API_EXAMPLE_BASE_URL}/mailboxes \\
-  -H "Authorization: Bearer <token>"`,
+    example: `# 基础调用
+curl ${API_EXAMPLE_BASE_URL}/mailboxes \\
+  -H "Authorization: Bearer <token>"
+
+# 返回示例
+{
+  "ok": true,
+  "items": [
+    {
+      "id": "mbx_xxx",
+      "address": "test@example.com",
+      "domain": "example.com",
+      "messageCount": 5,
+      "latestReceivedAt": "2024-01-15T10:30:00Z"
+    }
+  ]
+}`,
   },
   {
     key: 'create-mailbox',
     title: '创建邮箱',
     endpoint: 'POST /api/mailboxes',
-    summary: '创建邮箱，支持自定义/随机前缀与主域名/子域名模式。',
+    summary: '创建邮箱',
     usage: [
-      '请求头携带 Authorization: Bearer <token>。',
-      'domain 填已创建主域名；localPart 用于自定义前缀，random=true 为随机前缀。',
-      'randomSubdomain=true 为随机子域名；subdomain 用于自定义子域名，且优先生效。',
+      'domain：已创建的主域名（必填）',
+      'localPart：自定义前缀（与 random 二选一）',
+      'random：true 随机前缀，false 使用 localPart',
+      'subdomain：自定义子域名（优先级高于 randomSubdomain）',
+      'randomSubdomain：true 随机子域名，false 使用主域名',
     ],
-    example: `curl -X POST ${API_EXAMPLE_BASE_URL}/mailboxes \\
+    example: `# 自定义前缀 + 主域名：test@example.com
+curl -X POST ${API_EXAMPLE_BASE_URL}/mailboxes \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer <token>" \\
-  -d '{"domain":"example.com","localPart":"test","random":false,"randomSubdomain":false}'`,
+  -d '{"domain":"example.com","localPart":"test","random":false}'
+
+# 随机前缀 + 主域名：m1a2b@example.com
+curl -X POST ${API_EXAMPLE_BASE_URL}/mailboxes \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer <token>" \\
+  -d '{"domain":"example.com","random":true}'
+
+# 自定义前缀 + 随机子域名：ops@x8k2m.example.com
+curl -X POST ${API_EXAMPLE_BASE_URL}/mailboxes \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer <token>" \\
+  -d '{"domain":"example.com","localPart":"ops","randomSubdomain":true}'
+
+# 随机前缀 + 自定义子域名：m3c4d@mail.example.com
+curl -X POST ${API_EXAMPLE_BASE_URL}/mailboxes \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer <token>" \\
+  -d '{"domain":"example.com","random":true,"subdomain":"mail"}'`,
   },
   {
     key: 'delete-mailbox',
     title: '删除邮箱',
     endpoint: 'DELETE /api/mailboxes/:address',
-    summary: '通过 Bearer Token 删除指定邮箱。',
+    summary: '删除邮箱',
     usage: [
-      '直接使用完整邮箱地址作为路径参数，调用前请做 URL 编码。',
-      '删除后该邮箱后续将不再接收邮件。',
+      ':address 路径参数：完整邮箱地址（必须 URL 编码）',
+      '删除后该邮箱立即停止接收邮件',
+      '已收到的邮件也会一并删除',
     ],
-    example: `curl -X DELETE ${API_EXAMPLE_BASE_URL}/mailboxes/<encodedAddress> \\
+    example: `# 删除 test@example.com
+# 注意：@ 需编码为 %40
+curl -X DELETE ${API_EXAMPLE_BASE_URL}/mailboxes/test%40example.com \\
+  -H "Authorization: Bearer <token>"
+
+# 删除子域名邮箱 ops@mail.example.com
+curl -X DELETE ${API_EXAMPLE_BASE_URL}/mailboxes/ops%40mail.example.com \\
   -H "Authorization: Bearer <token>"`,
   },
   {
     key: 'messages',
     title: '邮件列表',
     endpoint: 'GET /api/mailboxes/:address/messages',
-    summary: '按邮箱地址获取完整邮件列表。',
+    summary: '获取邮件列表',
     usage: [
-      '直接使用完整邮箱地址作为路径参数，调用前请做 URL 编码。',
-      '返回 items 数组，可继续提取 messageId 查看详情。',
+      ':address 路径参数：完整邮箱地址（必须 URL 编码）',
+      '返回该邮箱的所有邮件，按时间倒序',
+      '从结果中提取 id 字段作为 messageId 查看详情',
     ],
-    example: `curl ${API_EXAMPLE_BASE_URL}/mailboxes/<encodedAddress>/messages \\
-  -H "Authorization: Bearer <token>"`,
+    example: `# 查询 test@example.com 的邮件列表
+curl ${API_EXAMPLE_BASE_URL}/mailboxes/test%40example.com/messages \\
+  -H "Authorization: Bearer <token>"
+
+# 返回示例
+{
+  "ok": true,
+  "items": [
+    {
+      "id": "msg_xxx",
+      "subject": "欢迎使用",
+      "fromAddress": "noreply@service.com",
+      "receivedAt": "2024-01-15T10:30:00Z",
+      "isRead": false
+    }
+  ]
+}`,
   },
   {
     key: 'latest',
     title: '最新邮件',
     endpoint: 'GET /api/mailboxes/:address/messages?latest=1',
-    summary: '只返回最新一封邮件，适合轮询或快速检查。',
+    summary: '获取最新一封邮件',
     usage: [
-      '在按邮箱地址查询的基础上增加 latest=1 查询参数。',
-      '返回的 items 最多只有一条记录。',
+      ':address 路径参数：完整邮箱地址（必须 URL 编码）',
+      'latest=1 查询参数：仅返回最新一封',
+      '适合轮询场景，减少数据传输',
     ],
-    example: `curl ${API_EXAMPLE_BASE_URL}/mailboxes/<encodedAddress>/messages?latest=1 \\
-  -H "Authorization: Bearer <token>"`,
+    example: `# 获取 test@example.com 的最新邮件
+curl ${API_EXAMPLE_BASE_URL}/mailboxes/test%40example.com/messages?latest=1 \\
+  -H "Authorization: Bearer <token>"
+
+# 轮询检查新邮件（每 5 秒）
+while true; do
+  curl -s ${API_EXAMPLE_BASE_URL}/mailboxes/test%40example.com/messages?latest=1 \\
+    -H "Authorization: Bearer <token>" | jq '.items[0].subject'
+  sleep 5
+done`,
   },
   {
     key: 'detail',
     title: '邮件详情',
     endpoint: 'GET /api/messages/:messageId',
-    summary: '根据 messageId 获取单封邮件详情。',
+    summary: '获取邮件详情',
     usage: [
-      'messageId 通常来自邮件列表返回结果。',
-      '适合获取完整正文、头信息与附件元数据。',
+      ':messageId 路径参数：来自邮件列表的 id 字段',
+      '返回完整邮件：正文、头信息、附件元数据',
+      '支持 HTML 和纯文本正文格式',
     ],
-    example: `curl ${API_EXAMPLE_BASE_URL}/messages/<messageId> \\
-  -H "Authorization: Bearer <token>"`,
+    example: `# 获取邮件详情
+curl ${API_EXAMPLE_BASE_URL}/messages/msg_abc123xyz \\
+  -H "Authorization: Bearer <token>"
+
+# 返回示例
+{
+  "ok": true,
+  "item": {
+    "id": "msg_abc123xyz",
+    "subject": "欢迎使用",
+    "fromAddress": "noreply@service.com",
+    "toAddress": "test@example.com",
+    "htmlBody": "<p>欢迎！</p>",
+    "textBody": "欢迎！",
+    "headers": {...},
+    "attachments": []
+  }
+}`,
   },
 ];

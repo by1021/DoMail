@@ -438,7 +438,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
         keepSection: true,
         silent: true,
       });
-    }, 5000);
+    }, 1000);
 
     return () => {
       window.clearInterval(pollTimer);
@@ -1261,7 +1261,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
                 />
 
                 {newApiToken?.token ? (
-                  <Card className="api-token-highlight-card page-section-panel page-section-highlight-card" title="新 Token">
+                  <Card className="api-token-highlight-card page-section-panel page-section-highlight-card" title="新建 Token">
                     <Space direction="vertical" size={10} style={{ width: '100%' }}>
                       <div className="api-token-highlight-head">
                         <Text>
@@ -1273,7 +1273,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
                         {newApiToken.token}
                       </Text>
                       <Text type="secondary">
-                        请立即复制保存，并用于下方示例命令。
+                        请立即保存，用于下方示例。
                       </Text>
                     </Space>
                   </Card>
@@ -1281,97 +1281,56 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
                 <Card className="api-overview-card api-overview-card-responsive page-section-panel page-section-panel-subtle">
                   <Row gutter={[16, 16]} align="top" className="api-panel-grid page-section-grid api-panel-grid-responsive">
-                    <Col xs={24} xl={9}>
-                      <Space direction="vertical" size={14} style={{ width: '100%' }} className="api-management-stack">
-                        <Card title="Token" className="api-card api-card-compact page-section-panel page-section-panel-subtle api-subcard">
-                          <Space direction="vertical" size={14} style={{ width: '100%' }}>
-                            <Form form={apiTokenForm} layout="vertical" onFinish={handleCreateApiToken}>
-                              <Form.Item
-                                label="新建 Token"
-                                name="name"
-                                rules={[{ required: true, message: '请输入 Token 名称' }]}
-                              >
-                                <Input
-                                  aria-label="Token 名称"
-                                  placeholder="例如：mailbox-readonly"
-                                  maxLength={120}
-                                />
-                              </Form.Item>
-                              <Button
-                                type="primary"
-                                htmlType="submit"
-                                loading={submitting}
-                                block
-                                className="domain-action-button domain-action-button-accent"
-                              >
-                                创建 Token
-                              </Button>
-                            </Form>
-                          </Space>
-                        </Card>
-
-                        <Card title="调用方式" className="api-card api-card-compact page-section-panel api-subcard">
-                          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                            <div className="api-auth-panel api-auth-panel-compact">
-                              <div className="api-auth-panel-head">
-                                <Text strong>请求头</Text>
-                                <Tag color="processing">Bearer</Tag>
-                              </div>
-                              <pre className="message-code-block api-code-block">Authorization: Bearer {'<token>'}</pre>
-                            </div>
-
-                            <div className="api-create-tips api-create-tips-compact">
-                              <List
-                                split={false}
-                                dataSource={[
-                                  '先创建 API Token。',
-                                  'domain 直接填写已创建域名。',
-                                  '邮箱地址和 messageId 来自对应查询接口。',
-                                  '实际请求请在终端或客户端执行。',
-                                ]}
-                                renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
+                    <Col xs={24} lg={12}>
+                      <Card title="Token" className="api-card api-card-compact page-section-panel page-section-panel-subtle api-subcard">
+                        <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                          <Form form={apiTokenForm} layout="vertical" onFinish={handleCreateApiToken}>
+                            <Form.Item
+                              label="新建 Token"
+                              name="name"
+                              rules={[{ required: true, message: '请输入 Token 名称' }]}
+                            >
+                              <Input
+                                aria-label="Token 名称"
+                                placeholder="例如：mailbox-readonly"
+                                maxLength={120}
                               />
-                            </div>
-                          </Space>
-                        </Card>
-                      </Space>
+                            </Form.Item>
+                            <Button
+                              type="primary"
+                              htmlType="submit"
+                              loading={submitting}
+                              block
+                              className="domain-action-button domain-action-button-accent"
+                            >
+                              创建 Token
+                            </Button>
+                          </Form>
+                        </Space>
+                      </Card>
                     </Col>
 
-                    <Col xs={24} xl={15}>
-                      <Card title="接口清单" className="api-card api-card-compact page-section-panel api-endpoint-card">
-                        <Space direction="vertical" size={14} style={{ width: '100%' }}>
-                          <Segmented
-                            block
-                            value={apiEndpointKey}
-                            onChange={setApiEndpointKey}
-                            options={filteredApiEndpoints.map((item) => ({
-                              label: item.title,
-                              value: item.key,
-                            }))}
-                            className="api-endpoint-segmented"
-                          />
-
-                          <div className="api-endpoint-preview api-endpoint-preview-compact">
-                            <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                              <Text strong>{activeApiEndpoint.title}</Text>
-                              <pre className="message-code-block api-code-block">{activeApiEndpoint.endpoint}</pre>
-                              <Text type="secondary">{activeApiEndpoint.summary}</Text>
-                            </Space>
+                    <Col xs={24} lg={12}>
+                      <Card title="认证" className="api-card api-card-compact page-section-panel api-subcard">
+                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                          <div className="api-auth-panel api-auth-panel-compact">
+                            <div className="api-auth-panel-head">
+                              <Text strong>请求头</Text>
+                              <Tag color="processing">Bearer</Tag>
+                            </div>
+                            <pre className="message-code-block api-code-block">Authorization: Bearer {'<token>'}</pre>
                           </div>
 
-                          <div className="api-create-tips api-create-tips-compact api-usage-card">
+                          <div className="api-create-tips api-create-tips-compact">
                             <List
                               split={false}
-                              dataSource={activeApiEndpoint.usage}
+                              dataSource={[
+                                '先创建 Token',
+                                'domain 填已创建域名',
+                                'address/messageId 来自查询接口',
+                              ]}
                               renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
                             />
-                          </div>
-
-                          <div className="api-curl-block">
-                            <Text strong className="api-curl-title">
-                              curl 示例
-                            </Text>
-                            <pre className="message-code-block api-code-block">{activeApiEndpoint.example}</pre>
                           </div>
                         </Space>
                       </Card>
@@ -1389,6 +1348,44 @@ export default function App({ adminProfile = null, onLogout = null }) {
                     className="api-token-table"
                     locale={{ emptyText: '还没有 API Token，请先创建一个。' }}
                   />
+                </Card>
+
+                <Card title="接口" className="api-card api-card-compact page-section-panel api-endpoint-card">
+                  <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                    <Segmented
+                      block
+                      value={apiEndpointKey}
+                      onChange={setApiEndpointKey}
+                      options={filteredApiEndpoints.map((item) => ({
+                        label: item.title,
+                        value: item.key,
+                      }))}
+                      className="api-endpoint-segmented"
+                    />
+
+                    <div className="api-endpoint-preview api-endpoint-preview-compact">
+                      <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                        <Text strong>{activeApiEndpoint.title}</Text>
+                        <pre className="message-code-block api-code-block">{activeApiEndpoint.endpoint}</pre>
+                        <Text type="secondary">{activeApiEndpoint.summary}</Text>
+                      </Space>
+                    </div>
+
+                    <div className="api-create-tips api-create-tips-compact api-usage-card">
+                      <List
+                        split={false}
+                        dataSource={activeApiEndpoint.usage}
+                        renderItem={(item) => <List.Item className="guide-item">{item}</List.Item>}
+                      />
+                    </div>
+
+                    <div className="api-curl-block">
+                      <Text strong className="api-curl-title">
+                        curl 示例
+                      </Text>
+                      <pre className="message-code-block api-code-block">{activeApiEndpoint.example}</pre>
+                    </div>
+                  </Space>
                 </Card>
               </Space>
             )}

@@ -256,7 +256,7 @@ curl "http://127.0.0.1:3001/api/mailboxes/test%40example.com/messages" \
 - 返回结果中的 `items` 数组包含邮件列表
 - 可从结果中提取 `messageId`，继续查询详情
 
-### 5. 查询最新一封邮件
+### 5. 查询最新一封邮件（列表格式）
 
 - 方法：`GET`
 - 路径：`/api/mailboxes/:address/messages?latest=1`
@@ -271,10 +271,31 @@ curl "http://127.0.0.1:3001/api/mailboxes/test%40example.com/messages?latest=1" 
 
 说明：
 
-- 这是“查询邮件列表”接口的 `latest=1` 变体
+- 这是"查询邮件列表"接口的 `latest=1` 变体
 - 返回的 `items` 最多只有一条记录
 
-### 6. 查询邮件详情
+### 6. 查询最新邮件详情（完整格式）
+
+- 方法：`GET`
+- 路径：`/api/mailboxes/:address/latest-message`
+- 用途：直接获取邮箱最新邮件的完整详情（包括附件列表），无需先查列表再查详情
+
+调用示例：
+
+```bash
+curl "http://127.0.0.1:3001/api/mailboxes/test%40example.com/latest-message" \
+  -H "Authorization: Bearer <token>"
+```
+
+说明：
+
+- 一次请求即可获取最新邮件的完整信息
+- 返回格式与"查询邮件详情"接口相同，包含 `attachments` 数组
+- 如果邮箱不存在，返回 `404 MAILBOX_NOT_FOUND`
+- 如果邮箱暂无邮件，返回 `404 MESSAGE_NOT_FOUND`
+- 适合需要快速获取最新邮件完整内容的场景
+
+### 7. 查询邮件详情
 
 - 方法：`GET`
 - 路径：`/api/messages/:messageId`

@@ -68,6 +68,12 @@ export async function getMailboxMessages(address) {
   return data;
 }
 
+export async function getLatestMessage(address) {
+  const encodedAddress = encodeURIComponent(address);
+  const { data } = await api.get(`/mailboxes/${encodedAddress}/latest-message`);
+  return data;
+}
+
 export async function getMessageDetail(messageId) {
   const { data } = await api.get(`/messages/${messageId}`);
   return data;
