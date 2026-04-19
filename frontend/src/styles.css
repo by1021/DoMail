@@ -130,6 +130,14 @@ body {
   justify-content: center;
 }
 
+.brand-action-group-inline.ant-space {
+  flex-wrap: nowrap;
+}
+
+.brand-action-group-inline.ant-space .ant-space-item {
+  flex: 1 1 0;
+}
+
 .brand-stack.ant-space {
   width: 100%;
 }
@@ -139,7 +147,8 @@ body {
 }
 
 .brand-action-button.ant-btn {
-  min-width: 116px;
+  min-width: 0;
+  width: 100%;
 }
 
 .app-brand-logo.ant-avatar {
@@ -334,15 +343,23 @@ body {
 }
 
 .section-hero-search-slot {
-  flex: 1 1 320px;
-  min-width: min(320px, 100%);
+  flex: 1 1 240px;
+  min-width: min(240px, 100%);
+}
+
+.section-hero-search-slot-responsive {
+  min-width: 0;
 }
 
 .section-hero-actions-slot {
   display: flex;
   justify-content: flex-end;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+.section-hero-actions-slot-responsive {
+  flex: 0 1 auto;
 }
 
 .section-hero-actions,
@@ -351,6 +368,11 @@ body {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.section-hero-actions-responsive {
+  width: fit-content;
+  max-width: 100%;
 }
 
 .domain-toolbar-card-responsive.ant-card,
@@ -1356,6 +1378,10 @@ body {
   max-width: 100%;
 }
 
+.mailbox-section-hero-actions-responsive {
+  justify-content: flex-end;
+}
+
 .mailbox-toolbar-card.ant-card,
 .mailbox-table-card.ant-card,
 .message-sidebar-card.ant-card,
@@ -1794,14 +1820,19 @@ body {
     font-size: 18px;
   }
 
-  .brand-action-group.ant-space,
-  .brand-action-group.ant-space .ant-space-item,
-  .brand-action-button.ant-btn {
+  .brand-action-group.ant-space {
     width: 100%;
   }
 
+  .brand-action-group-inline.ant-space {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .brand-action-group-inline.ant-space .ant-space-item,
   .brand-action-button.ant-btn {
-    min-width: 0;
+    width: 100%;
   }
 
   .side-panel {
@@ -1860,6 +1891,13 @@ body {
     align-items: stretch;
   }
 
+  .section-hero-search-slot,
+  .section-hero-search-slot-responsive,
+  .section-hero-actions-slot,
+  .section-hero-actions-slot-responsive {
+    flex: 1 1 100%;
+  }
+
   .mailbox-toolbar-grid,
   .mailbox-toolbar-grid-responsive,
   .mailbox-setting-summary,
@@ -1870,6 +1908,7 @@ body {
 
   .section-hero-actions-slot,
   .section-hero-actions,
+  .section-hero-actions-responsive,
   .domain-table-toolbar-actions,
   .mailbox-toolbar-inline-actions,
   .mailbox-toolbar-inline-actions-responsive {
@@ -1881,8 +1920,11 @@ body {
   .domain-table-search.ant-input-affix-wrapper,
   .section-hero-actions .ant-btn,
   .section-hero-actions .ant-select,
+  .section-hero-actions-responsive .ant-btn,
+  .section-hero-actions-responsive .ant-select,
   .mailbox-section-hero-actions,
   .mailbox-section-hero-actions-compact,
+  .mailbox-section-hero-actions-responsive,
   .mailbox-section-hero-actions .ant-btn,
   .domain-table-toolbar-actions .ant-btn,
   .mailbox-toolbar-inline-actions,
@@ -2111,6 +2153,10 @@ body {
   .domain-action-group {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .brand-action-group-inline.ant-space {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .brand-block {

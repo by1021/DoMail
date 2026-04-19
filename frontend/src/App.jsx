@@ -92,7 +92,7 @@ function WorkspaceBrand({ loading = false, onRefresh = null, onLogout = null }) 
             </Title>
             <Text type="secondary">DoMail</Text>
           </div>
-          <Space size={[10, 10]} wrap className="brand-action-group">
+          <Space size={[10, 10]} wrap className="brand-action-group brand-action-group-inline">
             <Button
               icon={<ReloadOutlined />}
               className="domain-action-button brand-action-button"
@@ -130,8 +130,8 @@ function SectionHero({
 
   return (
     <Card className="page-toolbar-card page-toolbar-card-minimal">
-      <div className="section-hero-toolbar">
-        <div className="section-hero-search-slot">
+      <div className="section-hero-toolbar section-hero-toolbar-responsive">
+        <div className="section-hero-search-slot section-hero-search-slot-responsive">
           {onSearchChange ? (
             <Input
               aria-label={`${title}搜索`}
@@ -144,8 +144,8 @@ function SectionHero({
             />
           ) : null}
         </div>
-        <div className="section-hero-actions-slot">
-          {actions ? <div className="section-hero-actions">{actions}</div> : null}
+        <div className="section-hero-actions-slot section-hero-actions-slot-responsive">
+          {actions ? <div className="section-hero-actions section-hero-actions-responsive">{actions}</div> : null}
         </div>
       </div>
     </Card>
@@ -890,7 +890,11 @@ export default function App({ adminProfile = null, onLogout = null }) {
                   searchValue={sectionSearchText.mailboxes}
                   onSearchChange={(value) => updateSectionSearch('mailboxes', value)}
                   actions={(
-                    <Space wrap size={[10, 10]} className="mailbox-section-hero-actions mailbox-section-hero-actions-compact">
+                    <Space
+                      wrap
+                      size={[10, 10]}
+                      className="mailbox-section-hero-actions mailbox-section-hero-actions-compact mailbox-section-hero-actions-responsive"
+                    >
                       <Button
                         className="domain-action-button"
                         onClick={() => openMailboxModal({ random: true })}
@@ -1031,7 +1035,11 @@ export default function App({ adminProfile = null, onLogout = null }) {
                   onSearchChange={messageDetail ? null : (value) => updateSectionSearch('messages', value)}
                   actions={
                     messageDetail ? null : (
-                      <Space wrap size={[10, 10]} className="mailbox-section-hero-actions mailbox-section-hero-actions-compact">
+                      <Space
+                        wrap
+                        size={[10, 10]}
+                        className="mailbox-section-hero-actions mailbox-section-hero-actions-compact mailbox-section-hero-actions-responsive"
+                      >
                         <Select
                           aria-label="选择邮箱"
                           value={selectedMailboxAddress}
