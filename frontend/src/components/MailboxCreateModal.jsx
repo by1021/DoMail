@@ -1,24 +1,24 @@
 import React from 'react';
-import { Alert, Form, Input, Modal, Radio, Select, Space, Tag, Typography } from 'antd';
+import { Form, Input, Modal, Radio, Select, Space, Tag, Typography } from 'antd';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 function buildPreviewAddress(domain, localPart, random) {
   const normalizedDomain = String(domain ?? '').trim().toLowerCase();
 
   if (!normalizedDomain) {
-    return '请先输入域名';
+    return '请先选择域名';
   }
 
   if (random) {
-    return `系统将自动生成随机前缀 @ ${normalizedDomain}`;
+    return `随机前缀@${normalizedDomain}`;
   }
 
   if (!localPart) {
-    return `请输入前缀，预览格式：prefix@${normalizedDomain}`;
+    return `prefix@${normalizedDomain}`;
   }
 
-  return `${localPart}@${normalizedDomain}`;
+  return `${String(localPart).trim().toLowerCase()}@${normalizedDomain}`;
 }
 
 export default function MailboxCreateModal({
@@ -37,43 +37,39 @@ export default function MailboxCreateModal({
       confirmLoading={submitting}
       onCancel={onCancel}
       onOk={() => form.submit()}
+      okText="创建邮箱"
+      cancelText="取消"
+      width={580}
       className="mailbox-create-modal mailbox-create-modal-responsive"
     >
       <Form
         form={form}
         layout="vertical"
-        className="mailbox-create-form mailbox-create-form-responsive"
+        className="mailbox-create-form mailbox-create-form-responsive mailbox-create-form-compact"
         initialValues={{ random: false }}
         onFinish={onSubmit}
       >
-        <div className="mailbox-form-panel mailbox-form-panel-responsive">
-          <Space direction="vertical" size={6} style={{ width: '100%' }}>
-            <Text strong>创建流程</Text>
-            <Paragraph type="secondary" style={{ margin: 0 }}>
-              先选择一个已添加的域名，再决定使用自定义前缀还是随机前缀。创建完成后即可去收件列表查看邮件。
-            </Paragraph>
-          </Space>
+        <div className="mailbox-create-section">
+          <Form.Item
+            label="选择主域名"
+            name="domain"
+            rules={[{ required: true, message: '请选择域名' }]}
+          >
+            <Select
+              placeholder="请选择已添加的域名"
+              options={domainOptions}
+              showSearch
+              optionFilterProp="label"
+            />
+          </Form.Item>
+
+          <Form.Item label="邮箱前缀" name="random" style={{ marginBottom: 0 }}>
+            <Radio.Group className="mailbox-mode-group mailbox-mode-group-responsive">
+              <Radio.Button value={false}>自定义前缀</Radio.Button>
+              <Radio.Button value={true}>随机前缀</Radio.Button>
+            </Radio.Group>
+          </Form.Item>
         </div>
-
-        <Form.Item
-          label="所属域名"
-          name="domain"
-          rules={[{ required: true, message: '请选择域名' }]}
-        >
-          <Select
-            placeholder="请选择已添加的域名"
-            options={domainOptions}
-            showSearch
-            optionFilterProp="label"
-          />
-        </Form.Item>
-
-        <Form.Item label="生成方式" name="random">
-          <Radio.Group className="mailbox-mode-group mailbox-mode-group-responsive">
-            <Radio.Button value={false}>自定义前缀</Radio.Button>
-            <Radio.Button value={true}>随机前缀</Radio.Button>
-          </Radio.Group>
-        </Form.Item>
 
         <Form.Item shouldUpdate noStyle>
           {({ getFieldValue }) => {
@@ -84,47 +80,51 @@ export default function MailboxCreateModal({
             return (
               <Space
                 direction="vertical"
-                size={14}
+                size={12}
                 style={{ width: '100%' }}
-                className="mailbox-create-flow"
+                className="mailbox-create-flow mailbox-create-flow-compact"
               >
-                <Alert
-                  type={random ? 'success' : 'info'}
-                  showIcon
-                  message={random ? '随机模式：适合临时收件场景' : '自定义模式：适合固定用途邮箱'}
-                  description={
-                    random
-                      ? '系统会自动生成一个随机邮箱前缀，创建更快。'
-                      : '你可以指定 support、sales、dev 等前缀，便于识别邮箱用途。'
-                  }
-                />
+                <div className="mailbox-create-compact-grid mailbox-create-compact-grid-tight">
+                  {!random ? (
+                    <Form.Item
+                      label="邮箱前缀"
+                      name="localPart"
+                      rules={[
+                        { required: true, message: '请输入邮箱前缀' },
+                        {
+                          pattern: /^[a-zA-Z0-9._-]+$/,
+                          message: '仅支持字母、数字、点、下划线、中划线',
+                        },
+                      ]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input placeholder="例如 support / sales / dev" />
+                    </Form.Item>
+                  ) : (
+                    <div className="mailbox-create-static-field mailbox-create-static-field-compact">
+                      <Text type="secondary">邮箱前缀</Text>
+                      <Text strong>由系统自动生成</Text>
+                    </div>
+                  )}
+                </div>
 
-                {!random ? (
-                  <Form.Item
-                    label="邮箱前缀"
-                    name="localPart"
-                    rules={[{ required: true, message: '请输入邮箱前缀' }]}
-                    style={{ marginBottom: 0 }}
-                  >
-                    <Input placeholder="support / sales / dev" />
-                  </Form.Item>
-                ) : null}
+                <div className="mailbox-create-summary-card mailbox-create-summary-card-compact">
+                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                    <div className="mailbox-create-summary-head">
+                      <Space wrap size={[6, 6]} className="mailbox-preview-head">
+                        <Text strong>邮箱预览</Text>
+                        <Tag color={random ? 'green' : 'blue'}>
+                          {random ? '随机前缀' : '自定义前缀'}
+                        </Tag>
+                      </Space>
+                    </div>
 
-                <div className="mailbox-preview-card mailbox-preview-card-responsive">
-                  <Space
-                    direction="vertical"
-                    size={8}
-                    style={{ width: '100%' }}
-                    className="mailbox-preview-stack"
-                  >
-                    <Space wrap size={[6, 6]} className="mailbox-preview-head">
-                      <Text strong>邮箱预览</Text>
-                      <Tag color={random ? 'green' : 'blue'}>
-                        {random ? '随机前缀' : '自定义前缀'}
-                      </Tag>
-                    </Space>
                     <Text className="mailbox-preview-address mailbox-preview-address-responsive">
                       {buildPreviewAddress(domain, localPart, random)}
+                    </Text>
+
+                    <Text type="secondary" className="mailbox-create-hint-text">
+                      当前仅支持在已添加主域名下创建邮箱；创建成功后可立即前往收件区查看邮件。
                     </Text>
                   </Space>
                 </div>

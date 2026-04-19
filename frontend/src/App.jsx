@@ -542,6 +542,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
       });
       message.success('邮箱已创建');
       setMailboxModalOpen(false);
+      mailboxForm.resetFields();
       await loadData();
     } catch (error) {
       message.error(extractErrorMessage(error, '创建邮箱失败'));
@@ -750,8 +751,11 @@ export default function App({ adminProfile = null, onLogout = null }) {
         <div className="mailbox-table-cell-stack mailbox-table-address-cell domain-table-cell-centered">
           <Space wrap size={[8, 8]} className="mailbox-table-address-head">
             <Text strong className="mailbox-table-primary-text mailbox-table-address-text">{value}</Text>
-            <Tag color={record.source === 'random' ? 'blue' : 'purple'} className="mailbox-table-inline-tag mailbox-table-source-tag">
-              {record.source === 'random' ? '随机创建' : '手动创建'}
+            <Tag
+              color={record.source?.includes('random') ? 'blue' : 'purple'}
+              className="mailbox-table-inline-tag mailbox-table-source-tag"
+            >
+              {record.source === 'random' ? '随机前缀' : '自定义前缀'}
             </Tag>
           </Space>
           <Text type="secondary" className="mailbox-table-secondary-text">

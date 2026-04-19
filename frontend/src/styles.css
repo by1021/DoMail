@@ -1334,14 +1334,156 @@ body {
   border: 1px solid rgba(22, 119, 255, 0.1);
 }
 
+.mailbox-form-panel-hero {
+  background:
+    radial-gradient(circle at right top, rgba(37, 99, 235, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(242, 247, 255, 0.98) 100%);
+  border-color: rgba(37, 99, 235, 0.14);
+}
+
+.mailbox-create-form-compact.ant-form .ant-form-item {
+  margin-bottom: 14px;
+}
+
+.mailbox-create-section {
+  margin-bottom: 8px;
+}
+
+.mailbox-create-section .ant-form-item:last-child {
+  margin-bottom: 0;
+}
+
+.mailbox-create-form-compact .ant-form-item-label > label {
+  font-weight: 600;
+  color: #334155;
+}
+
+.mailbox-create-form-compact .ant-input,
+.mailbox-create-form-compact .ant-select-selector {
+  min-height: 40px;
+  border-radius: 14px !important;
+}
+
+.mailbox-create-form-compact .ant-input {
+  padding-inline: 12px;
+}
+
 .mailbox-mode-group.ant-radio-group {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
+  padding: 4px;
+  border-radius: 16px;
+  background: rgba(241, 245, 249, 0.86);
+}
+
+.mailbox-subdomain-mode-group.ant-radio-group {
+  grid-template-columns: 1fr;
+}
+
+.mailbox-create-button-groups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.mailbox-create-button-groups-vertical {
+  grid-template-columns: 1fr;
 }
 
 .mailbox-mode-group .ant-radio-button-wrapper {
   text-align: center;
+  height: 40px;
+  line-height: 38px;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent;
+  color: #475569;
+  font-weight: 600;
+  box-shadow: none !important;
+}
+
+.mailbox-mode-group .ant-radio-button-wrapper:not(:first-child)::before {
+  display: none;
+}
+
+.mailbox-mode-group .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  color: #1677ff;
+  box-shadow:
+    0 6px 18px rgba(37, 99, 235, 0.10),
+    inset 0 0 0 1px rgba(37, 99, 235, 0.08) !important;
+}
+
+.mailbox-mode-group .ant-radio-button-wrapper:hover {
+  color: #0f172a;
+}
+
+.mailbox-create-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.mailbox-create-compact-grid-tight {
+  gap: 10px 12px;
+}
+
+.mailbox-create-flow-compact {
+  width: 100%;
+}
+
+.mailbox-create-static-field {
+  display: grid;
+  gap: 4px;
+  min-height: 88px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  align-content: center;
+}
+
+.mailbox-create-static-field-compact {
+  min-height: 74px;
+}
+
+.mailbox-create-static-field .ant-typography {
+  margin: 0;
+}
+
+.mailbox-create-static-field .ant-typography-secondary {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mailbox-create-summary-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at right top, rgba(37, 99, 235, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.mailbox-create-summary-card-compact {
+  padding: 12px 14px;
+}
+
+.mailbox-create-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.mailbox-create-hint-text.ant-typography {
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .mailbox-preview-card {
@@ -1349,6 +1491,10 @@ body {
   border-radius: 16px;
   background: #f8fafc;
   border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.mailbox-preview-card-compact {
+  padding: 12px 14px;
 }
 
 .mailbox-preview-head {
@@ -1365,6 +1511,7 @@ body {
   font-size: 14px;
   color: #0f172a;
   word-break: break-word;
+  line-height: 1.7;
 }
 
 .domain-overview-card.ant-card,
@@ -2388,8 +2535,38 @@ body {
   }
 
   .mailbox-mode-group.ant-radio-group,
-  .mailbox-mode-group-responsive.ant-radio-group {
+  .mailbox-mode-group-responsive.ant-radio-group,
+  .mailbox-subdomain-mode-group.ant-radio-group,
+  .mailbox-create-compact-grid {
     grid-template-columns: 1fr;
+  }
+
+  .mailbox-create-form-compact.ant-form .ant-form-item {
+    margin-bottom: 12px;
+  }
+
+  .mailbox-mode-group.ant-radio-group {
+    gap: 6px;
+  }
+
+  .mailbox-mode-group .ant-radio-button-wrapper {
+    height: 38px;
+    line-height: 36px;
+  }
+
+  .mailbox-create-static-field,
+  .mailbox-create-static-field-compact {
+    min-height: 0;
+  }
+
+  .mailbox-create-summary-card,
+  .mailbox-create-summary-card-compact {
+    padding: 12px 14px;
+  }
+
+  .mailbox-create-summary-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .retention-form .ant-space {
@@ -2538,6 +2715,19 @@ body {
     gap: 12px !important;
   }
 
+  .mailbox-create-form-compact.ant-form .ant-form-item {
+    margin-bottom: 10px;
+  }
+
+  .mailbox-mode-group.ant-radio-group {
+    padding: 3px;
+    border-radius: 14px;
+  }
+
+  .mailbox-mode-group .ant-radio-button-wrapper {
+    font-size: 12px;
+  }
+
   .mailbox-preview-head {
     align-items: flex-start;
   }
@@ -2545,6 +2735,10 @@ body {
   .mailbox-preview-address-responsive {
     font-size: 13px;
     line-height: 1.6;
+  }
+
+  .mailbox-create-hint-text.ant-typography {
+    font-size: 12px;
   }
 
   .auth-logo {

@@ -212,9 +212,10 @@ curl -X POST http://127.0.0.1:3001/api/mailboxes \
 
 说明：
 
-- `domain` 直接填写已创建的域名字符串
-- 固定前缀时传 `localPart`
-- 随机邮箱可传 `random=true`
+- `domain` 直接填写已创建的主域名字符串，例如 `example.com`
+- 固定前缀邮箱：传 `localPart`，并保持 `random=false`
+- 随机前缀邮箱：传 `random=true`
+- 当前版本创建接口仅支持在已创建主域名下生成邮箱，不支持随机子域名或自定义子域名参数
 
 ### 3. 删除邮箱
 

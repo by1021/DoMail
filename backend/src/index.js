@@ -12,6 +12,7 @@ import {
   resolveRecipientDomainStatus,
 } from './smtp-utils.js';
 import {
+  buildMailboxDomain,
   createApiToken,
   createDomain,
   createMailbox,
@@ -20,7 +21,7 @@ import {
   generateRandomLocalPart,
   getApiTokenByHash,
   getDomainById,
-  getDomainByName,
+  getDomainByNameOrSubdomain,
   getMailboxByAddress,
   listApiTokens,
   listDomains,
@@ -63,6 +64,8 @@ const mailboxSchema = z.object({
   domain: z.string().min(1).max(255),
   localPart: z.string().min(1).max(64).regex(/^[a-zA-Z0-9._-]+$/).optional(),
   random: z.boolean().optional(),
+  randomSubdomain: z.boolean().optional(),
+  subdomain: z.string().min(1).max(63).regex(/^[a-zA-Z0-9-]+$/).optional(),
 });
 
 const mailboxRetentionSchema = z.object({
@@ -634,6 +637,8 @@ export function createApp() {
         domain: request.body?.domain,
         localPart: request.body?.localPart,
         random: request.body?.random ?? false,
+        randomSubdomain: request.body?.randomSubdomain ?? false,
+        subdomain: request.body?.subdomain,
       });
 
       const localPart = payload.random
@@ -651,15 +656,34 @@ export function createApp() {
         return;
       }
 
+      const normalizedCustomSubdomain = payload.subdomain?.trim().toLowerCase();
+      const useCustomSubdomain = Boolean(normalizedCustomSubdomain);
+      const { mailboxDomain, subdomainLabel } = buildMailboxDomain(payload.domain, {
+        useRandomSubdomain: payload.randomSubdomain && !useCustomSubdomain,
+        subdomainLabel: useCustomSubdomain ? normalizedCustomSubdomain : null,
+      });
+
+      const sourceParts = [];
+      sourceParts.push(payload.random ? 'random' : 'manual');
+      if (useCustomSubdomain) {
+        sourceParts.push('custom-subdomain');
+      } else if (payload.randomSubdomain) {
+        sourceParts.push('subdomain');
+      }
+
       const created = createMailbox({
         domain: payload.domain,
+        mailboxDomain,
         localPart,
-        source: payload.random ? 'random' : 'manual',
+        source: sourceParts.join('-'),
       });
 
       response.status(201).json({
         ok: true,
-        item: created,
+        item: {
+          ...created,
+          subdomainLabel,
+        },
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -851,7 +875,7 @@ export function createSmtpServer() {
     onRcptTo(address, session, callback) {
       const recipientAddress = String(address?.address ?? '').trim().toLowerCase();
       const domainName = recipientAddress.split('@')[1] || '';
-      const domain = getDomainByName(domainName);
+      const domain = getDomainByNameOrSubdomain(domainName);
       const domainStatus = resolveRecipientDomainStatus({
         recipientAddress,
         domain,

@@ -623,7 +623,7 @@ function timestamp() {
 }
 
 function normalizeDomain(domain) {
-  return domain.trim().toLowerCase();
+  return String(domain ?? '').trim().toLowerCase();
 }
 
 function parseJsonArray(value, fallback = []) {
@@ -768,6 +768,37 @@ function normalizeAddress(localPart, domain) {
 
 function normalizeMailboxAddress(address) {
   return String(address ?? '').trim().toLowerCase();
+}
+
+function isSubdomainOf(domain, rootDomain) {
+  const normalizedDomain = normalizeDomain(domain);
+  const normalizedRootDomain = normalizeDomain(rootDomain);
+
+  if (!normalizedDomain || !normalizedRootDomain) {
+    return false;
+  }
+
+  return normalizedDomain === normalizedRootDomain || normalizedDomain.endsWith(`.${normalizedRootDomain}`);
+}
+
+function resolveMailboxDomain(domain) {
+  const normalizedDomain = normalizeDomain(domain);
+
+  if (!normalizedDomain) {
+    return null;
+  }
+
+  const exactMatch = getDomainByNameStatement.get(normalizedDomain);
+
+  if (exactMatch) {
+    return mapDomain(exactMatch);
+  }
+
+  const candidate = listDomainsStatement
+    .all()
+    .find((row) => isSubdomainOf(normalizedDomain, row.domain));
+
+  return mapOptionalRow(candidate, mapDomain);
 }
 
 function normalizeRetentionPolicy(retention = {}) {
@@ -1001,6 +1032,10 @@ export function getDomainByName(domain) {
   return mapOptionalRow(getDomainByNameStatement.get(normalizeDomain(domain)), mapDomain);
 }
 
+export function getDomainByNameOrSubdomain(domain) {
+  return resolveMailboxDomain(domain);
+}
+
 export function removeDomain(id) {
   return deleteDomainStatement.run(id).changes > 0;
 }
@@ -1126,8 +1161,35 @@ export function generateRandomLocalPart(length = 10) {
   return `m${timePart}${nanoid(randomLength)}`.slice(0, safeLength);
 }
 
-export function createMailbox({ domain, localPart, source = 'manual' }) {
-  const matchedDomain = getDomainByName(domain);
+export function generateRandomSubdomainLabel(length = 8) {
+  const safeLength = Number.isInteger(length) && length >= 4 ? length : 8;
+  return nanoid(safeLength);
+}
+
+export function buildMailboxDomain(baseDomain, options = {}) {
+  const normalizedBaseDomain = normalizeDomain(baseDomain);
+  const normalizedCustomSubdomain = String(options.subdomainLabel ?? '').trim().toLowerCase() || null;
+  const shouldUseRandomSubdomain = Boolean(options.useRandomSubdomain) && !normalizedCustomSubdomain;
+  const subdomainLabel = normalizedCustomSubdomain || (
+    shouldUseRandomSubdomain
+      ? generateRandomSubdomainLabel(options.subdomainLength)
+      : null
+  );
+
+  return {
+    mailboxDomain: subdomainLabel ? `${subdomainLabel}.${normalizedBaseDomain}` : normalizedBaseDomain,
+    subdomainLabel,
+  };
+}
+
+export function createMailbox({
+  domain,
+  localPart,
+  mailboxDomain = null,
+  source = 'manual',
+}) {
+  const targetMailboxDomain = normalizeDomain(mailboxDomain || domain);
+  const matchedDomain = resolveMailboxDomain(targetMailboxDomain);
 
   if (!matchedDomain) {
     throw new Error('DOMAIN_NOT_FOUND');
@@ -1139,7 +1201,7 @@ export function createMailbox({ domain, localPart, source = 'manual' }) {
     id: `mbx_${nanoid()}`,
     domain_id: matchedDomain.id,
     local_part: normalizedLocalPart,
-    address: normalizeAddress(normalizedLocalPart, matchedDomain.domain),
+    address: normalizeAddress(normalizedLocalPart, targetMailboxDomain),
     source,
     is_active: 1,
     retention_value: null,
