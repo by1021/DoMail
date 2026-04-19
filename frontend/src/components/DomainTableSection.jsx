@@ -120,9 +120,9 @@ export default function DomainTableSection({
       style={{ width: '100%' }}
       className="page-section domain-table-section domain-table-section-responsive"
     >
-      <Card className="page-toolbar-card page-toolbar-card-minimal domain-toolbar-card-responsive">
-        <div className="domain-table-toolbar domain-table-toolbar-minimal domain-table-toolbar-responsive">
-          <div className="section-hero-search-slot">
+      <Card className="page-toolbar-card page-toolbar-card-minimal page-section-toolbar-card domain-toolbar-card-responsive">
+        <div className="section-hero-toolbar section-hero-toolbar-responsive page-section-toolbar domain-table-toolbar domain-table-toolbar-minimal domain-table-toolbar-responsive">
+          <div className="section-hero-search-slot section-hero-search-slot-responsive">
             <Input
               aria-label="域名搜索"
               placeholder="搜索域名或备注"
@@ -133,8 +133,8 @@ export default function DomainTableSection({
               className="domain-table-search"
             />
           </div>
-          <div className="section-hero-actions-slot">
-            <div className="domain-table-toolbar-actions domain-table-toolbar-actions-responsive">
+          <div className="section-hero-actions-slot section-hero-actions-slot-responsive">
+            <div className="section-hero-actions section-hero-actions-responsive domain-table-toolbar-actions domain-table-toolbar-actions-responsive">
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
