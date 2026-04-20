@@ -539,8 +539,13 @@ export default function App({ adminProfile = null, onLogout = null }) {
   async function handleCreateMailbox(values) {
     try {
       setSubmitting(true);
-      await createMailbox(buildMailboxRequestPayload(values));
-      message.success('邮箱已创建');
+      const response = await createMailbox(buildMailboxRequestPayload(values));
+      const createdAddress = response?.item?.address;
+      const successMessage = createdAddress
+        ? `邮箱已创建：${createdAddress}`
+        : '邮箱已创建';
+
+      message.success(successMessage);
       setMailboxModalOpen(false);
       mailboxForm.resetFields();
       await loadData();
@@ -548,7 +553,9 @@ export default function App({ adminProfile = null, onLogout = null }) {
       const errorCode = error?.response?.data?.error?.code;
       const fallbackMessage = errorCode === 'MAILBOX_ALREADY_EXISTS'
         ? '该邮箱已存在，请更换前缀或子域名后重试'
-        : '创建邮箱失败';
+        : errorCode === 'MAILBOX_RANDOM_GENERATION_FAILED'
+          ? '随机邮箱生成多次冲突，请稍后重试'
+          : '创建邮箱失败';
 
       message.error(extractErrorMessage(error, fallbackMessage));
     } finally {

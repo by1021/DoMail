@@ -72,7 +72,7 @@ export default function MailboxCreateModal({
                 <div className="mailbox-form-panel mailbox-form-panel-hero mailbox-form-panel-responsive mailbox-form-panel-condensed mailbox-create-simple-panel">
                   <Space direction="vertical" size={12} style={{ width: '100%' }}>
                     <Text type="secondary" className="mailbox-create-section-caption mailbox-create-inline-caption">
-                      选择主域名，再按需设置前缀或子域名。
+                      选择主域名，再按需设置前缀或子域名；随机模式会随机生成。
                     </Text>
 
                     <Form.Item label="主域名" name="domain" rules={[{ required: true, message: '请选择域名' }]} style={{ marginBottom: 0 }}>
@@ -112,7 +112,7 @@ export default function MailboxCreateModal({
                         <Form.Item label="邮箱前缀" style={{ marginBottom: 0 }}>
                           <div className="mailbox-create-static-field mailbox-create-static-field-compact mailbox-create-static-field-emphasis">
                             <Text type="secondary">生成方式</Text>
-                            <Text strong>系统自动生成</Text>
+                            <Text strong>随机生成</Text>
                           </div>
                         </Form.Item>
                       )}
@@ -146,7 +146,7 @@ export default function MailboxCreateModal({
                         <Form.Item label="子域名前缀" style={{ marginBottom: 0 }}>
                           <div className="mailbox-create-static-field mailbox-create-static-field-compact">
                             <Text type="secondary">生成方式</Text>
-                            <Text strong>系统自动生成</Text>
+                            <Text strong>随机生成</Text>
                           </div>
                         </Form.Item>
                       ) : (
@@ -172,7 +172,7 @@ export default function MailboxCreateModal({
                         </Text>
 
                         <Text type="secondary" className="mailbox-create-hint-text">
-                          冲突时更换前缀或子域名。
+                          随机模式会实时生成并自动避让冲突；自定义模式冲突时请更换前缀或子域名。
                         </Text>
                       </Space>
                     </div>

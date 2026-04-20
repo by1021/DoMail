@@ -10,7 +10,7 @@ function normalizeText(value) {
 
 function getPreviewPrefix(prefixMode, localPart) {
   if (prefixMode === PREFIX_MODE_RANDOM) {
-    return '随机前缀';
+    return '随机生成';
   }
 
   const normalizedLocalPart = normalizeText(localPart);
@@ -30,7 +30,7 @@ function getPreviewDomain(domain, domainMode, subdomain) {
   }
 
   if (domainMode === DOMAIN_MODE_RANDOM_SUBDOMAIN) {
-    return `随机子域名.${normalizedDomain}`;
+    return `随机生成.${normalizedDomain}`;
   }
 
   return normalizedDomain;

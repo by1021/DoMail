@@ -1,11 +1,13 @@
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { getServers as getSystemDnsServers } from 'node:dns';
 import { Resolver, resolveMx } from 'node:dns/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { customAlphabet } from 'nanoid';
 
+const RANDOM_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 const dbFilePath = path.resolve(process.cwd(), 'data.db');
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 10);
+const nanoid = customAlphabet(RANDOM_ALPHABET, 10);
 
 export const db = new DatabaseSync(dbFilePath);
 
@@ -621,6 +623,42 @@ const touchApiTokenLastUsedAtStatement = db.prepare(`
 
 function timestamp() {
   return new Date().toISOString();
+}
+
+function generateRandomToken(length) {
+  const safeLength = Number.isInteger(length) && length > 0 ? length : 1;
+  const bytes = crypto.randomBytes(safeLength * 2);
+  let token = '';
+
+  for (const byte of bytes) {
+    token += RANDOM_ALPHABET[byte % RANDOM_ALPHABET.length];
+
+    if (token.length >= safeLength) {
+      break;
+    }
+  }
+
+  return token;
+}
+
+function buildTimeEntropySegment(length) {
+  const safeLength = Number.isInteger(length) && length > 0 ? length : 1;
+  const timeSource = `${Date.now().toString(36)}${process.hrtime.bigint().toString(36)}`;
+  return timeSource.slice(-safeLength).padStart(safeLength, '0');
+}
+
+function buildRandomMailboxIdentifier(length, options = {}) {
+  const minimumLength = Number.isInteger(options.minimumLength) ? options.minimumLength : 8;
+  const safeLength = Number.isInteger(length) && length >= minimumLength ? length : minimumLength;
+  const firstLetter = generateRandomToken(1).replace(/[^a-z]/g, '') || 'a';
+  const timeSegmentLength = Math.min(
+    Math.max(Number.isInteger(options.timeSegmentLength) ? options.timeSegmentLength : 6, 3),
+    Math.max(1, safeLength - 2),
+  );
+  const timeSegment = buildTimeEntropySegment(timeSegmentLength);
+  const randomSegmentLength = Math.max(1, safeLength - 1 - timeSegment.length);
+  const randomSegment = generateRandomToken(randomSegmentLength);
+  return `${firstLetter}${timeSegment}${randomSegment}`.slice(0, safeLength);
 }
 
 function normalizeDomain(domain) {
@@ -1251,15 +1289,17 @@ export async function detectDomainDnsStatus(id) {
 }
 
 export function generateRandomLocalPart(length = 10) {
-  const safeLength = Number.isInteger(length) && length >= 6 ? length : 10;
-  const timePart = Date.now().toString(36).slice(-4);
-  const randomLength = Math.max(2, safeLength - timePart.length);
-  return `m${timePart}${nanoid(randomLength)}`.slice(0, safeLength);
+  return buildRandomMailboxIdentifier(length, {
+    minimumLength: 8,
+    timeSegmentLength: 6,
+  });
 }
 
 export function generateRandomSubdomainLabel(length = 8) {
-  const safeLength = Number.isInteger(length) && length >= 4 ? length : 8;
-  return nanoid(safeLength);
+  return buildRandomMailboxIdentifier(length, {
+    minimumLength: 6,
+    timeSegmentLength: 6,
+  });
 }
 
 export function buildMailboxDomain(baseDomain, options = {}) {

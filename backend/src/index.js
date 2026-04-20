@@ -189,6 +189,14 @@ function generateStoredMessageId() {
   return `msg_${crypto.randomUUID()}`;
 }
 
+function createMailboxConflictError() {
+  return {
+    status: 409,
+    code: 'MAILBOX_RANDOM_GENERATION_FAILED',
+    message: '随机邮箱生成多次冲突，请稍后重试',
+  };
+}
+
 function generateAttachmentId() {
   return `att_${crypto.randomUUID()}`;
 }
@@ -647,28 +655,10 @@ export function createApp() {
         subdomain: request.body?.subdomain,
       });
 
-      const localPart = payload.random
-        ? generateRandomLocalPart(10)
-        : payload.localPart?.trim().toLowerCase();
-
-      if (!localPart) {
-        response.status(400).json({
-          ok: false,
-          error: {
-            code: 'LOCAL_PART_REQUIRED',
-            message: '未提供邮箱前缀，且未启用随机生成',
-          },
-        });
-        return;
-      }
-
+      const normalizedManualLocalPart = payload.localPart?.trim().toLowerCase();
       const normalizedCustomSubdomain = payload.subdomain?.trim().toLowerCase();
       const useCustomSubdomain = Boolean(normalizedCustomSubdomain);
-      const { mailboxDomain, subdomainLabel } = buildMailboxDomain(payload.domain, {
-        useRandomSubdomain: payload.randomSubdomain && !useCustomSubdomain,
-        subdomainLabel: useCustomSubdomain ? normalizedCustomSubdomain : null,
-      });
-
+      const maxAttempts = payload.random || payload.randomSubdomain ? 12 : 1;
       const sourceParts = [];
       sourceParts.push(payload.random ? 'random' : 'manual');
       if (useCustomSubdomain) {
@@ -677,20 +667,62 @@ export function createApp() {
         sourceParts.push('subdomain');
       }
 
-      const created = createMailbox({
-        domain: payload.domain,
-        mailboxDomain,
-        localPart,
-        source: sourceParts.join('-'),
-      });
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        const localPart = payload.random
+          ? generateRandomLocalPart(12)
+          : normalizedManualLocalPart;
 
-      response.status(201).json({
-        ok: true,
-        item: {
-          ...created,
-          subdomainLabel,
-        },
-      });
+        if (!localPart) {
+          response.status(400).json({
+            ok: false,
+            error: {
+              code: 'LOCAL_PART_REQUIRED',
+              message: '未提供邮箱前缀，且未启用随机生成',
+            },
+          });
+          return;
+        }
+
+        const { mailboxDomain, subdomainLabel } = buildMailboxDomain(payload.domain, {
+          useRandomSubdomain: payload.randomSubdomain && !useCustomSubdomain,
+          subdomainLabel: useCustomSubdomain ? normalizedCustomSubdomain : null,
+          subdomainLength: 10,
+        });
+
+        try {
+          const created = createMailbox({
+            domain: payload.domain,
+            mailboxDomain,
+            localPart,
+            source: sourceParts.join('-'),
+          });
+
+          response.status(201).json({
+            ok: true,
+            item: {
+              ...created,
+              subdomainLabel,
+            },
+          });
+          return;
+        } catch (error) {
+          const isConflict = error?.message === 'MAILBOX_ALREADY_EXISTS';
+          const canRetry = isConflict && attempt < maxAttempts && (payload.random || payload.randomSubdomain);
+
+          if (canRetry) {
+            continue;
+          }
+
+          if (isConflict && (payload.random || payload.randomSubdomain)) {
+            sendErrorResponse(response, 409, createMailboxConflictError());
+            return;
+          }
+
+          throw error;
+        }
+      }
+
+      sendErrorResponse(response, 409, createMailboxConflictError());
     } catch (error) {
       if (error instanceof z.ZodError) {
         sendValidationError(response, error, '邮箱参数不合法');
