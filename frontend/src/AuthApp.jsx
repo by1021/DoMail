@@ -3,11 +3,13 @@ import { App as AntdApp, Alert, Button, Card, Form, Input, Space, Spin, Typograp
 import { LockOutlined, ThunderboltOutlined, UserOutlined } from '@ant-design/icons';
 import App from './App.jsx';
 import {
+  AUTH_EXPIRED_EVENT,
   extractErrorMessage,
   getAdminSession,
   isUnauthorizedError,
   loginAdmin,
   logoutAdmin,
+  resetAuthExpiredFlag,
 } from './api.js';
 
 const { Title, Text } = Typography;
@@ -113,6 +115,7 @@ export default function AuthApp() {
       const response = await getAdminSession();
       setAdminProfile(response.item ?? null);
       setErrorMessage('');
+      resetAuthExpiredFlag();
     } catch (error) {
       if (!isUnauthorizedError(error)) {
         setErrorMessage(extractErrorMessage(error, '登录态检查失败'));
@@ -125,7 +128,22 @@ export default function AuthApp() {
 
   useEffect(() => {
     restoreSession();
-  }, []);
+
+    function handleAuthExpired(event) {
+      const nextMessage = event?.detail?.message || '登录状态已失效，请重新登录管理账号';
+      setAdminProfile(null);
+      setErrorMessage(nextMessage);
+      setCheckingSession(false);
+      resetAuthExpiredFlag();
+      message.warning(nextMessage);
+    }
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+
+    return () => {
+      window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    };
+  }, [message]);
 
   async function handleLogin(values) {
     try {
@@ -136,6 +154,7 @@ export default function AuthApp() {
       });
       setAdminProfile(response.item ?? null);
       setErrorMessage('');
+      resetAuthExpiredFlag();
       message.success('已登录');
     } catch (error) {
       setAdminProfile(null);
@@ -148,6 +167,7 @@ export default function AuthApp() {
   async function handleLogout() {
     try {
       await logoutAdmin();
+      resetAuthExpiredFlag();
       message.success('已退出登录');
     } catch (error) {
       message.error(extractErrorMessage(error, '退出登录失败'));

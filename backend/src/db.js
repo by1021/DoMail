@@ -85,6 +85,14 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,
+    sess_json TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_domains_domain ON domains(domain);
   CREATE INDEX IF NOT EXISTS idx_mailboxes_domain_id ON mailboxes(domain_id);
   CREATE INDEX IF NOT EXISTS idx_mailboxes_address ON mailboxes(address);
@@ -92,6 +100,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_messages_received_at ON messages(received_at DESC);
   CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash);
   CREATE INDEX IF NOT EXISTS idx_api_tokens_created_at ON api_tokens(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 `);
 
 const domainColumns = new Set(
@@ -157,6 +166,15 @@ for (const migration of mailboxMigrations) {
     db.exec(migration.sql);
   }
 }
+
+db.exec(`
+  UPDATE mailboxes
+  SET
+    message_retention_value = COALESCE(message_retention_value, 1),
+    message_retention_unit = COALESCE(message_retention_unit, 'hour')
+  WHERE message_retention_value IS NULL
+     OR message_retention_unit IS NULL
+`);
 
 const insertDomainStatement = db.prepare(`
   INSERT INTO domains (
@@ -621,6 +639,48 @@ const touchApiTokenLastUsedAtStatement = db.prepare(`
   WHERE id = @id
 `);
 
+const upsertSessionStatement = db.prepare(`
+  INSERT INTO sessions (
+    sid,
+    sess_json,
+    expires_at,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    @sid,
+    @sess_json,
+    @expires_at,
+    @created_at,
+    @updated_at
+  )
+  ON CONFLICT(sid) DO UPDATE SET
+    sess_json = excluded.sess_json,
+    expires_at = excluded.expires_at,
+    updated_at = excluded.updated_at
+`);
+
+const getSessionByIdStatement = db.prepare(`
+  SELECT
+    sid,
+    sess_json,
+    expires_at,
+    created_at,
+    updated_at
+  FROM sessions
+  WHERE sid = ?
+`);
+
+const deleteSessionByIdStatement = db.prepare(`
+  DELETE FROM sessions
+  WHERE sid = ?
+`);
+
+const deleteExpiredSessionsStatement = db.prepare(`
+  DELETE FROM sessions
+  WHERE expires_at <= ?
+`);
+
 function timestamp() {
   return new Date().toISOString();
 }
@@ -1046,6 +1106,20 @@ function mapOptionalRow(row, mapper) {
   return row ? mapper(row) : null;
 }
 
+function mapSession(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    sid: row.sid,
+    session: JSON.parse(row.sess_json),
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function mapMessageListItem(row) {
   return {
     id: row.id,
@@ -1348,8 +1422,8 @@ export function createMailbox({
     is_active: 1,
     retention_value: null,
     retention_unit: null,
-    message_retention_value: null,
-    message_retention_unit: null,
+    message_retention_value: 1,
+    message_retention_unit: 'hour',
     created_at: now,
     updated_at: now,
   };
@@ -1527,6 +1601,33 @@ export function touchApiTokenLastUsedAt(id) {
 
 export function removeApiToken(id) {
   return deleteApiTokenStatement.run(id).changes > 0;
+}
+
+export function upsertSession({ sid, session, expiresAt }) {
+  const now = timestamp();
+  const existing = getSessionByIdStatement.get(sid);
+
+  upsertSessionStatement.run({
+    sid,
+    sess_json: JSON.stringify(session),
+    expires_at: expiresAt,
+    created_at: existing?.created_at ?? now,
+    updated_at: now,
+  });
+
+  return getSessionById(sid);
+}
+
+export function getSessionById(sid) {
+  return mapOptionalRow(getSessionByIdStatement.get(sid), mapSession);
+}
+
+export function removeSessionById(sid) {
+  return deleteSessionByIdStatement.run(sid).changes > 0;
+}
+
+export function purgeExpiredSessions(referenceTime = timestamp()) {
+  return deleteExpiredSessionsStatement.run(referenceTime).changes;
 }
 
 export function purgeExpiredMailboxes(referenceTime = timestamp()) {

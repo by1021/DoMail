@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   App as AntdApp,
   Avatar,
@@ -181,11 +181,18 @@ export default function App({ adminProfile = null, onLogout = null }) {
   const [apiTokens, setApiTokens] = useState([]);
   const [newApiToken, setNewApiToken] = useState(null);
   const [apiEndpointKey, setApiEndpointKey] = useState('messages');
+  const [mailboxesSyncedAt, setMailboxesSyncedAt] = useState(null);
+  const [messagesSyncedAt, setMessagesSyncedAt] = useState(null);
+  const [mailboxRealtimeMarks, setMailboxRealtimeMarks] = useState({});
+  const [messageRealtimeNotice, setMessageRealtimeNotice] = useState('');
   const [domainForm] = Form.useForm();
   const [mailboxForm] = Form.useForm();
   const [retentionForm] = Form.useForm();
   const [bulkRetentionForm] = Form.useForm();
   const [apiTokenForm] = Form.useForm();
+  const mailboxesRef = useRef([]);
+  const messagesRef = useRef([]);
+  const selectedMailboxAddressRef = useRef(null);
 
   const unreadCount = useMemo(
     () => messages.filter((item) => !item.isRead).length,
@@ -319,6 +326,18 @@ export default function App({ adminProfile = null, onLogout = null }) {
 
   const selectedMailbox = mailboxes.find((item) => item.address === selectedMailboxAddress) || null;
 
+  useEffect(() => {
+    mailboxesRef.current = mailboxes;
+  }, [mailboxes]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    selectedMailboxAddressRef.current = selectedMailboxAddress;
+  }, [selectedMailboxAddress]);
+
   function formatMessageRetentionSummary(retentionValue, retentionUnit) {
     if (!retentionValue || !retentionUnit) {
       return '已关闭自动清理';
@@ -327,13 +346,114 @@ export default function App({ adminProfile = null, onLogout = null }) {
     return `${retentionValue}${retentionUnit === 'day' ? '天' : '小时'}后自动清理`;
   }
 
+  function isRealtimeMarked(address) {
+    const markedAt = mailboxRealtimeMarks[address];
+
+    if (!markedAt) {
+      return false;
+    }
+
+    return Date.now() - markedAt < 15000;
+  }
+
+  function applyMailboxSnapshot(nextMailboxes, options = {}) {
+    const now = Date.now();
+    const currentMailboxes = mailboxesRef.current;
+    const currentMailboxMap = new Map(currentMailboxes.map((item) => [item.address, item]));
+    const changedAddresses = nextMailboxes
+      .filter((item) => {
+        const current = currentMailboxMap.get(item.address);
+
+        if (!current) {
+          return true;
+        }
+
+        return (
+          Number(item.messageCount ?? 0) > Number(current.messageCount ?? 0) ||
+          (item.latestReceivedAt ?? null) !== (current.latestReceivedAt ?? null)
+        );
+      })
+      .map((item) => item.address);
+
+    setMailboxes(nextMailboxes);
+    mailboxesRef.current = nextMailboxes;
+    setMailboxesSyncedAt(new Date(now).toISOString());
+
+    if (options.markRealtime !== false && changedAddresses.length > 0) {
+      setMailboxRealtimeMarks((current) => {
+        const nextMarks = { ...current };
+
+        for (const address of changedAddresses) {
+          nextMarks[address] = now;
+        }
+
+        return nextMarks;
+      });
+    }
+
+    return {
+      changedAddresses,
+      nextMailboxes,
+    };
+  }
+
+  function applyMessageSnapshot(nextMessages, mailboxAddress, options = {}) {
+    const nowIso = new Date().toISOString();
+    const currentMessages = messagesRef.current;
+    const currentIds = new Set(currentMessages.map((item) => item.id));
+    const freshMessages = nextMessages.filter((item) => !currentIds.has(item.id));
+
+    setMessages(nextMessages);
+    messagesRef.current = nextMessages;
+    setMessagesSyncedAt(nowIso);
+
+    if (
+      options.polling &&
+      selectedMailboxAddressRef.current === mailboxAddress &&
+      freshMessages.length > 0
+    ) {
+      setMessageRealtimeNotice(
+        `邮箱 ${mailboxAddress} 刚收到 ${freshMessages.length} 封新邮件，最新同步于 ${formatDateTime(nowIso)}`,
+      );
+    } else if (!options.polling) {
+      setMessageRealtimeNotice('');
+    }
+
+    return {
+      freshMessages,
+      nextMessages,
+    };
+  }
+
+  const refreshMailboxes = useCallback(
+    async (options = {}) => {
+      try {
+        const response = await getMailboxes();
+        return applyMailboxSnapshot(response.items ?? [], options);
+      } catch (error) {
+        if (!options.silent) {
+          message.error(extractErrorMessage(error, '刷新邮箱状态失败'));
+        }
+
+        return {
+          changedAddresses: [],
+          nextMailboxes: mailboxesRef.current,
+        };
+      }
+    },
+    [message],
+  );
+
   const loadMessages = useCallback(
     async (mailboxAddress, options = {}) => {
-      const { keepSection = false, silent = false } = options;
+      const { keepSection = false, silent = false, polling = false } = options;
 
       if (!mailboxAddress) {
         setMessages([]);
+        messagesRef.current = [];
         setSelectedMailboxAddress(null);
+        setMessagesSyncedAt(null);
+        setMessageRealtimeNotice('');
         return;
       }
 
@@ -343,7 +463,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
         }
         const response = await getMailboxMessages(mailboxAddress);
         setSelectedMailboxAddress(mailboxAddress);
-        setMessages(response.items ?? []);
+        applyMessageSnapshot(response.items ?? [], mailboxAddress, { polling });
         if (!keepSection) {
           setSection('messages');
         }
@@ -389,21 +509,24 @@ export default function App({ adminProfile = null, onLogout = null }) {
       const nextMailboxes = mailboxesResponse.items ?? [];
       const nextApiTokens = apiTokensResponse.items ?? [];
       setDomains(nextDomains);
-      setMailboxes(nextMailboxes);
+      applyMailboxSnapshot(nextMailboxes, { markRealtime: false });
       setApiTokens(nextApiTokens);
 
       const nextMailboxAddress =
-        selectedMailboxAddress && nextMailboxes.some((item) => item.address === selectedMailboxAddress)
-          ? selectedMailboxAddress
+        selectedMailboxAddressRef.current && nextMailboxes.some((item) => item.address === selectedMailboxAddressRef.current)
+          ? selectedMailboxAddressRef.current
           : nextMailboxes[0]?.address;
 
       if (nextMailboxAddress) {
         const messageResponse = await getMailboxMessages(nextMailboxAddress);
         setSelectedMailboxAddress(nextMailboxAddress);
-        setMessages(messageResponse.items ?? []);
+        applyMessageSnapshot(messageResponse.items ?? [], nextMailboxAddress, { polling: false });
       } else {
         setSelectedMailboxAddress(null);
         setMessages([]);
+        messagesRef.current = [];
+        setMessagesSyncedAt(null);
+        setMessageRealtimeNotice('');
       }
 
     } catch (error) {
@@ -424,6 +547,22 @@ export default function App({ adminProfile = null, onLogout = null }) {
   }, [mailboxes]);
 
   useEffect(() => {
+    if (!hasMailboxes && !['mailboxes', 'messages'].includes(section)) {
+      return undefined;
+    }
+
+    refreshMailboxes({ silent: true });
+
+    const pollTimer = window.setInterval(() => {
+      refreshMailboxes({ silent: true });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(pollTimer);
+    };
+  }, [hasMailboxes, refreshMailboxes, section]);
+
+  useEffect(() => {
     if (!selectedMailboxAddress) {
       return undefined;
     }
@@ -431,12 +570,14 @@ export default function App({ adminProfile = null, onLogout = null }) {
     loadMessages(selectedMailboxAddress, {
       keepSection: true,
       silent: true,
+      polling: true,
     });
 
     const pollTimer = window.setInterval(() => {
       loadMessages(selectedMailboxAddress, {
         keepSection: true,
         silent: true,
+        polling: true,
       });
     }, 1000);
 
@@ -776,10 +917,11 @@ export default function App({ adminProfile = null, onLogout = null }) {
       key: 'latestReceivedAt',
       width: 176,
       align: 'center',
-      render: (value) => (
+      render: (value, record) => (
         <div className="mailbox-table-cell-stack mailbox-table-time-cell domain-table-cell-centered">
           <Text className="mailbox-table-primary-text">{formatDateTime(value)}</Text>
           <Text type="secondary" className="mailbox-table-secondary-text">{formatRelativeTime(value)}</Text>
+          {isRealtimeMarked(record.address) ? <Tag color="success">刚收到邮件</Tag> : null}
         </div>
       ),
     },
@@ -789,9 +931,10 @@ export default function App({ adminProfile = null, onLogout = null }) {
       key: 'messageCount',
       width: 108,
       align: 'center',
-      render: (value) => (
+      render: (value, record) => (
         <div className="mailbox-table-count-cell domain-table-cell-centered">
           <Badge count={value} showZero color="#1677ff" className="mailbox-table-count-badge" />
+          {isRealtimeMarked(record.address) ? <Text type="secondary" className="mailbox-table-secondary-text">实时更新</Text> : null}
         </div>
       ),
     },
@@ -977,6 +1120,7 @@ export default function App({ adminProfile = null, onLogout = null }) {
                 <Card
                   className="mailbox-toolbar-card mailbox-toolbar-card-responsive page-section-panel page-section-panel-subtle"
                   title="批量操作"
+                  extra={mailboxesSyncedAt ? <Tag color="processing">邮箱状态已于 {formatDateTime(mailboxesSyncedAt)} 同步</Tag> : null}
                 >
                   <div className="mailbox-toolbar-layout mailbox-toolbar-layout-responsive">
                     <div className="mailbox-toolbar-main">
@@ -1216,9 +1360,15 @@ export default function App({ adminProfile = null, onLogout = null }) {
                         <Space size={[8, 8]} wrap>
                           {selectedMailbox ? <Tag color="blue">{selectedMailbox.address}</Tag> : null}
                           <Tag color={unreadCount ? 'error' : 'success'}>{unreadCount} 未读</Tag>
+                          {messagesSyncedAt ? <Tag color="processing">已同步 {formatDateTime(messagesSyncedAt)}</Tag> : null}
                         </Space>
                       }
                     >
+                      {messageRealtimeNotice ? (
+                        <div style={{ marginBottom: 12 }}>
+                          <Text type="success">{messageRealtimeNotice}</Text>
+                        </div>
+                      ) : null}
                       {filteredMessages.length === 0 ? (
                         <Empty description={selectedMailbox ? '当前邮箱还没有收件记录' : '请先选择一个邮箱查看收件列表'} />
                       ) : (

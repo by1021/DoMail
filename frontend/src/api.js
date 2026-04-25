@@ -1,10 +1,43 @@
 import axios from 'axios';
 
+export const AUTH_EXPIRED_EVENT = 'domail:auth-expired';
+
+let authExpiredHandled = false;
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 10000,
   withCredentials: true,
 });
+
+function notifyAuthExpired(error) {
+  if (typeof window === 'undefined' || authExpiredHandled) {
+    return;
+  }
+
+  authExpiredHandled = true;
+  window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, {
+    detail: {
+      message: extractErrorMessage(error, '登录状态已失效，请重新登录管理账号'),
+    },
+  }));
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (isUnauthorizedError(error)) {
+      const requestUrl = String(error?.config?.url ?? '');
+      const isAuthRoute = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/logout');
+
+      if (!isAuthRoute) {
+        notifyAuthExpired(error);
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 export async function loginAdmin(payload) {
   const { data } = await api.post('/auth/login', payload);
@@ -118,6 +151,10 @@ export async function deleteApiToken(tokenId) {
 
 export function isUnauthorizedError(error) {
   return error?.response?.status === 401;
+}
+
+export function resetAuthExpiredFlag() {
+  authExpiredHandled = false;
 }
 
 export function extractErrorMessage(error, fallback = '请求失败') {

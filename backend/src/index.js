@@ -24,22 +24,26 @@ import {
   getDomainByNameOrSubdomain,
   getMailboxByAddress,
   getLatestMessageByMailboxAddress,
+  getMessageById,
+  getSessionById,
   listApiTokens,
   listDomains,
   listMailboxes,
   listMessagesByMailboxAddress,
-  getMessageById,
   markMessageAsRead,
   purgeExpiredMailboxes,
   purgeExpiredMessages,
+  purgeExpiredSessions,
   removeApiToken,
   removeDomain,
   removeMailboxByAddress,
   removeMessage,
+  removeSessionById,
   saveIncomingMessage,
   touchApiTokenLastUsedAt,
   updateMailboxMessageRetentionByAddress,
   updateMailboxRetentionByAddress,
+  upsertSession,
 } from './db.js';
 
 const dnsRecordSchema = z.object({
@@ -274,10 +278,66 @@ function getAuthConfig() {
   };
 }
 
+class SQLiteSessionStore extends session.Store {
+  get(sid, callback) {
+    try {
+      const stored = getSessionById(sid);
+
+      if (!stored) {
+        callback(null, null);
+        return;
+      }
+
+      if (stored.expiresAt <= new Date().toISOString()) {
+        removeSessionById(sid);
+        callback(null, null);
+        return;
+      }
+
+      callback(null, stored.session);
+    } catch (error) {
+      callback(error);
+    }
+  }
+
+  set(sid, sess, callback) {
+    try {
+      const cookieMaxAge = Number(sess?.cookie?.maxAge);
+      const expiresAt = Number.isFinite(cookieMaxAge) && cookieMaxAge > 0
+        ? new Date(Date.now() + cookieMaxAge).toISOString()
+        : new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+
+      upsertSession({
+        sid,
+        session: sess,
+        expiresAt,
+      });
+
+      callback?.(null);
+    } catch (error) {
+      callback?.(error);
+    }
+  }
+
+  destroy(sid, callback) {
+    try {
+      removeSessionById(sid);
+      callback?.(null);
+    } catch (error) {
+      callback?.(error);
+    }
+  }
+
+  touch(sid, sess, callback) {
+    this.set(sid, sess, callback);
+  }
+}
+
 function createSessionMiddleware(authConfig) {
   const isProduction = process.env.NODE_ENV === 'production';
 
   return session({
+    store: new SQLiteSessionStore(),
     name: 'domail.sid',
     secret: authConfig.sessionSecret,
     resave: false,
@@ -993,8 +1053,13 @@ export function startCleanupTask() {
 
   cleanupTimer = setInterval(() => {
     try {
+      const removedSessionCount = purgeExpiredSessions();
       const removedMailboxCount = purgeExpiredMailboxes();
       const removedMessageCount = purgeExpiredMessages();
+
+      if (removedSessionCount > 0) {
+        console.log(`Purged ${removedSessionCount} expired sessions`);
+      }
 
       if (removedMailboxCount > 0) {
         console.log(`Purged ${removedMailboxCount} expired mailboxes`);
