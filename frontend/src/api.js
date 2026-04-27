@@ -28,7 +28,11 @@ api.interceptors.response.use(
   (error) => {
     if (isUnauthorizedError(error)) {
       const requestUrl = String(error?.config?.url ?? '');
-      const isAuthRoute = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/logout');
+      const isAuthRoute = (
+        requestUrl.includes('/auth/login') ||
+        requestUrl.includes('/auth/logout') ||
+        requestUrl.includes('/auth/session')
+      );
 
       if (!isAuthRoute) {
         notifyAuthExpired(error);
