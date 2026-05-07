@@ -228,4 +228,18 @@ curl ${API_EXAMPLE_BASE_URL}/messages/msg_abc123xyz \\
   }
 }`,
   },
+  {
+    key: 'latest-detail',
+    title: '最新邮件详情',
+    endpoint: 'GET /api/mailboxes/:address/latest-message',
+    summary: '获取最新邮件完整详情',
+    usage: [
+      ':address 路径参数：完整邮箱地址（必须 URL 编码）',
+      '直接返回最新一封邮件的完整详情，无需先查邮件列表',
+      '返回格式与邮件详情接口一致，包含 attachments 附件数组',
+    ],
+    example: `# 获取 test@example.com 的最新邮件完整详情
+curl ${API_EXAMPLE_BASE_URL}/mailboxes/test%40example.com/latest-message \\
+  -H "Authorization: Bearer <token>"`,
+  },
 ];
