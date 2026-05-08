@@ -8,9 +8,9 @@ services:
     container_name: domail
     restart: unless-stopped
     ports:
-      # HTTP API + 前端界面
-      - "3001:3001"
-      # SMTP 接收端口（标准邮件端口）
+      # HTTP 仅监听本机，通过 nginx 反向代理域名访问
+      - "127.0.0.1:3001:3001"
+      # SMTP 接收端口（标准邮件端口，需对外暴露）
       - "25:25"
     environment:
       - NODE_ENV=production
@@ -28,15 +28,11 @@ services:
       # MX 主机名（用于 DNS 配置提示）
       - MAIL_MX_HOST=mx.example.com
     volumes:
-      # 持久化 SQLite 数据库
-      - domail-data:/app/data
+      # 持久化 SQLite 数据库到宿主机目录
+      - /root/DoMail/Data:/app/data
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
-
-volumes:
-  domail-data:
-    driver: local
