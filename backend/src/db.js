@@ -6,7 +6,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { customAlphabet } from 'nanoid';
 
 const RANDOM_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
-const dbFilePath = path.resolve(process.cwd(), 'data.db');
+const dbFilePath = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.resolve(process.cwd(), 'data.db');
 const nanoid = customAlphabet(RANDOM_ALPHABET, 10);
 
 export const db = new DatabaseSync(dbFilePath);

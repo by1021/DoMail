@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import crypto from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { simpleParser } from 'mailparser';
 import express from 'express';
 import cors from 'cors';
@@ -979,6 +982,26 @@ export function createApp() {
       ok: true,
     });
   });
+
+  // --- 生产模式: 服务前端静态文件 ---
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const frontendDistPath = path.resolve(__dirname, '..', 'public');
+
+  if (isProduction && existsSync(frontendDistPath)) {
+    app.use(express.static(frontendDistPath, { maxAge: '7d', index: false }));
+
+    // SPA fallback: 非 /api 路由返回 index.html
+    app.get('*', (request, response, next) => {
+      if (request.path.startsWith('/api')) {
+        next();
+        return;
+      }
+
+      response.sendFile(path.join(frontendDistPath, 'index.html'));
+    });
+
+    console.log(`[static] Serving frontend from ${frontendDistPath}`);
+  }
 
   app.use((error, _request, response, _next) => {
     sendError(response, error);

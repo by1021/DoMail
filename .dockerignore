@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# Node modules (will be installed in container)
+node_modules
+backend/node_modules
+frontend/node_modules
+
+# Build output
+frontend/dist
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (should use docker-compose env or --env-file)
+backend/.env
+.env
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Deploy configs (not needed in container)
+deploy/
+
+# Tests
+backend/test
+test_smtp_2525.py
+
+# Documentation
+*.md
+
+# SQLite database (should be mounted as volume)
+*.db
+*.sqlite
+data/
