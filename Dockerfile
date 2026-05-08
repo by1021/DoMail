@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: 构建前端
 # ============================================
-FROM node:20-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -16,7 +16,7 @@ RUN npm run build
 # ============================================
 # Stage 2: 生产运行（后端 + 前端静态文件）
 # ============================================
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 
 WORKDIR /app
 
@@ -48,4 +48,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/health || exit 1
 
 # 启动后端服务（同时服务前端静态文件）
-CMD ["node", "src/index.js"]
+CMD ["node", "--experimental-sqlite", "src/index.js"]
